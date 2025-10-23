@@ -43,10 +43,26 @@ Create a `backend/.env` file:
 # Base URL (use Ngrok URL for YouTube OAuth in development)
 BASE_URL=https://your-ngrok-url.ngrok-free.app
 
+# Frontend URL (where to redirect after OAuth)
+FRONTEND_URL=http://localhost:3000
+
 # YouTube API Credentials (from Google Cloud Console)
 YOUTUBE_CLIENT_ID=your_youtube_client_id
 YOUTUBE_CLIENT_SECRET=your_youtube_client_secret
+
+# TikTok API Credentials (from TikTok Developer Portal)
+TIKTOK_CLIENT_KEY=your_tiktok_client_key
+TIKTOK_CLIENT_SECRET=your_tiktok_client_secret
 ```
+
+Create a `.env` file in the root:
+
+```env
+# Backend API URL
+BACKEND_URL=http://localhost:8000
+```
+
+For detailed information about environment variables, see [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md).
 
 ### 3. Set Up Ngrok (for YouTube OAuth)
 
