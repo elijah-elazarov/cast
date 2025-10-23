@@ -459,6 +459,49 @@ async def get_youtube_auth_url():
         raise HTTPException(status_code=500, detail=f"Failed to generate auth URL: {str(e)}")
 
 
+@app.get("/auth/youtube/callback")
+async def youtube_oauth_callback(code: str = None, state: str = None, error: str = None):
+    """
+    Handle YouTube OAuth callback
+    """
+    try:
+        if error:
+            social_logger.error(f"YOUTUBE_OAUTH_ERROR - Error: {error}")
+            logger.error(f"YouTube OAuth error: {error}")
+            return JSONResponse({
+                "success": False,
+                "error": f"OAuth error: {error}"
+            }, status_code=400)
+        
+        if not code:
+            social_logger.error("YOUTUBE_OAUTH_ERROR - No authorization code received")
+            logger.error("No authorization code received")
+            return JSONResponse({
+                "success": False,
+                "error": "No authorization code received"
+            }, status_code=400)
+        
+        # Log successful callback
+        social_logger.info(f"YOUTUBE_OAUTH_CALLBACK - Code received: {code[:10]}... | State: {state}")
+        
+        # For now, just return success - the frontend will handle the code
+        # In a full implementation, you'd process the code here
+        return JSONResponse({
+            "success": True,
+            "message": "OAuth callback received successfully",
+            "code": code,
+            "state": state
+        })
+        
+    except Exception as e:
+        social_logger.error(f"YOUTUBE_OAUTH_CALLBACK_ERROR - Error: {str(e)}")
+        logger.error(f"YouTube OAuth callback error: {str(e)}")
+        return JSONResponse({
+            "success": False,
+            "error": f"Callback processing failed: {str(e)}"
+        }, status_code=500)
+
+
 @app.post("/api/youtube/login")
 async def youtube_login(request: YouTubeAuthRequest):
     """
@@ -688,6 +731,49 @@ async def get_tiktok_auth_url():
     except Exception as e:
         logger.error(f"TikTok auth URL generation error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to generate auth URL: {str(e)}")
+
+
+@app.get("/auth/tiktok/callback")
+async def tiktok_oauth_callback(code: str = None, state: str = None, error: str = None):
+    """
+    Handle TikTok OAuth callback
+    """
+    try:
+        if error:
+            social_logger.error(f"TIKTOK_OAUTH_ERROR - Error: {error}")
+            logger.error(f"TikTok OAuth error: {error}")
+            return JSONResponse({
+                "success": False,
+                "error": f"OAuth error: {error}"
+            }, status_code=400)
+        
+        if not code:
+            social_logger.error("TIKTOK_OAUTH_ERROR - No authorization code received")
+            logger.error("No authorization code received")
+            return JSONResponse({
+                "success": False,
+                "error": "No authorization code received"
+            }, status_code=400)
+        
+        # Log successful callback
+        social_logger.info(f"TIKTOK_OAUTH_CALLBACK - Code received: {code[:10]}... | State: {state}")
+        
+        # For now, just return success - the frontend will handle the code
+        # In a full implementation, you'd process the code here
+        return JSONResponse({
+            "success": True,
+            "message": "OAuth callback received successfully",
+            "code": code,
+            "state": state
+        })
+        
+    except Exception as e:
+        social_logger.error(f"TIKTOK_OAUTH_CALLBACK_ERROR - Error: {str(e)}")
+        logger.error(f"TikTok OAuth callback error: {str(e)}")
+        return JSONResponse({
+            "success": False,
+            "error": f"Callback processing failed: {str(e)}"
+        }, status_code=500)
 
 
 @app.post("/api/tiktok/login")
