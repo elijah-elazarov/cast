@@ -208,7 +208,7 @@ export default function TikTokConnection({ onConnect }: TikTokConnectionProps) {
       <div className="flex items-center p-3 bg-pink-50 dark:bg-pink-900/20 rounded-lg">
         <AlertTriangle className="w-4 h-4 text-pink-600 dark:text-pink-400 mr-2 flex-shrink-0" />
         <p className="text-xs text-pink-800 dark:text-pink-300">
-          Uses TikTok Content Posting API w/ OAuth 2.0 auth.
+          TikTok Content Posting API w/ OAuth 2.0 auth.
         </p>
       </div>
       
