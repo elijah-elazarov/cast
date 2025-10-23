@@ -15,13 +15,32 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from dotenv import load_dotenv
+import logging.config
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging with health check filter
+class HealthCheckFilter(logging.Filter):
+    def filter(self, record):
+        # Filter out health check requests
+        return not (hasattr(record, 'getMessage') and 
+                   'GET /health HTTP/1.1' in str(record.getMessage()))
+
+# Set up logging configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
+
+# Add filter to uvicorn access logger
+uvicorn_logger = logging.getLogger("uvicorn.access")
+uvicorn_logger.addFilter(HealthCheckFilter())
+
+# Social Media Event Logger
+social_logger = logging.getLogger("social_media")
+social_logger.setLevel(logging.INFO)
 
 app = FastAPI(title="Social Media API", version="1.0.0")
 
@@ -190,11 +209,13 @@ async def login(request: LoginRequest):
             user_id = account_info.get('pk', account_info.get('user_id'))
             username = account_info.get('username', request.username)
             account_type = account_info.get('account_type', 'PERSONAL')
+            follower_count = account_info.get('follower_count', 0)
         else:
             # If it's an object, access attributes directly
             user_id = getattr(account_info, 'pk', getattr(account_info, 'user_id', None))
             username = getattr(account_info, 'username', request.username)
             account_type = getattr(account_info, 'account_type', 'PERSONAL')
+            follower_count = getattr(account_info, 'follower_count', 0)
         
         session_data = {
             'username': username,
@@ -208,6 +229,8 @@ async def login(request: LoginRequest):
         # Save session data to file for persistence
         save_instagram_session(request.username, session_data)
         
+        # Log Instagram connection event
+        social_logger.info(f"INSTAGRAM_CONNECTED - User: {username} | ID: {user_id} | Type: {account_type} | Followers: {follower_count}")
         logger.info(f"Successfully logged in user: {request.username}")
         
         return JSONResponse({
@@ -262,6 +285,7 @@ async def upload_reel(file: UploadFile = File(...), caption: str = Form(""), sha
             f.write(content)
         
         # Upload video as reel
+        social_logger.info(f"INSTAGRAM_UPLOAD_START - User: {username} | File: {file.filename} | Caption: {caption[:50]}...")
         result = cl.clip_upload(
             path=temp_path,
             caption=caption
@@ -280,6 +304,8 @@ async def upload_reel(file: UploadFile = File(...), caption: str = Form(""), sha
             media_id = getattr(result, 'pk', getattr(result, 'id', None))
             code = getattr(result, 'code', 'unknown')
         
+        # Log successful upload
+        social_logger.info(f"INSTAGRAM_UPLOAD_SUCCESS - User: {username} | Media ID: {media_id} | Code: {code} | Share to Feed: {share_to_feed}")
         logger.info(f"Successfully uploaded reel: {code}")
         
         return JSONResponse({
@@ -298,6 +324,7 @@ async def upload_reel(file: UploadFile = File(...), caption: str = Form(""), sha
         raise HTTPException(status_code=401, detail="Session expired. Please login again.")
     
     except Exception as e:
+        social_logger.error(f"INSTAGRAM_UPLOAD_FAILED - Username: {username} | File: {file.filename} | Error: {str(e)}")
         logger.error(f"Upload error: {str(e)}")
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
@@ -482,6 +509,8 @@ async def youtube_login(request: YouTubeAuthRequest):
             }
         }
         
+        # Log YouTube connection event
+        social_logger.info(f"YOUTUBE_CONNECTED - Channel: {channel['snippet']['title']} | ID: {user_id} | Subscribers: {channel['statistics'].get('subscriberCount', 0)}")
         logger.info(f"YouTube login successful for user: {user_id}")
         
         return JSONResponse({
@@ -559,6 +588,8 @@ async def upload_youtube_short(
             title = "My YouTube Short #Shorts"
         
         # Upload video
+        social_logger.info(f"YOUTUBE_UPLOAD_START - User: {user_id} | File: {file.filename} | Title: {title}")
+        
         body = {
             'snippet': {
                 'title': title,
@@ -583,6 +614,8 @@ async def upload_youtube_short(
         # Clean up temp file
         os.remove(temp_path)
         
+        # Log successful upload
+        social_logger.info(f"YOUTUBE_UPLOAD_SUCCESS - User: {user_id} | Video ID: {response['id']} | Title: {title} | URL: https://www.youtube.com/watch?v={response['id']}")
         logger.info(f"YouTube Short uploaded successfully: {response['id']}")
         
         return JSONResponse({
@@ -596,6 +629,7 @@ async def upload_youtube_short(
         })
         
     except Exception as e:
+        social_logger.error(f"YOUTUBE_UPLOAD_FAILED - User: {user_id} | File: {file.filename} | Error: {str(e)}")
         logger.error(f"YouTube upload error: {str(e)}")
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
@@ -712,6 +746,8 @@ async def tiktok_login(request: YouTubeAuthRequest):  # Reuse the same request m
             "avatar_url": user_data.get("avatar_url", "")
         }
         
+        # Log TikTok connection event
+        social_logger.info(f"TIKTOK_CONNECTED - User: {user_data.get('display_name', 'TikTok User')} | ID: {open_id} | Avatar: {user_data.get('avatar_url', 'N/A')}")
         logger.info(f"TikTok login successful for user: {open_id}")
         
         return JSONResponse({
@@ -758,6 +794,9 @@ async def upload_tiktok_video(
             f.write(await video.read())
         
         file_size = os.path.getsize(temp_path)
+        
+        # Log TikTok upload start
+        social_logger.info(f"TIKTOK_UPLOAD_START - User: {user_id} | File: {video.filename} | Title: {title} | Size: {file_size} bytes")
         
         # Step 1: Initialize upload
         init_url = "https://open.tiktokapis.com/v2/post/publish/video/init/"
@@ -812,6 +851,8 @@ async def upload_tiktok_video(
             os.remove(temp_path)
             temp_path = None
         
+        # Log successful upload
+        social_logger.info(f"TIKTOK_UPLOAD_SUCCESS - User: {user_id} | Publish ID: {publish_id} | Title: {title}")
         logger.info(f"TikTok video uploaded successfully for user: {user_id}")
         
         return JSONResponse({
@@ -829,6 +870,7 @@ async def upload_tiktok_video(
         # Clean up temp file on error
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
+        social_logger.error(f"TIKTOK_UPLOAD_FAILED - User: {user_id} | File: {video.filename} | Error: {str(e)}")
         logger.error(f"TikTok upload error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
