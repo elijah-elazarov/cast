@@ -137,7 +137,7 @@ export default function TikTokConnection({ onConnect }: TikTokConnectionProps) {
 
   if (isConnected && userInfo) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center space-x-2 text-green-600 dark:text-green-400">
           <Check className="w-5 h-5" />
           <span className="font-medium">Connected</span>
@@ -165,24 +165,19 @@ export default function TikTokConnection({ onConnect }: TikTokConnectionProps) {
           </div>
         </div>
 
-        <button
-          onClick={handleDisconnect}
-          className="w-full bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
-        >
-          <X className="w-4 h-4" />
-          <span>Disconnect</span>
-        </button>
-        
-        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 space-x-1">
-          <AlertTriangle className="w-3 h-3" />
-          <span>Uses TikTok Content Posting API with OAuth 2.0 authentication.</span>
-        </div>
+      <button
+        onClick={handleDisconnect}
+        className="w-full bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
+      >
+        <X className="w-4 h-4" />
+        <span>Disconnect</span>
+      </button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
           <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
@@ -206,6 +201,13 @@ export default function TikTokConnection({ onConnect }: TikTokConnectionProps) {
           </>
         )}
       </button>
+      
+      <div className="flex items-center p-3 bg-pink-50 dark:bg-pink-900/20 rounded-lg">
+        <AlertTriangle className="w-4 h-4 text-pink-600 dark:text-pink-400 mr-2 flex-shrink-0" />
+        <p className="text-xs text-pink-800 dark:text-pink-300">
+          Uses TikTok Content Posting API w/ OAuth 2.0 auth.
+        </p>
+      </div>
       
       <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
         <p>• Requires TikTok Developer App approval</p>

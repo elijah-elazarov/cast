@@ -179,7 +179,7 @@ export default function YouTubeConnection({ onConnect }: YouTubeConnectionProps)
       <div className="flex items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
         <AlertTriangle className="w-4 h-4 text-blue-600 dark:text-blue-400 mr-2 flex-shrink-0" />
         <p className="text-xs text-blue-800 dark:text-blue-300">
-          Uses YouTube Data API v3 with OAuth 2.0 authentication.
+          Uses YouTube Data API v3 w/ OAuth 2.0 auth.
         </p>
       </div>
       
