@@ -23,20 +23,26 @@ load_dotenv()
 # Configure logging with health check filter
 class HealthCheckFilter(logging.Filter):
     def filter(self, record):
-        # Filter out health check requests
-        return not (hasattr(record, 'getMessage') and 
-                   'GET /health HTTP/1.1' in str(record.getMessage()))
+        # Filter out health check requests - more comprehensive filtering
+        message = str(record.getMessage()) if hasattr(record, 'getMessage') else str(record)
+        return not any([
+            'GET /health HTTP/1.1' in message,
+            '/health HTTP/1.1' in message,
+            'GET /health' in message,
+            'health HTTP' in message
+        ])
 
 # Set up logging configuration
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,  # Change to WARNING to reduce noise
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Add filter to uvicorn access logger
-uvicorn_logger = logging.getLogger("uvicorn.access")
-uvicorn_logger.addFilter(HealthCheckFilter())
+# Configure uvicorn access logger to be silent for health checks
+uvicorn_access = logging.getLogger("uvicorn.access")
+uvicorn_access.setLevel(logging.WARNING)
+uvicorn_access.addFilter(HealthCheckFilter())
 
 # Social Media Event Logger
 social_logger = logging.getLogger("social_media")
@@ -929,5 +935,6 @@ if __name__ == "__main__":
         app, 
         host="0.0.0.0", 
         port=port,
-        log_level="warning"  # Reduce health check noise
+        log_level="error",  # Only show errors, not INFO messages
+        access_log=False  # Completely disable access logs
     )
