@@ -82,7 +82,6 @@ export default function VideoUploader({ connectedAccounts }: VideoUploaderProps)
 
     try {
       const uploadPromises = [];
-      const uploadMessages = [];
 
       // Upload to Instagram if connected
       if (connectedAccounts.instagram) {
