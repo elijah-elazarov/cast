@@ -462,44 +462,44 @@ async def get_youtube_auth_url():
 @app.get("/auth/youtube/callback")
 async def youtube_oauth_callback(code: str = None, state: str = None, error: str = None):
     """
-    Handle YouTube OAuth callback
+    Handle YouTube OAuth callback - redirect to frontend
     """
     try:
+        # Get frontend URL from environment or use a default
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        
         if error:
             social_logger.error(f"YOUTUBE_OAUTH_ERROR - Error: {error}")
             logger.error(f"YouTube OAuth error: {error}")
-            return JSONResponse({
-                "success": False,
-                "error": f"OAuth error: {error}"
-            }, status_code=400)
+            # Redirect to frontend with error
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url=f"{frontend_url}/?youtube_error={error}")
         
         if not code:
             social_logger.error("YOUTUBE_OAUTH_ERROR - No authorization code received")
             logger.error("No authorization code received")
-            return JSONResponse({
-                "success": False,
-                "error": "No authorization code received"
-            }, status_code=400)
+            # Redirect to frontend with error
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url=f"{frontend_url}/?youtube_error=no_code")
         
         # Log successful callback
         social_logger.info(f"YOUTUBE_OAUTH_CALLBACK - Code received: {code[:10]}... | State: {state}")
         
-        # For now, just return success - the frontend will handle the code
-        # In a full implementation, you'd process the code here
-        return JSONResponse({
-            "success": True,
-            "message": "OAuth callback received successfully",
-            "code": code,
-            "state": state
-        })
+        # Redirect to frontend callback page with the code
+        from fastapi.responses import RedirectResponse
+        redirect_url = f"{frontend_url}/auth/youtube/callback?code={code}"
+        if state:
+            redirect_url += f"&state={state}"
+        
+        return RedirectResponse(url=redirect_url)
         
     except Exception as e:
         social_logger.error(f"YOUTUBE_OAUTH_CALLBACK_ERROR - Error: {str(e)}")
         logger.error(f"YouTube OAuth callback error: {str(e)}")
-        return JSONResponse({
-            "success": False,
-            "error": f"Callback processing failed: {str(e)}"
-        }, status_code=500)
+        # Redirect to frontend with error
+        from fastapi.responses import RedirectResponse
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        return RedirectResponse(url=f"{frontend_url}/?youtube_error=callback_failed")
 
 
 @app.post("/api/youtube/login")
@@ -736,44 +736,44 @@ async def get_tiktok_auth_url():
 @app.get("/auth/tiktok/callback")
 async def tiktok_oauth_callback(code: str = None, state: str = None, error: str = None):
     """
-    Handle TikTok OAuth callback
+    Handle TikTok OAuth callback - redirect to frontend
     """
     try:
+        # Get frontend URL from environment or use a default
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        
         if error:
             social_logger.error(f"TIKTOK_OAUTH_ERROR - Error: {error}")
             logger.error(f"TikTok OAuth error: {error}")
-            return JSONResponse({
-                "success": False,
-                "error": f"OAuth error: {error}"
-            }, status_code=400)
+            # Redirect to frontend with error
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url=f"{frontend_url}/?tiktok_error={error}")
         
         if not code:
             social_logger.error("TIKTOK_OAUTH_ERROR - No authorization code received")
             logger.error("No authorization code received")
-            return JSONResponse({
-                "success": False,
-                "error": "No authorization code received"
-            }, status_code=400)
+            # Redirect to frontend with error
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url=f"{frontend_url}/?tiktok_error=no_code")
         
         # Log successful callback
         social_logger.info(f"TIKTOK_OAUTH_CALLBACK - Code received: {code[:10]}... | State: {state}")
         
-        # For now, just return success - the frontend will handle the code
-        # In a full implementation, you'd process the code here
-        return JSONResponse({
-            "success": True,
-            "message": "OAuth callback received successfully",
-            "code": code,
-            "state": state
-        })
+        # Redirect to frontend callback page with the code
+        from fastapi.responses import RedirectResponse
+        redirect_url = f"{frontend_url}/auth/tiktok/callback?code={code}"
+        if state:
+            redirect_url += f"&state={state}"
+        
+        return RedirectResponse(url=redirect_url)
         
     except Exception as e:
         social_logger.error(f"TIKTOK_OAUTH_CALLBACK_ERROR - Error: {str(e)}")
         logger.error(f"TikTok OAuth callback error: {str(e)}")
-        return JSONResponse({
-            "success": False,
-            "error": f"Callback processing failed: {str(e)}"
-        }, status_code=500)
+        # Redirect to frontend with error
+        from fastapi.responses import RedirectResponse
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        return RedirectResponse(url=f"{frontend_url}/?tiktok_error=callback_failed")
 
 
 @app.post("/api/tiktok/login")
