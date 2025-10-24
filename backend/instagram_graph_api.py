@@ -62,7 +62,7 @@ class InstagramGraphAPI:
             "state": state
         }
         
-        return f"https://www.facebook.com/v19.0/dialog/oauth?{urlencode(params)}"
+        return f"https://www.instagram.com/oauth/authorize?{urlencode(params)}"
 
     def exchange_code_for_token(self, code: str) -> Dict[str, Any]:
         """Exchange authorization code for access token"""
