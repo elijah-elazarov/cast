@@ -26,9 +26,10 @@ class InstagramGraphAPI:
         self.base_url = "https://graph.facebook.com/v19.0"
         self.scopes = [
             "instagram_basic",
-            "instagram_content_publish", 
+            "instagram_content_publish",
             "pages_show_list",
-            "pages_read_engagement"
+            "pages_read_engagement",
+            "business_management"
         ]
         
         # AWS S3 Configuration for video uploads
@@ -62,7 +63,7 @@ class InstagramGraphAPI:
             "state": state
         }
         
-        return f"https://www.instagram.com/oauth/authorize?{urlencode(params)}"
+        return f"https://api.instagram.com/oauth/authorize?{urlencode(params)}"
 
     def exchange_code_for_token(self, code: str) -> Dict[str, Any]:
         """Exchange authorization code for access token"""
