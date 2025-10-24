@@ -7,7 +7,7 @@ import InstagramGraphConnection from './components/InstagramGraphConnection';
 import YouTubeConnection from './components/YouTubeConnection';
 import TikTokConnection from './components/TikTokConnection';
 import VideoUploader from './components/VideoUploader';
-import InstagramOnboarding from './components/InstagramOnboarding';
+import ModernWelcomeFlow from './components/ModernWelcomeFlow';
 
 export default function Home() {
   const [connectedAccounts, setConnectedAccounts] = useState({
@@ -24,7 +24,7 @@ export default function Home() {
   const [isFadingToCountdown, setIsFadingToCountdown] = useState(false);
   const [isShowingComplete, setIsShowingComplete] = useState(false);
   const [isFadingToComplete, setIsFadingToComplete] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showWelcomeFlow, setShowWelcomeFlow] = useState(false);
   const TOTAL_COUNTDOWN = 3;
 
   // Check localStorage on mount to initialize connected state
@@ -43,11 +43,11 @@ export default function Home() {
     console.log('Initializing connected accounts:', initialConnectedAccounts);
     setConnectedAccounts(initialConnectedAccounts);
     
-    // Show onboarding for first-time users
+    // Show welcome flow for first-time users
     if (!hasSeenOnboarding && !instagramUsername && !youtubeUserId && !tiktokUserId) {
-      // Show onboarding after loading sequence
+      // Show welcome flow after loading sequence
       setTimeout(() => {
-        setShowOnboarding(true);
+        setShowWelcomeFlow(true);
       }, 13500); // After all loading animations (9s + 4s completion + 500ms buffer)
     }
     
@@ -310,15 +310,15 @@ export default function Home() {
         ) : null}
       </div>
 
-      {/* Onboarding Modal */}
-      {showOnboarding && (
-        <InstagramOnboarding
+      {/* Modern Welcome Flow Modal */}
+      {showWelcomeFlow && (
+        <ModernWelcomeFlow
           onComplete={() => {
-            setShowOnboarding(false);
+            setShowWelcomeFlow(false);
             localStorage.setItem('has_seen_onboarding', 'true');
           }}
           onSkip={() => {
-            setShowOnboarding(false);
+            setShowWelcomeFlow(false);
             localStorage.setItem('has_seen_onboarding', 'true');
           }}
         />
