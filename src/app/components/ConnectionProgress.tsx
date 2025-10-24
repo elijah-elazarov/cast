@@ -56,7 +56,7 @@ export default function ConnectionProgress({
       return;
     }
 
-    let currentIndex = 0;
+    const currentIndex = 0;
     const timers: NodeJS.Timeout[] = [];
 
     const scheduleSteps = () => {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Instagram, Youtube, Music } from 'lucide-react';
-import InstagramConnection from './components/InstagramConnection';
+// import InstagramConnection from './components/InstagramConnection';
 import InstagramGraphConnection from './components/InstagramGraphConnection';
 import YouTubeConnection from './components/YouTubeConnection';
 import TikTokConnection from './components/TikTokConnection';

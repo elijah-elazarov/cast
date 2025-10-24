@@ -113,7 +113,7 @@ function InstagramGraphCallbackContent() {
         {status === 'processing' && (
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 max-w-md mx-auto">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              We're setting up your Instagram Business account connection. This may take a few moments.
+              We&apos;re setting up your Instagram Business account connection. This may take a few moments.
             </p>
           </div>
         )}
