@@ -23,7 +23,7 @@ class InstagramGraphAPI:
         self.redirect_uri = os.getenv("INSTAGRAM_REDIRECT_URI", "http://localhost:3000/auth/instagram/graph/callback")
         
         # Instagram Graph API Configuration
-        self.base_url = "https://graph.facebook.com/v18.0"
+        self.base_url = "https://graph.facebook.com/v19.0"
         self.scopes = [
             "instagram_basic",
             "instagram_content_publish", 
@@ -62,7 +62,7 @@ class InstagramGraphAPI:
             "state": state
         }
         
-        return f"https://www.facebook.com/v18.0/dialog/oauth?{urlencode(params)}"
+        return f"https://www.facebook.com/v19.0/dialog/oauth?{urlencode(params)}"
 
     def exchange_code_for_token(self, code: str) -> Dict[str, Any]:
         """Exchange authorization code for access token"""
