@@ -107,7 +107,7 @@ export default function InstagramOnboarding({ onComplete, onSkip }: InstagramOnb
           </h2>
 
           <p className="text-gray-600 dark:text-gray-300 text-center mb-6">
-            Select how you'd like to connect your Instagram account
+            Select how you&apos;d like to connect your Instagram account
           </p>
 
           <div className="space-y-3 mb-8">
@@ -172,7 +172,7 @@ export default function InstagramOnboarding({ onComplete, onSkip }: InstagramOnb
           </h2>
 
           <p className="text-gray-600 dark:text-gray-300 text-center mb-6">
-            Preview what you'll actually see - click dots to navigate
+            Preview what you&apos;ll actually see - click dots to navigate
           </p>
 
           <AuthPreview method={selectedMethod} />

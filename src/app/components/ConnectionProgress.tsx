@@ -56,7 +56,7 @@ export default function ConnectionProgress({
       return;
     }
 
-    const currentIndex = 0;
+    // const currentIndex = 0;
     const timers: NodeJS.Timeout[] = [];
 
     const scheduleSteps = () => {
@@ -75,7 +75,7 @@ export default function ConnectionProgress({
     return () => {
       timers.forEach(timer => clearTimeout(timer));
     };
-  }, [isConnecting, isConnected]);
+  }, [isConnecting, isConnected, steps]);
 
   if (!isConnecting && !isConnected) {
     return null;

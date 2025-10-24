@@ -51,7 +51,7 @@ export default function ConnectionSuccess({ platform, username, onComplete }: Co
   };
 
   const config = getPlatformConfig();
-  const Icon = config.icon;
+  // const Icon = config.icon;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-[fadeIn_0.3s_ease-out]">
@@ -103,7 +103,7 @@ export default function ConnectionSuccess({ platform, username, onComplete }: Co
         <div className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg animate-[slideUp_0.5s_ease-out_0.4s_both]">
           <Sparkles className="w-4 h-4 text-green-600 dark:text-green-400" />
           <span className="text-sm font-medium text-green-900 dark:text-green-200">
-            You're ready to start posting!
+            You&apos;re ready to start posting!
           </span>
         </div>
       </div>

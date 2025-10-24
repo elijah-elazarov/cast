@@ -258,7 +258,7 @@ export default function AuthPreview({ method }: AuthPreviewProps) {
 
             {/* Additional Options */}
             <div className="space-y-2 text-center text-xs text-gray-600">
-              <p>Didn't receive a code?</p>
+              <p>Didn&apos;t receive a code?</p>
               <div className="flex justify-center gap-4">
                 <button className="text-purple-600 font-medium">Request new code</button>
                 <button className="text-purple-600 font-medium">Use backup codes</button>
@@ -363,7 +363,7 @@ export default function AuthPreview({ method }: AuthPreviewProps) {
       <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-3 flex items-start gap-2">
         <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
         <div className="text-xs text-amber-900 dark:text-amber-200">
-          <strong>Why this is reliable:</strong> We use Instagram's official authentication library, 
+          <strong>Why this is reliable:</strong> We use Instagram&apos;s official authentication library, 
           so ALL Instagram auth edge cases (2FA, challenges, verifications) are automatically handled. 
           You see our UI, but Instagram does the authentication.
         </div>
