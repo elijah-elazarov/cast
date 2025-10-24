@@ -238,11 +238,16 @@ class InstagramGraphAPI:
 
     def validate_credentials(self) -> bool:
         """Validate that all required credentials are configured"""
+        # Required for Instagram Graph API
         required_vars = [
             "FACEBOOK_APP_ID",
-            "FACEBOOK_APP_SECRET", 
+            "FACEBOOK_APP_SECRET"
+        ]
+        
+        # Optional for video uploads (AWS S3)
+        optional_vars = [
             "AWS_ACCESS_KEY_ID",
-            "AWS_SECRET_ACCESS_KEY",
+            "AWS_SECRET_ACCESS_KEY", 
             "AWS_BUCKET_NAME"
         ]
         
@@ -254,5 +259,14 @@ class InstagramGraphAPI:
         if missing_vars:
             logger.error(f"Missing required environment variables: {missing_vars}")
             return False
+        
+        # Check optional AWS credentials
+        aws_missing = []
+        for var in optional_vars:
+            if not os.getenv(var):
+                aws_missing.append(var)
+        
+        if aws_missing:
+            logger.warning(f"AWS S3 credentials not configured: {aws_missing}. Video uploads will not work.")
             
         return True
