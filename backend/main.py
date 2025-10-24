@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
@@ -11,7 +11,7 @@ import pickle
 from typing import Optional
 import logging
 from google.oauth2.credentials import Credentials
-from google.auth.transport.requests import Request
+from google.auth.transport.requests import Request as GoogleRequest
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -1009,7 +1009,7 @@ async def upload_youtube_short(
         
         # Refresh token if expired
         if credentials.expired:
-            credentials.refresh(Request())
+            credentials.refresh(GoogleRequest())
             # Update stored credentials
             youtube_sessions[user_id]['credentials'] = {
                 'token': credentials.token,
