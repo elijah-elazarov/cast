@@ -85,15 +85,20 @@ export default function VideoUploader({ connectedAccounts }: VideoUploaderProps)
 
       // Upload to Instagram if connected
       if (connectedAccounts.instagram) {
-        const instagramUsername = localStorage.getItem('instagram_username');
-        if (instagramUsername) {
+        const instagramUserId = localStorage.getItem('instagram_user_id');
+        const accountType = localStorage.getItem('instagram_account_type');
+        
+        if (instagramUserId) {
           const formData = new FormData();
           formData.append('file', selectedFile);
           formData.append('caption', caption);
-          formData.append('share_to_feed', 'true');
+          formData.append('user_id', instagramUserId);
 
+          // Use Graph API endpoint for new connections, fallback to old endpoint
+          const endpoint = accountType === 'graph' ? '/api/instagram/graph/upload-reel' : '/api/instagram/upload-reel';
+          
           uploadPromises.push(
-            fetch('/api/instagram/upload-reel', {
+            fetch(endpoint, {
               method: 'POST',
               headers: {
                 'ngrok-skip-browser-warning': 'true',

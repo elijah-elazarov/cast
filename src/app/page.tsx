@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { Instagram, Youtube, Music } from 'lucide-react';
 import InstagramConnection from './components/InstagramConnection';
+import InstagramGraphConnection from './components/InstagramGraphConnection';
 import YouTubeConnection from './components/YouTubeConnection';
 import TikTokConnection from './components/TikTokConnection';
 import VideoUploader from './components/VideoUploader';
+import InstagramOnboarding from './components/InstagramOnboarding';
 
 export default function Home() {
   const [connectedAccounts, setConnectedAccounts] = useState({
@@ -22,6 +24,7 @@ export default function Home() {
   const [isFadingToCountdown, setIsFadingToCountdown] = useState(false);
   const [isShowingComplete, setIsShowingComplete] = useState(false);
   const [isFadingToComplete, setIsFadingToComplete] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const TOTAL_COUNTDOWN = 3;
 
   // Check localStorage on mount to initialize connected state
@@ -29,6 +32,7 @@ export default function Home() {
     const instagramUsername = localStorage.getItem('instagram_username');
     const youtubeUserId = localStorage.getItem('youtube_user_id');
     const tiktokUserId = localStorage.getItem('tiktok_user_id');
+    const hasSeenOnboarding = localStorage.getItem('has_seen_onboarding');
     
     const initialConnectedAccounts = {
       instagram: !!instagramUsername,
@@ -38,6 +42,14 @@ export default function Home() {
     
     console.log('Initializing connected accounts:', initialConnectedAccounts);
     setConnectedAccounts(initialConnectedAccounts);
+    
+    // Show onboarding for first-time users
+    if (!hasSeenOnboarding && !instagramUsername && !youtubeUserId && !tiktokUserId) {
+      // Show onboarding after loading sequence
+      setTimeout(() => {
+        setShowOnboarding(true);
+      }, 13500); // After all loading animations (9s + 4s completion + 500ms buffer)
+    }
     
     // Start unified progress system immediately
     const totalDuration = 9000; // 9 seconds total for loading
@@ -249,7 +261,7 @@ export default function Home() {
             <p className="text-gray-600 dark:text-gray-300 mb-4">
               Connect your Instagram account to publish Reels
             </p>
-            <InstagramConnection 
+            <InstagramGraphConnection 
               onConnect={(connected) => handleAccountConnect('instagram', connected)}
             />
           </div>
@@ -297,6 +309,20 @@ export default function Home() {
           </div>
         ) : null}
       </div>
+
+      {/* Onboarding Modal */}
+      {showOnboarding && (
+        <InstagramOnboarding
+          onComplete={() => {
+            setShowOnboarding(false);
+            localStorage.setItem('has_seen_onboarding', 'true');
+          }}
+          onSkip={() => {
+            setShowOnboarding(false);
+            localStorage.setItem('has_seen_onboarding', 'true');
+          }}
+        />
+      )}
     </div>
   );
 }

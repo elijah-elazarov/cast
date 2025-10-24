@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
 from instagrapi import Client
 from instagrapi.exceptions import LoginRequired, BadPassword
+from instagram_graph_api import InstagramGraphAPI
 import os
 import json
 import pickle
@@ -66,9 +67,14 @@ app.add_middleware(
 )
 
 # Store active sessions (in production, use Redis or database)
-active_sessions = {}
+active_sessions = {}  # Store Instagram (instagrapi) sessions
 youtube_sessions = {}  # Store YouTube credentials
 tiktok_sessions = {}  # Store TikTok credentials
+instagram_meta_sessions = {}  # Store Instagram Meta API credentials
+instagram_graph_sessions = {}  # Store Instagram Graph API credentials
+
+# Initialize Instagram Graph API
+instagram_graph_api = InstagramGraphAPI()
 
 # Session persistence
 SESSIONS_DIR = "sessions"
@@ -162,6 +168,21 @@ TIKTOK_SCOPES = [
     'video.publish',
 ]
 
+# Meta/Instagram OAuth configuration  
+META_APP_ID = os.getenv('META_APP_ID', '')
+META_APP_SECRET = os.getenv('META_APP_SECRET', '')
+META_REDIRECT_URI = f'{BASE_URL}/auth/instagram/callback' if BASE_URL else None
+# Instagram Content Publishing API scopes
+META_INSTAGRAM_SCOPES = [
+    'instagram_basic',
+    'pages_show_list',
+    'pages_read_engagement',
+    'business_management',
+    'instagram_content_publish',
+    'instagram_manage_comments',
+    'instagram_manage_insights'
+]
+
 
 class LoginRequest(BaseModel):
     username: str
@@ -196,15 +217,35 @@ async def login(request: LoginRequest):
     Login to Instagram using instagrapi
     """
     try:
-        cl = Client()
+        logger.info(f"Instagram login attempt for user: {request.username}, has_verification_code: {bool(request.verification_code)}")
         
-        # Attempt login
-        if request.verification_code:
-            # 2FA login
+        # Check if we have an existing client session for 2FA
+        if request.verification_code and request.username in active_sessions:
+            # Use existing client for 2FA completion
+            logger.info(f"Using existing client for 2FA completion for user: {request.username}")
+            cl = active_sessions[request.username]
+            # Complete the 2FA login
             cl.login(request.username, request.password, verification_code=request.verification_code)
         else:
-            # Regular login
-            cl.login(request.username, request.password)
+            # Create new client for initial login
+            cl = Client()
+            
+            # Attempt login
+            if request.verification_code:
+                # 2FA login with new client - this shouldn't happen normally
+                cl.login(request.username, request.password, verification_code=request.verification_code)
+            else:
+                # Regular login - this might trigger 2FA
+                try:
+                    cl.login(request.username, request.password)
+                except Exception as e:
+                    # If this is a 2FA challenge, store the client and re-raise
+                    if "Two-factor authentication" in str(e) or "verification_code" in str(e) or "challenge_required" in str(e):
+                        logger.info(f"2FA challenge detected for user: {request.username}, storing client")
+                        active_sessions[request.username] = cl
+                        raise e
+                    else:
+                        raise e
         
         # Get account info
         account_info = cl.account_info()
@@ -254,7 +295,14 @@ async def login(request: LoginRequest):
         error_msg = str(e)
         
         # Check for 2FA requirement
-        if "Two-factor authentication" in error_msg or "verification_code" in error_msg:
+        if "Two-factor authentication" in error_msg or "verification_code" in error_msg or "challenge_required" in error_msg:
+            logger.info(f"2FA required for user: {request.username}, error: {error_msg}")
+            # Store the client for 2FA completion (if not already stored)
+            if request.username not in active_sessions:
+                cl = Client()
+                active_sessions[request.username] = cl
+                logger.info(f"Stored new client for 2FA completion for user: {request.username}")
+                
             raise HTTPException(
                 status_code=202,  # Accepted - pending 2FA verification
                 detail={
@@ -266,6 +314,10 @@ async def login(request: LoginRequest):
         if "User not found" in error_msg or "Invalid user" in error_msg:
             raise HTTPException(status_code=404, detail="User not found")
         
+        # Clean up failed session
+        if request.username in active_sessions:
+            del active_sessions[request.username]
+            
         raise HTTPException(status_code=500, detail=f"Login failed: {error_msg}")
 
 
@@ -419,6 +471,357 @@ async def get_account_info(username: str):
                 "profile_pic_url": None,
             }
         })
+
+
+# ============================================================================
+# Instagram Meta API Endpoints (Official Meta/Facebook Graph API)
+# ============================================================================
+
+@app.get("/api/instagram/meta/auth-url")
+async def get_instagram_meta_auth_url():
+    """
+    Get Instagram Meta OAuth authorization URL
+    """
+    try:
+        import secrets
+        state = secrets.token_urlsafe(32)
+        
+        # Meta OAuth URL for Instagram Business
+        auth_url = (
+            f"https://www.facebook.com/v18.0/dialog/oauth?"
+            f"client_id={META_APP_ID}"
+            f"&redirect_uri={META_REDIRECT_URI}"
+            f"&scope={','.join(META_INSTAGRAM_SCOPES)}"
+            f"&response_type=code"
+            f"&state={state}"
+        )
+        
+        return JSONResponse({
+            "success": True,
+            "data": {
+                "auth_url": auth_url,
+                "state": state
+            }
+        })
+    except Exception as e:
+        logger.error(f"Instagram Meta auth URL error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate auth URL: {str(e)}")
+
+
+@app.get("/auth/instagram/callback")
+async def instagram_meta_oauth_callback(code: str = None, state: str = None, error: str = None, error_description: str = None):
+    """
+    Handle Instagram Meta OAuth callback - redirect to frontend
+    """
+    try:
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        
+        if error:
+            error_msg = error_description or error
+            social_logger.error(f"INSTAGRAM_META_OAUTH_ERROR - Error: {error_msg}")
+            logger.error(f"Instagram Meta OAuth error: {error_msg}")
+            return RedirectResponse(url=f"{frontend_url}/?instagram_error={error}")
+        
+        if not code:
+            social_logger.error("INSTAGRAM_META_OAUTH_ERROR - No authorization code received")
+            logger.error("No authorization code received")
+            return RedirectResponse(url=f"{frontend_url}/?instagram_error=no_code")
+        
+        # Log successful callback
+        social_logger.info(f"INSTAGRAM_META_OAUTH_CALLBACK - Code received: {code[:10]}... | State: {state}")
+        
+        # Redirect to frontend callback page with the code
+        redirect_url = f"{frontend_url}/auth/instagram/callback?code={code}"
+        if state:
+            redirect_url += f"&state={state}"
+        
+        return RedirectResponse(url=redirect_url)
+        
+    except Exception as e:
+        social_logger.error(f"INSTAGRAM_META_OAUTH_CALLBACK_ERROR - Error: {str(e)}")
+        logger.error(f"Instagram Meta OAuth callback error: {str(e)}")
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        return RedirectResponse(url=f"{frontend_url}/?instagram_error=callback_failed")
+
+
+@app.post("/api/instagram/meta/login")
+async def instagram_meta_login(request: dict):
+    """
+    Exchange authorization code for Instagram Meta access token
+    """
+    try:
+        import requests
+        
+        code = request.get('code')
+        if not code:
+            raise HTTPException(status_code=400, detail="Authorization code required")
+        
+        # Exchange code for access token
+        token_url = "https://graph.facebook.com/v18.0/oauth/access_token"
+        token_params = {
+            "client_id": META_APP_ID,
+            "client_secret": META_APP_SECRET,
+            "redirect_uri": META_REDIRECT_URI,
+            "code": code
+        }
+        
+        token_response = requests.get(token_url, params=token_params)
+        token_data = token_response.json()
+        
+        if 'access_token' not in token_data:
+            error_msg = token_data.get('error', {}).get('message', 'Failed to get access token')
+            raise HTTPException(status_code=400, detail=error_msg)
+        
+        access_token = token_data['access_token']
+        
+        # Get Facebook Pages
+        pages_url = "https://graph.facebook.com/v18.0/me/accounts"
+        pages_response = requests.get(pages_url, params={"access_token": access_token})
+        pages_data = pages_response.json()
+        
+        if 'data' not in pages_data or len(pages_data['data']) == 0:
+            raise HTTPException(
+                status_code=404, 
+                detail="No Facebook Pages found. You need to connect your Instagram account to a Facebook Page first."
+            )
+        
+        # Get first page (could be extended to let user select from multiple pages)
+        page = pages_data['data'][0]
+        page_id = page['id']
+        page_access_token = page['access_token']
+        
+        # Get Instagram Business Account ID
+        ig_account_url = f"https://graph.facebook.com/v18.0/{page_id}"
+        ig_account_response = requests.get(
+            ig_account_url,
+            params={
+                "fields": "instagram_business_account",
+                "access_token": page_access_token
+            }
+        )
+        ig_account_data = ig_account_response.json()
+        
+        if 'instagram_business_account' not in ig_account_data:
+            raise HTTPException(
+                status_code=404,
+                detail="No Instagram Business Account found. Connect your Instagram Business account to the Facebook Page."
+            )
+        
+        ig_user_id = ig_account_data['instagram_business_account']['id']
+        
+        # Get Instagram account info
+        ig_info_url = f"https://graph.facebook.com/v18.0/{ig_user_id}"
+        ig_info_response = requests.get(
+            ig_info_url,
+            params={
+                "fields": "username,profile_picture_url,followers_count,media_count",
+                "access_token": page_access_token
+            }
+        )
+        ig_info = ig_info_response.json()
+        
+        # Store session
+        instagram_meta_sessions[ig_user_id] = {
+            'access_token': page_access_token,
+            'ig_user_id': ig_user_id,
+            'username': ig_info.get('username'),
+            'page_id': page_id,
+            'followers_count': ig_info.get('followers_count', 0),
+            'media_count': ig_info.get('media_count', 0)
+        }
+        
+        # Log Instagram Meta connection event
+        social_logger.info(f"INSTAGRAM_META_CONNECTED - User: {ig_info.get('username')} | ID: {ig_user_id} | Followers: {ig_info.get('followers_count', 0)}")
+        logger.info(f"Instagram Meta login successful for user: {ig_user_id}")
+        
+        return JSONResponse({
+            "success": True,
+            "data": {
+                "user_id": ig_user_id,
+                "username": ig_info.get('username'),
+                "followers_count": ig_info.get('followers_count', 0),
+                "media_count": ig_info.get('media_count', 0),
+                "profile_picture_url": ig_info.get('profile_picture_url'),
+                "account_type": "business"  # Meta API only works with business accounts
+            },
+            "message": "Successfully connected to Instagram"
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Instagram Meta login error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
+
+
+@app.post("/api/instagram/meta/logout")
+async def instagram_meta_logout(request: dict):
+    """
+    Logout from Instagram Meta API
+    """
+    try:
+        user_id = request.get('user_id')
+        if user_id and user_id in instagram_meta_sessions:
+            del instagram_meta_sessions[user_id]
+            logger.info(f"Instagram Meta logout successful for user: {user_id}")
+        
+        return JSONResponse({
+            "success": True,
+            "message": "Successfully logged out from Instagram"
+        })
+    except Exception as e:
+        logger.error(f"Instagram Meta logout error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Logout failed: {str(e)}")
+
+
+# Instagram Graph API Endpoints (2025)
+@app.get("/api/instagram/graph/auth-url")
+async def instagram_graph_auth_url():
+    """
+    Get Instagram Graph API authorization URL
+    """
+    try:
+        if not instagram_graph_api.validate_credentials():
+            raise HTTPException(status_code=500, detail="Instagram Graph API credentials not configured")
+            
+        auth_url = instagram_graph_api.get_auth_url()
+        
+        return JSONResponse({
+            "success": True,
+            "auth_url": auth_url
+        })
+    except Exception as e:
+        logger.error(f"Instagram Graph auth URL error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate auth URL: {str(e)}")
+
+
+@app.post("/api/instagram/graph/login")
+async def instagram_graph_login(request: dict):
+    """
+    Complete Instagram Graph API OAuth flow
+    """
+    try:
+        code = request.get('code')
+        if not code:
+            raise HTTPException(status_code=400, detail="Authorization code required")
+            
+        # Step 1: Exchange code for access token
+        token_data = instagram_graph_api.exchange_code_for_token(code)
+        access_token = token_data['access_token']
+        
+        # Step 2: Get long-lived token
+        long_lived_token = instagram_graph_api.get_long_lived_token(access_token)
+        
+        # Step 3: Get user's Facebook pages
+        pages_data = instagram_graph_api.get_user_pages(long_lived_token)
+        
+        if not pages_data.get('data'):
+            raise HTTPException(status_code=400, detail="No Facebook pages found. Please connect a Facebook page to your Instagram account.")
+            
+        # Find page with Instagram Business account
+        ig_user_id = None
+        page_id = None
+        page_access_token = None
+        
+        for page in pages_data['data']:
+            try:
+                ig_data = instagram_graph_api.get_instagram_account(page['id'], page['access_token'])
+                if ig_data.get('instagram_business_account'):
+                    ig_user_id = ig_data['instagram_business_account']['id']
+                    page_id = page['id']
+                    page_access_token = page['access_token']
+                    break
+            except Exception:
+                continue
+                
+        if not ig_user_id:
+            raise HTTPException(status_code=400, detail="No Instagram Business account found. Please connect your Instagram account to a Facebook page.")
+            
+        # Step 4: Get Instagram user info
+        ig_user_info = instagram_graph_api.get_instagram_user_info(ig_user_id, page_access_token)
+        
+        # Store session
+        instagram_graph_sessions[ig_user_id] = {
+            'access_token': page_access_token,
+            'ig_user_id': ig_user_id,
+            'username': ig_user_info.get('username'),
+            'page_id': page_id,
+            'followers_count': ig_user_info.get('followers_count', 0),
+            'media_count': ig_user_info.get('media_count', 0),
+            'account_type': ig_user_info.get('account_type', 'BUSINESS')
+        }
+        
+        logger.info(f"Instagram Graph login successful for user: {ig_user_info.get('username')}")
+        
+        return JSONResponse({
+            "success": True,
+            "data": {
+                "user_id": ig_user_id,
+                "username": ig_user_info.get('username'),
+                "followers_count": ig_user_info.get('followers_count', 0),
+                "media_count": ig_user_info.get('media_count', 0),
+                "account_type": "BUSINESS"
+            },
+            "message": "Successfully connected to Instagram"
+        })
+        
+    except Exception as e:
+        logger.error(f"Instagram Graph login error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
+
+
+@app.post("/api/instagram/graph/logout")
+async def instagram_graph_logout(request: dict):
+    """
+    Logout from Instagram Graph API
+    """
+    try:
+        user_id = request.get('user_id')
+        if user_id and user_id in instagram_graph_sessions:
+            del instagram_graph_sessions[user_id]
+            logger.info(f"Instagram Graph logout successful for user: {user_id}")
+            
+        return JSONResponse({
+            "success": True,
+            "message": "Successfully logged out from Instagram"
+        })
+    except Exception as e:
+        logger.error(f"Instagram Graph logout error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Logout failed: {str(e)}")
+
+
+@app.post("/api/instagram/graph/upload-reel")
+async def instagram_graph_upload_reel(file: UploadFile = File(...), caption: str = Form(""), user_id: str = Form(...)):
+    """
+    Upload and publish Instagram Reel using Graph API
+    """
+    try:
+        if user_id not in instagram_graph_sessions:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+            
+        session = instagram_graph_sessions[user_id]
+        ig_user_id = session['ig_user_id']
+        access_token = session['access_token']
+        
+        # Upload and publish reel
+        result = instagram_graph_api.upload_and_publish_reel(
+            ig_user_id=ig_user_id,
+            access_token=access_token,
+            video_file=file.file,
+            caption=caption
+        )
+        
+        logger.info(f"Instagram Reel published successfully for user: {session['username']}")
+        
+        return JSONResponse({
+            "success": True,
+            "data": result,
+            "message": "Reel published successfully"
+        })
+        
+    except Exception as e:
+        logger.error(f"Instagram Graph upload error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
 @app.get("/api/youtube/auth-url")
@@ -984,6 +1387,49 @@ async def health_check():
     Health check endpoint - silent for monitoring
     """
     return {"status": "healthy", "service": "Social Media API"}
+
+
+@app.get("/api/instagram/graph/webhook")
+async def instagram_webhook_verify(request: Request):
+    """
+    Verify Instagram webhook subscription
+    """
+    try:
+        # Get verification parameters
+        hub_mode = request.query_params.get("hub.mode")
+        hub_challenge = request.query_params.get("hub.challenge")
+        hub_verify_token = request.query_params.get("hub.verify_token")
+        
+        # Verify the webhook
+        if hub_mode == "subscribe" and hub_verify_token == "instagram_webhook_verify_token_2025":
+            logger.info("Instagram webhook verification successful")
+            return int(hub_challenge)
+        else:
+            logger.error(f"Instagram webhook verification failed: mode={hub_mode}, token={hub_verify_token}")
+            raise HTTPException(status_code=403, detail="Verification failed")
+            
+    except Exception as e:
+        logger.error(f"Instagram webhook verification error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Webhook verification error")
+
+
+@app.post("/api/instagram/graph/webhook")
+async def instagram_webhook_receive(request: Request):
+    """
+    Receive Instagram webhook notifications
+    """
+    try:
+        body = await request.json()
+        logger.info(f"Instagram webhook received: {body}")
+        
+        # Process webhook data here
+        # This is where you'd handle Instagram events like media updates, etc.
+        
+        return {"status": "success", "message": "Webhook received"}
+        
+    except Exception as e:
+        logger.error(f"Instagram webhook processing error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Webhook processing error")
 
 
 # Load existing sessions on startup
