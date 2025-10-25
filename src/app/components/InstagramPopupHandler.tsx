@@ -34,8 +34,8 @@ export default function InstagramPopupHandler() {
         try {
           setMessage('Exchanging authorization code for access token...');
           
-          // Exchange code for token
-          const response = await fetch('/api/instagram/graph/login', {
+          // Exchange code for token (using Platform API)
+          const response = await fetch('/api/instagram/platform/login', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

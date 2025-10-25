@@ -48,8 +48,8 @@ export default function SimpleInstagramAuth() {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      // Get OAuth URL from backend
-      const response = await fetch('/api/instagram/graph/auth-url');
+      // Get OAuth URL from backend (using Platform API - no Facebook pages required)
+      const response = await fetch('/api/instagram/platform/auth-url');
       const data = await response.json();
 
       if (!data.success) {
