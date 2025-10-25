@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Instagram, Youtube, Music } from 'lucide-react';
+import { Instagram, Youtube, Music, TestTube } from 'lucide-react';
 // import InstagramConnection from './components/InstagramConnection';
 import InstagramGraphConnection from './components/InstagramGraphConnection';
 import YouTubeConnection from './components/YouTubeConnection';
@@ -243,9 +243,16 @@ export default function Home() {
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Cast
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300">
+          <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">
             Connect your social accounts and publish content across platforms
           </p>
+          <a 
+            href="/test-instagram" 
+            className="inline-flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm"
+          >
+            <TestTube className="w-4 h-4" />
+            Test Instagram API
+          </a>
         </div>
 
         {/* Platform Cards */}
