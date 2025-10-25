@@ -712,6 +712,14 @@ async def instagram_graph_login(request: dict):
             token_data = instagram_graph_api.exchange_code_for_token(code)
             access_token = token_data['access_token']
             logger.info(f"Successfully exchanged code for access token")
+            logger.info(f"Token data: {token_data}")
+            
+            # Check if we have granted_scopes in the response
+            if 'granted_scopes' in token_data:
+                logger.info(f"Granted scopes: {token_data['granted_scopes']}")
+            else:
+                logger.warning("No granted_scopes in token response")
+                
         except Exception as e:
             logger.error(f"Token exchange failed: {str(e)}")
             raise HTTPException(status_code=400, detail=f"Token exchange failed: {str(e)}")
@@ -748,20 +756,51 @@ async def instagram_graph_login(request: dict):
         if not pages_data.get('data'):
             logger.error("No Facebook pages found for user")
             logger.error(f"Full pages response: {pages_data}")
-            raise HTTPException(
-                status_code=400, 
-                detail={
-                    "error": "No Facebook pages found",
-                    "message": "To use Instagram Graph API, you need to connect your Instagram Business account to a Facebook page. Please:",
-                    "steps": [
-                        "1. Go to your Facebook page",
-                        "2. Connect your Instagram Business account to the page",
-                        "3. Make sure your Instagram account is set to Business or Creator",
-                        "4. Try connecting again"
-                    ],
-                    "help_url": "https://www.facebook.com/help/instagram/182333492962771"
-                }
-            )
+            
+            # Check if it's an empty array vs no data key
+            if pages_data.get('data') == []:
+                logger.error("User has no accessible Facebook pages - this could mean:")
+                logger.error("1. User is not an admin of any Facebook pages")
+                logger.error("2. Facebook pages are in draft mode (not published)")
+                logger.error("3. App doesn't have permission to access the pages")
+                logger.error("4. User needs to grant page access during OAuth")
+                
+                raise HTTPException(
+                    status_code=400, 
+                    detail={
+                        "error": "No accessible Facebook pages found",
+                        "message": "You don't have access to any Facebook pages. This could be because:",
+                        "possible_causes": [
+                            "You're not an admin of any Facebook pages",
+                            "Your Facebook pages are in draft mode (not published)",
+                            "The app needs permission to access your pages",
+                            "You need to grant page access during the connection process"
+                        ],
+                        "steps": [
+                            "1. Make sure you're an admin of a Facebook page",
+                            "2. Ensure your Facebook page is published (not draft)",
+                            "3. During OAuth, grant access to your Facebook pages",
+                            "4. Make sure your Instagram is connected to the Facebook page",
+                            "5. Try connecting again"
+                        ],
+                        "help_url": "https://www.facebook.com/help/instagram/182333492962771"
+                    }
+                )
+            else:
+                raise HTTPException(
+                    status_code=400, 
+                    detail={
+                        "error": "No Facebook pages found",
+                        "message": "To use Instagram Graph API, you need to connect your Instagram Business account to a Facebook page. Please:",
+                        "steps": [
+                            "1. Go to your Facebook page",
+                            "2. Connect your Instagram Business account to the page",
+                            "3. Make sure your Instagram account is set to Business or Creator",
+                            "4. Try connecting again"
+                        ],
+                        "help_url": "https://www.facebook.com/help/instagram/182333492962771"
+                    }
+                )
             
         # Find page with Instagram Business account
         ig_user_id = None
