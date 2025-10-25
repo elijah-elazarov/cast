@@ -31,6 +31,7 @@ class InstagramGraphAPI:
         self.scopes = [
             "instagram_basic",
             "instagram_content_publish",
+            "pages_show_list",
             "pages_read_engagement"
         ]
         
