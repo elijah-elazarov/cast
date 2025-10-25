@@ -12,6 +12,10 @@ import boto3
 from botocore.exceptions import ClientError
 import uuid
 from urllib.parse import urlencode
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -78,17 +82,26 @@ class InstagramGraphAPI:
         logger.info(f"Token exchange request: {token_url}")
         logger.info(f"Token exchange params: {params}")
         
-        response = requests.post(token_url, data=params)
-        logger.info(f"Token exchange response status: {response.status_code}")
-        logger.info(f"Token exchange response: {response.text}")
-        
-        data = response.json()
-        
-        if "error" in data:
-            logger.error(f"Token exchange error: {data['error']}")
-            raise HTTPException(status_code=400, detail=data["error"]["message"])
+        try:
+            response = requests.post(token_url, data=params)
+            logger.info(f"Token exchange response status: {response.status_code}")
+            logger.info(f"Token exchange response: {response.text}")
             
-        return data
+            if response.status_code != 200:
+                logger.error(f"Token exchange failed with status {response.status_code}: {response.text}")
+                raise HTTPException(status_code=400, detail=f"Token exchange failed: {response.text}")
+            
+            data = response.json()
+            
+            if "error" in data:
+                logger.error(f"Token exchange error: {data['error']}")
+                raise HTTPException(status_code=400, detail=data["error"]["message"])
+                
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Token exchange request failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Token exchange request failed: {str(e)}")
 
     def get_long_lived_token(self, short_lived_token: str) -> str:
         """Exchange short-lived token for long-lived token"""
@@ -101,26 +114,57 @@ class InstagramGraphAPI:
             "fb_exchange_token": short_lived_token
         }
         
-        response = requests.post(token_url, data=params)
-        data = response.json()
+        logger.info(f"Long-lived token request: {token_url}")
+        logger.info(f"Long-lived token params: {params}")
         
-        if "error" in data:
-            raise HTTPException(status_code=400, detail=data["error"]["message"])
+        try:
+            response = requests.post(token_url, data=params)
+            logger.info(f"Long-lived token response status: {response.status_code}")
+            logger.info(f"Long-lived token response: {response.text}")
             
-        return data["access_token"]
+            if response.status_code != 200:
+                logger.error(f"Long-lived token exchange failed with status {response.status_code}: {response.text}")
+                raise HTTPException(status_code=400, detail=f"Long-lived token exchange failed: {response.text}")
+            
+            data = response.json()
+            
+            if "error" in data:
+                logger.error(f"Long-lived token error: {data['error']}")
+                raise HTTPException(status_code=400, detail=data["error"]["message"])
+                
+            return data["access_token"]
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Long-lived token request failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Long-lived token request failed: {str(e)}")
 
     def get_user_pages(self, access_token: str) -> Dict[str, Any]:
         """Get Facebook pages associated with the user"""
         url = f"{self.base_url}/me/accounts"
         params = {"access_token": access_token}
         
-        response = requests.get(url, params=params)
-        data = response.json()
+        logger.info(f"Getting user pages: {url}")
         
-        if "error" in data:
-            raise HTTPException(status_code=400, detail=data["error"]["message"])
+        try:
+            response = requests.get(url, params=params)
+            logger.info(f"User pages response status: {response.status_code}")
+            logger.info(f"User pages response: {response.text}")
             
-        return data
+            if response.status_code != 200:
+                logger.error(f"Get user pages failed with status {response.status_code}: {response.text}")
+                raise HTTPException(status_code=400, detail=f"Get user pages failed: {response.text}")
+            
+            data = response.json()
+            
+            if "error" in data:
+                logger.error(f"Get user pages error: {data['error']}")
+                raise HTTPException(status_code=400, detail=data["error"]["message"])
+                
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Get user pages request failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Get user pages request failed: {str(e)}")
 
     def get_instagram_account(self, page_id: str, page_access_token: str) -> Dict[str, Any]:
         """Get Instagram Business account connected to Facebook page"""
@@ -130,13 +174,28 @@ class InstagramGraphAPI:
             "access_token": page_access_token
         }
         
-        response = requests.get(url, params=params)
-        data = response.json()
+        logger.info(f"Getting Instagram account for page {page_id}: {url}")
         
-        if "error" in data:
-            raise HTTPException(status_code=400, detail=data["error"]["message"])
+        try:
+            response = requests.get(url, params=params)
+            logger.info(f"Instagram account response status: {response.status_code}")
+            logger.info(f"Instagram account response: {response.text}")
             
-        return data
+            if response.status_code != 200:
+                logger.error(f"Get Instagram account failed with status {response.status_code}: {response.text}")
+                raise HTTPException(status_code=400, detail=f"Get Instagram account failed: {response.text}")
+            
+            data = response.json()
+            
+            if "error" in data:
+                logger.error(f"Get Instagram account error: {data['error']}")
+                raise HTTPException(status_code=400, detail=data["error"]["message"])
+                
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Get Instagram account request failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Get Instagram account request failed: {str(e)}")
 
     def get_instagram_user_info(self, ig_user_id: str, access_token: str) -> Dict[str, Any]:
         """Get Instagram user information"""
@@ -146,13 +205,28 @@ class InstagramGraphAPI:
             "access_token": access_token
         }
         
-        response = requests.get(url, params=params)
-        data = response.json()
+        logger.info(f"Getting Instagram user info for {ig_user_id}: {url}")
         
-        if "error" in data:
-            raise HTTPException(status_code=400, detail=data["error"]["message"])
+        try:
+            response = requests.get(url, params=params)
+            logger.info(f"Instagram user info response status: {response.status_code}")
+            logger.info(f"Instagram user info response: {response.text}")
             
-        return data
+            if response.status_code != 200:
+                logger.error(f"Get Instagram user info failed with status {response.status_code}: {response.text}")
+                raise HTTPException(status_code=400, detail=f"Get Instagram user info failed: {response.text}")
+            
+            data = response.json()
+            
+            if "error" in data:
+                logger.error(f"Get Instagram user info error: {data['error']}")
+                raise HTTPException(status_code=400, detail=data["error"]["message"])
+                
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Get Instagram user info request failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Get Instagram user info request failed: {str(e)}")
 
     def upload_video_to_s3(self, video_file, filename: str = None) -> str:
         """Upload video to S3 and return public URL"""
