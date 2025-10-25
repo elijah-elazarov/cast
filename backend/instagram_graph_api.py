@@ -66,7 +66,8 @@ class InstagramGraphAPI:
             "redirect_uri": self.redirect_uri,
             "scope": ",".join(self.scopes),
             "response_type": "code",
-            "state": state
+            "state": state,
+            "auth_type": "reauthenticate"  # Force re-authentication to ensure fresh permissions
         }
         
         return f"https://www.facebook.com/v18.0/dialog/oauth?{urlencode(params)}"
