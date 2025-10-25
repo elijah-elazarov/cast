@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from instagrapi import Client
 from instagrapi.exceptions import LoginRequired, BadPassword
 from instagram_graph_api import InstagramGraphAPI
+from instagram_platform_api import InstagramPlatformAPI
 import os
 import json
 import pickle
@@ -1625,6 +1626,69 @@ async def get_instagram_account(request: dict):
         })
     except Exception as e:
         logger.error(f"Instagram account error: {str(e)}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.get("/api/instagram/platform/auth-url")
+async def instagram_platform_auth_url():
+    """
+    Get Instagram Platform OAuth authorization URL (direct Instagram auth, no Facebook pages required)
+    """
+    try:
+        instagram_platform_api = InstagramPlatformAPI()
+        auth_url = instagram_platform_api.get_auth_url()
+        
+        return JSONResponse({
+            "success": True,
+            "auth_url": auth_url
+        })
+    except Exception as e:
+        logger.error(f"Instagram Platform auth URL error: {str(e)}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.post("/api/instagram/platform/login")
+async def instagram_platform_login(request: dict):
+    """
+    Instagram Platform OAuth login (direct Instagram auth, no Facebook pages required)
+    """
+    try:
+        code = request.get("code")
+        if not code:
+            raise HTTPException(status_code=400, detail="Authorization code is required")
+        
+        instagram_platform_api = InstagramPlatformAPI()
+        
+        # Exchange code for access token
+        token_data = instagram_platform_api.exchange_code_for_token(code)
+        access_token = token_data.get("access_token")
+        
+        if not access_token:
+            raise HTTPException(status_code=400, detail="No access token received")
+        
+        # Get long-lived token
+        long_lived_token = instagram_platform_api.get_long_lived_token(access_token)
+        
+        # Get user info
+        user_info = instagram_platform_api.get_user_info(long_lived_token)
+        
+        return JSONResponse({
+            "success": True,
+            "data": {
+                "access_token": long_lived_token,
+                "user_id": user_info.get("id"),
+                "username": user_info.get("username"),
+                "account_type": user_info.get("account_type", "BUSINESS"),
+                "followers_count": 0,  # Not available in basic scope
+                "media_count": user_info.get("media_count", 0)
+            }
+        })
+    except Exception as e:
+        logger.error(f"Instagram Platform login error: {str(e)}")
         return JSONResponse({
             "success": False,
             "error": str(e)

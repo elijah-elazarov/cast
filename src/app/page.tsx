@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Instagram, Youtube, Music, TestTube } from 'lucide-react';
 // import InstagramConnection from './components/InstagramConnection';
 import InstagramGraphConnection from './components/InstagramGraphConnection';
+import InstagramPlatformConnection from './components/InstagramPlatformConnection';
 import YouTubeConnection from './components/YouTubeConnection';
 import TikTokConnection from './components/TikTokConnection';
 import VideoUploader from './components/VideoUploader';
@@ -286,19 +287,35 @@ export default function Home() {
         </div>
 
         {/* Platform Cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          {/* Instagram Card */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Instagram Graph API Card */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center mb-4">
               <Instagram className="w-8 h-8 text-pink-500 mr-3" />
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Instagram
+                Instagram (Graph API)
               </h2>
             </div>
             <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Connect your Instagram account to publish Reels
+              Connect via Facebook Graph API - requires Facebook page
             </p>
             <InstagramGraphConnection 
+              onConnect={(connected) => handleAccountConnect('instagram', connected)}
+            />
+          </div>
+
+          {/* Instagram Platform API Card */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center mb-4">
+              <Instagram className="w-8 h-8 text-pink-500 mr-3" />
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Instagram (Direct)
+              </h2>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Direct Instagram OAuth - no Facebook page required
+            </p>
+            <InstagramPlatformConnection 
               onConnect={(connected) => handleAccountConnect('instagram', connected)}
             />
           </div>

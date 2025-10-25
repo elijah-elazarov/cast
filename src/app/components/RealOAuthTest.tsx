@@ -306,10 +306,41 @@ export default function RealOAuthTest() {
                 return;
               }
 
+              // Listen for messages from the popup
+              const messageHandler = (event: MessageEvent) => {
+                if (event.origin !== window.location.origin) return;
+                
+                if (event.data.type === 'INSTAGRAM_OAUTH_SUCCESS') {
+                  clearInterval(checkClosed);
+                  popup.close();
+                  // Process the success data
+                  setResults(prev => [...prev, {
+                    step: 'OAuth Success',
+                    success: true,
+                    message: 'Instagram authorization successful!',
+                    data: event.data.data
+                  }]);
+                  window.removeEventListener('message', messageHandler);
+                } else if (event.data.type === 'INSTAGRAM_OAUTH_ERROR') {
+                  clearInterval(checkClosed);
+                  popup.close();
+                  setResults(prev => [...prev, {
+                    step: 'OAuth Error',
+                    success: false,
+                    message: `OAuth failed: ${event.data.error}`,
+                    error: event.data.error
+                  }]);
+                  window.removeEventListener('message', messageHandler);
+                }
+              };
+
+              window.addEventListener('message', messageHandler);
+
               // Monitor the popup for completion
               const checkClosed = setInterval(() => {
                 if (popup.closed) {
                   clearInterval(checkClosed);
+                  window.removeEventListener('message', messageHandler);
                   // Refresh the page to check for new authorization code
                   window.location.reload();
                 }
