@@ -31,12 +31,7 @@ class InstagramGraphAPI:
         self.scopes = [
             "instagram_basic",
             "instagram_content_publish",
-            "pages_show_list",
-            "pages_read_engagement",
-            "pages_manage_metadata",
-            "pages_read_user_content",
-            "pages_manage_posts",
-            "pages_manage_ads"
+            "pages_read_engagement"
         ]
         
         # AWS S3 Configuration for video uploads
@@ -67,9 +62,7 @@ class InstagramGraphAPI:
             "redirect_uri": self.redirect_uri,
             "scope": ",".join(self.scopes),
             "response_type": "code",
-            "state": state,
-            "auth_type": "reauthenticate",  # Force re-authentication to ensure fresh permissions
-            "setup": "true"  # This might help with page access setup
+            "state": state
         }
         
         return f"https://www.facebook.com/v19.0/dialog/oauth?{urlencode(params)}"
