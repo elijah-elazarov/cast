@@ -93,106 +93,49 @@ export default function InstagramTestComponent() {
         message: 'Testing Facebook pages retrieval...'
       });
 
-      // Test Facebook pages retrieval (this works independently)
-      try {
-        // This simulates the original working flow where pages were retrieved
-        // In the real implementation, this would use the access token from OAuth
-        const mockAccessToken = 'mock_token_for_pages_test';
-        
-        const response = await fetch('/api/instagram/graph/pages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ access_token: mockAccessToken }),
-        });
-        
-        const data = await response.json();
-        
-        if (data.success && data.data?.data) {
-          testResults[3] = {
-            step: '4. Get Facebook Pages',
-            success: true,
-            message: `Found ${data.data.data.length} Facebook page(s)`,
-            data: data.data
-          };
-        } else {
-          // If API fails, show what the original working flow would return
-          testResults[3] = {
-            step: '4. Get Facebook Pages',
-            success: true,
-            message: 'Facebook pages retrieval (simulated - this worked in original flow)',
-            data: {
-              data: [
-                {
-                  id: '813792105157955',
-                  name: 'Your Facebook Page',
-                  access_token: 'page_access_token_here'
-                }
-              ]
-            }
-          };
+      // Test Facebook pages retrieval - requires real access token
+      testResults[3] = {
+        step: '4. Get Facebook Pages',
+        success: false,
+        message: 'Facebook pages retrieval requires real access token from OAuth flow',
+        data: {
+          note: 'This step requires completing the OAuth flow first to get a real access token',
+          process: 'OAuth → Access Token → Facebook Pages'
         }
-      } catch {
-        // Fallback to show what the original working flow returned
-        testResults[3] = {
-          step: '4. Get Facebook Pages',
-          success: true,
-          message: 'Facebook pages retrieval (simulated - this worked in original flow)',
-          data: {
-            data: [
-              {
-                id: '813792105157955',
-                name: 'Your Facebook Page',
-                access_token: 'page_access_token_here'
-              }
-            ]
-          }
-        };
-      }
+      };
 
       // Step 5: Test Instagram Business Account detection
       testResults.push({
         step: '5. Instagram Business Account',
         success: false,
-        message: 'Testing Instagram Business Account detection...'
+        message: 'Instagram Business Account detection requires real Facebook pages data'
       });
 
-      // Simulate Instagram Business Account detection
-      const mockInstagramData = {
-        instagram_business_account: {
-          id: '17841401576281603',
-          username: 'oldsouleli'
-        }
-      };
-      
       testResults[4] = {
         step: '5. Instagram Business Account',
-        success: true,
-        message: 'Instagram Business Account found',
-        data: mockInstagramData
+        success: false,
+        message: 'Instagram Business Account detection requires real access token and Facebook pages',
+        data: {
+          note: 'This step requires completing the OAuth flow and getting Facebook pages first',
+          process: 'OAuth → Access Token → Facebook Pages → Instagram Business Account'
+        }
       };
 
       // Step 6: Test Instagram user info
       testResults.push({
         step: '6. Instagram User Info',
         success: false,
-        message: 'Testing Instagram user info retrieval...'
+        message: 'Instagram user info retrieval requires real Instagram Business Account'
       });
 
-      const mockUserInfo = {
-        id: '17841401576281603',
-        username: 'oldsouleli',
-        account_type: 'BUSINESS',
-        followers_count: 1000,
-        media_count: 50
-      };
-      
       testResults[5] = {
         step: '6. Instagram User Info',
-        success: true,
-        message: 'Instagram user info retrieved successfully',
-        data: mockUserInfo
+        success: false,
+        message: 'Instagram user info retrieval requires real Instagram Business Account',
+        data: {
+          note: 'This step requires completing the full OAuth flow and getting Instagram Business Account first',
+          process: 'OAuth → Access Token → Facebook Pages → Instagram Business Account → User Info'
+        }
       };
 
     } catch (error) {
@@ -234,7 +177,8 @@ export default function InstagramTestComponent() {
         >
           Medium article
         </a>
-        . It simulates the complete OAuth flow and API calls.
+        . It shows what each step requires and guides you through the real OAuth process.
+        All steps require real access tokens from the OAuth flow - no mock data.
       </p>
 
       <div className="space-y-4">
