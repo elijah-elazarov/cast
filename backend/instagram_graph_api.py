@@ -75,10 +75,17 @@ class InstagramGraphAPI:
             "code": code
         }
         
+        logger.info(f"Token exchange request: {token_url}")
+        logger.info(f"Token exchange params: {params}")
+        
         response = requests.post(token_url, data=params)
+        logger.info(f"Token exchange response status: {response.status_code}")
+        logger.info(f"Token exchange response: {response.text}")
+        
         data = response.json()
         
         if "error" in data:
+            logger.error(f"Token exchange error: {data['error']}")
             raise HTTPException(status_code=400, detail=data["error"]["message"])
             
         return data
