@@ -1,7 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import InstagramTestComponent from '../components/InstagramTestComponent';
 import RealInstagramTest from '../components/RealInstagramTest';
+import RealOAuthTest from '../components/RealOAuthTest';
 
 export default function TestInstagramPage() {
   return (
@@ -25,18 +27,29 @@ export default function TestInstagramPage() {
           </p>
         </div>
         
-        <div className="space-y-8">
-          <RealInstagramTest />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div>
+            <h2 className="text-xl font-semibold mb-4">🎯 Real OAuth Flow (Get Real Tokens)</h2>
+            <RealOAuthTest />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold mb-4">⚡ Quick Test (Automated)</h2>
+            <RealInstagramTest />
+          </div>
+        </div>
+        
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold mb-4">🔧 Step-by-Step Test (Manual)</h2>
           <InstagramTestComponent />
         </div>
         
         <div className="mt-8 text-center">
-          <a 
+          <Link 
             href="/" 
             className="text-blue-500 hover:text-blue-600 underline"
           >
             ← Back to Home
-          </a>
+          </Link>
         </div>
       </div>
     </div>

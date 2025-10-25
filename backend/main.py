@@ -1552,6 +1552,84 @@ async def instagram_webhook_receive(request: Request):
         logger.error(f"Instagram webhook processing error: {str(e)}")
         raise HTTPException(status_code=500, detail="Webhook processing error")
 
+@app.post("/api/instagram/graph/long-lived-token")
+async def get_long_lived_token(request: dict):
+    """
+    Get long-lived access token from short-lived token
+    """
+    try:
+        access_token = request.get("access_token")
+        if not access_token:
+            raise HTTPException(status_code=400, detail="Access token is required")
+        
+        instagram_graph_api = InstagramGraphAPI()
+        long_lived_token = instagram_graph_api.get_long_lived_token(access_token)
+        
+        return JSONResponse({
+            "success": True,
+            "data": {
+                "access_token": long_lived_token,
+                "token_type": "Bearer",
+                "expires_in": 5183944  # 60 days in seconds
+            }
+        })
+    except Exception as e:
+        logger.error(f"Long-lived token error: {str(e)}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.post("/api/instagram/graph/pages")
+async def get_facebook_pages(request: dict):
+    """
+    Get Facebook pages for the user
+    """
+    try:
+        access_token = request.get("access_token")
+        if not access_token:
+            raise HTTPException(status_code=400, detail="Access token is required")
+        
+        instagram_graph_api = InstagramGraphAPI()
+        pages_data = instagram_graph_api.get_user_pages(access_token)
+        
+        return JSONResponse({
+            "success": True,
+            "data": pages_data
+        })
+    except Exception as e:
+        logger.error(f"Facebook pages error: {str(e)}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.post("/api/instagram/graph/instagram-account")
+async def get_instagram_account(request: dict):
+    """
+    Get Instagram Business account from Facebook page
+    """
+    try:
+        page_id = request.get("page_id")
+        page_access_token = request.get("page_access_token")
+        
+        if not page_id or not page_access_token:
+            raise HTTPException(status_code=400, detail="Page ID and page access token are required")
+        
+        instagram_graph_api = InstagramGraphAPI()
+        ig_data = instagram_graph_api.get_instagram_account(page_id, page_access_token)
+        
+        return JSONResponse({
+            "success": True,
+            "data": ig_data
+        })
+    except Exception as e:
+        logger.error(f"Instagram account error: {str(e)}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
 
 # Load existing sessions on startup
 def load_existing_sessions():

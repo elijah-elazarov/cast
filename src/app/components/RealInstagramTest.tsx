@@ -7,7 +7,7 @@ interface TestResult {
   step: string;
   success: boolean;
   message: string;
-  data?: any;
+  data?: Record<string, unknown>;
   error?: string;
 }
 

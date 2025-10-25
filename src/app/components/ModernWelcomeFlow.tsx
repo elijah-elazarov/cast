@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Instagram, Youtube, Music, Sparkles, Shield, Zap, CheckCircle2, ArrowRight, ExternalLink, Star } from 'lucide-react';
+import { Instagram, Youtube, Music, Sparkles, Shield, Zap, CheckCircle2, ArrowRight, Star } from 'lucide-react';
 
 interface ModernWelcomeFlowProps {
   onComplete: () => void;
