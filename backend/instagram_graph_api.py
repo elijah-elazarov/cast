@@ -36,8 +36,7 @@ class InstagramGraphAPI:
             "pages_manage_metadata",
             "pages_read_user_content",
             "pages_manage_posts",
-            "pages_manage_ads",
-            "pages_read_insights"
+            "pages_manage_ads"
         ]
         
         # AWS S3 Configuration for video uploads
