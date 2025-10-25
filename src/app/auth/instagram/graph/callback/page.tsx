@@ -54,7 +54,12 @@ function InstagramGraphCallbackContent() {
             }, 1500);
           } else {
             setStatus('error');
-            setMessage('Failed to connect. Redirecting...');
+            // Check if we have detailed error information
+            if (data.detail && typeof data.detail === 'object') {
+              setMessage(data.detail.message || 'Failed to connect. Redirecting...');
+            } else {
+              setMessage('Failed to connect. Redirecting...');
+            }
             setTimeout(() => {
               window.location.href = '/?instagram_error=failed';
             }, 2000);
@@ -62,7 +67,23 @@ function InstagramGraphCallbackContent() {
         } catch (err) {
           console.error('Instagram Graph login error:', err);
           setStatus('error');
-          setMessage('An error occurred. Redirecting...');
+          
+          // Try to extract error message from response
+          if (err instanceof Response) {
+            try {
+              const errorData = await err.json();
+              if (errorData.detail && typeof errorData.detail === 'object') {
+                setMessage(errorData.detail.message || 'An error occurred. Redirecting...');
+              } else {
+                setMessage('An error occurred. Redirecting...');
+              }
+            } catch {
+              setMessage('An error occurred. Redirecting...');
+            }
+          } else {
+            setMessage('An error occurred. Redirecting...');
+          }
+          
           setTimeout(() => {
             window.location.href = '/?instagram_error=error';
           }, 2000);

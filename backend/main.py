@@ -733,7 +733,21 @@ async def instagram_graph_login(request: dict):
             raise HTTPException(status_code=400, detail=f"Get pages failed: {str(e)}")
         
         if not pages_data.get('data'):
-            raise HTTPException(status_code=400, detail="No Facebook pages found. Please connect a Facebook page to your Instagram account.")
+            logger.error("No Facebook pages found for user")
+            raise HTTPException(
+                status_code=400, 
+                detail={
+                    "error": "No Facebook pages found",
+                    "message": "To use Instagram Graph API, you need to connect your Instagram Business account to a Facebook page. Please:",
+                    "steps": [
+                        "1. Go to your Facebook page",
+                        "2. Connect your Instagram Business account to the page",
+                        "3. Make sure your Instagram account is set to Business or Creator",
+                        "4. Try connecting again"
+                    ],
+                    "help_url": "https://www.facebook.com/help/instagram/182333492962771"
+                }
+            )
             
         # Find page with Instagram Business account
         ig_user_id = None
@@ -752,7 +766,21 @@ async def instagram_graph_login(request: dict):
                 continue
                 
         if not ig_user_id:
-            raise HTTPException(status_code=400, detail="No Instagram Business account found. Please connect your Instagram account to a Facebook page.")
+            logger.error("No Instagram Business account found connected to Facebook pages")
+            raise HTTPException(
+                status_code=400, 
+                detail={
+                    "error": "No Instagram Business account found",
+                    "message": "Your Facebook page is not connected to an Instagram Business account. Please:",
+                    "steps": [
+                        "1. Make sure your Instagram account is set to Business or Creator",
+                        "2. Go to your Facebook page settings",
+                        "3. Connect your Instagram Business account to the page",
+                        "4. Try connecting again"
+                    ],
+                    "help_url": "https://www.facebook.com/help/instagram/182333492962771"
+                }
+            )
             
         # Step 4: Get Instagram user info
         ig_user_info = instagram_graph_api.get_instagram_user_info(ig_user_id, page_access_token)
