@@ -802,21 +802,41 @@ async def instagram_graph_login(request: dict):
                     }
                 )
             
-        # Find page with Instagram Business account
+        # Try to get Instagram account directly from user
         ig_user_id = None
         page_id = None
         page_access_token = None
         
-        for page in pages_data['data']:
-            try:
-                ig_data = instagram_graph_api.get_instagram_account(page['id'], page['access_token'])
-                if ig_data.get('instagram_business_account'):
-                    ig_user_id = ig_data['instagram_business_account']['id']
-                    page_id = page['id']
-                    page_access_token = page['access_token']
-                    break
-            except Exception:
-                continue
+        # First, try to get Instagram account directly from user with original token
+        try:
+            logger.info("Trying to get Instagram account directly from user with original token...")
+            user_ig_data = instagram_graph_api.get_user_instagram_account(access_token)
+            if user_ig_data.get('instagram_business_account'):
+                ig_user_id = user_ig_data['instagram_business_account']['id']
+                logger.info(f"Found Instagram account directly: {ig_user_id}")
+            else:
+                logger.info("No direct Instagram account found with original token, trying long-lived token...")
+                user_ig_data = instagram_graph_api.get_user_instagram_account(long_lived_token)
+                if user_ig_data.get('instagram_business_account'):
+                    ig_user_id = user_ig_data['instagram_business_account']['id']
+                    logger.info(f"Found Instagram account with long-lived token: {ig_user_id}")
+                else:
+                    logger.info("No direct Instagram account found, checking pages...")
+        except Exception as e:
+            logger.warning(f"Failed to get direct Instagram account: {str(e)}")
+        
+        # If no direct Instagram account, check pages
+        if not ig_user_id:
+            for page in pages_data['data']:
+                try:
+                    ig_data = instagram_graph_api.get_instagram_account(page['id'], page['access_token'])
+                    if ig_data.get('instagram_business_account'):
+                        ig_user_id = ig_data['instagram_business_account']['id']
+                        page_id = page['id']
+                        page_access_token = page['access_token']
+                        break
+                except Exception:
+                    continue
                 
         if not ig_user_id:
             logger.error("No Instagram Business account found connected to Facebook pages")

@@ -167,6 +167,37 @@ class InstagramGraphAPI:
             logger.error(f"Get user pages request failed: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Get user pages request failed: {str(e)}")
 
+    def get_user_instagram_account(self, access_token: str) -> Dict[str, Any]:
+        """Get Instagram Business account directly from user"""
+        url = f"{self.base_url}/me"
+        params = {
+            "fields": "instagram_business_account",
+            "access_token": access_token
+        }
+        
+        logger.info(f"Getting user Instagram account: {url}")
+        
+        try:
+            response = requests.get(url, params=params)
+            logger.info(f"User Instagram account response status: {response.status_code}")
+            logger.info(f"User Instagram account response: {response.text}")
+            
+            if response.status_code != 200:
+                logger.error(f"Get user Instagram account failed with status {response.status_code}: {response.text}")
+                raise HTTPException(status_code=400, detail=f"Get user Instagram account failed: {response.text}")
+            
+            data = response.json()
+            
+            if "error" in data:
+                logger.error(f"Get user Instagram account error: {data['error']}")
+                raise HTTPException(status_code=400, detail=data["error"]["message"])
+                
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Get user Instagram account request failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Get user Instagram account request failed: {str(e)}")
+
     def get_instagram_account(self, page_id: str, page_access_token: str) -> Dict[str, Any]:
         """Get Instagram Business account connected to Facebook page"""
         url = f"{self.base_url}/{page_id}"
