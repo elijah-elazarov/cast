@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class InstagramGraphAPI:
     def __init__(self):
-        # Facebook App Configuration
+        # Facebook App Configuration (Instagram Graph API uses Facebook App ID)
         self.app_id = os.getenv("FACEBOOK_APP_ID")
         self.app_secret = os.getenv("FACEBOOK_APP_SECRET")
         self.redirect_uri = os.getenv("INSTAGRAM_REDIRECT_URI", "http://localhost:3000/auth/instagram/graph/callback")
