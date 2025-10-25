@@ -56,12 +56,9 @@ export default function SimpleInstagramAuth() {
         throw new Error(data.error || 'Failed to get OAuth URL');
       }
 
-      // Create popup URL that will handle the OAuth flow
-      const popupUrl = `${data.auth_url}&redirect_uri=${encodeURIComponent(window.location.origin + '/instagram-popup')}`;
-      
-      // Open popup window
+      // Open popup window with the OAuth URL from backend
       const popup = window.open(
-        popupUrl,
+        data.auth_url,
         'instagram-oauth',
         'width=500,height=600,scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no'
       );
