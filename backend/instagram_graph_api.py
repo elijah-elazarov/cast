@@ -26,7 +26,9 @@ class InstagramGraphAPI:
         self.base_url = "https://graph.facebook.com/v19.0"
         self.scopes = [
             "instagram_basic",
-            "pages_show_list"
+            "instagram_content_publish",
+            "pages_show_list",
+            "pages_read_engagement"
         ]
         
         # AWS S3 Configuration for video uploads
@@ -73,7 +75,7 @@ class InstagramGraphAPI:
             "code": code
         }
         
-        response = requests.get(token_url, params=params)
+        response = requests.post(token_url, data=params)
         data = response.json()
         
         if "error" in data:
@@ -92,7 +94,7 @@ class InstagramGraphAPI:
             "fb_exchange_token": short_lived_token
         }
         
-        response = requests.get(token_url, params=params)
+        response = requests.post(token_url, data=params)
         data = response.json()
         
         if "error" in data:
