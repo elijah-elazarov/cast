@@ -26,7 +26,7 @@ class InstagramPlatformAPI:
         ]
         
         # Instagram Platform API base URL
-        self.base_url = "https://api.instagram.com"
+        self.base_url = "https://www.facebook.com/v21.0/dialog/oauth"
         self.graph_url = "https://graph.instagram.com"
         
         logger.info("Instagram Platform API initialized")
@@ -44,11 +44,11 @@ class InstagramPlatformAPI:
             "state": state
         }
         
-        return f"{self.base_url}/oauth/authorize?{urlencode(params)}"
+        return f"{self.base_url}?{urlencode(params)}"
 
     def exchange_code_for_token(self, code: str) -> Dict[str, Any]:
         """Exchange authorization code for access token"""
-        token_url = f"{self.base_url}/oauth/access_token"
+        token_url = "https://graph.instagram.com/oauth/access_token"
         
         params = {
             "client_id": self.app_id,
