@@ -32,7 +32,9 @@ class InstagramGraphAPI:
             "instagram_basic",
             "instagram_content_publish",
             "pages_show_list",
-            "pages_read_engagement"
+            "pages_read_engagement",
+            "pages_manage_metadata",
+            "pages_read_user_content"
         ]
         
         # AWS S3 Configuration for video uploads

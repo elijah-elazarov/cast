@@ -725,15 +725,29 @@ async def instagram_graph_login(request: dict):
             raise HTTPException(status_code=400, detail=f"Long-lived token failed: {str(e)}")
         
         # Step 3: Get user's Facebook pages
+        # Try with the original access token first, then long-lived token
         try:
+            logger.info(f"Trying to get pages with original access token: {access_token[:20]}...")
+            pages_data = instagram_graph_api.get_user_pages(access_token)
+            logger.info(f"Got pages data with original token: {pages_data}")
+        except Exception as e:
+            logger.warning(f"Failed to get pages with original token: {str(e)}")
+            logger.info(f"Trying with long-lived token: {long_lived_token[:20]}...")
             pages_data = instagram_graph_api.get_user_pages(long_lived_token)
             logger.info(f"Got pages data: {pages_data}")
+            logger.info(f"Pages data type: {type(pages_data)}")
+            logger.info(f"Pages data keys: {pages_data.keys() if isinstance(pages_data, dict) else 'Not a dict'}")
+            if isinstance(pages_data, dict) and 'data' in pages_data:
+                logger.info(f"Pages data array length: {len(pages_data['data']) if pages_data['data'] else 0}")
+                if pages_data['data']:
+                    logger.info(f"First page data: {pages_data['data'][0]}")
         except Exception as e:
             logger.error(f"Get pages failed: {str(e)}")
             raise HTTPException(status_code=400, detail=f"Get pages failed: {str(e)}")
         
         if not pages_data.get('data'):
             logger.error("No Facebook pages found for user")
+            logger.error(f"Full pages response: {pages_data}")
             raise HTTPException(
                 status_code=400, 
                 detail={
