@@ -705,15 +705,32 @@ async def instagram_graph_login(request: dict):
         if not code:
             raise HTTPException(status_code=400, detail="Authorization code required")
             
+        logger.info(f"Instagram Graph login attempt with code: {code[:10]}...")
+        
         # Step 1: Exchange code for access token
-        token_data = instagram_graph_api.exchange_code_for_token(code)
-        access_token = token_data['access_token']
+        try:
+            token_data = instagram_graph_api.exchange_code_for_token(code)
+            access_token = token_data['access_token']
+            logger.info(f"Successfully exchanged code for access token")
+        except Exception as e:
+            logger.error(f"Token exchange failed: {str(e)}")
+            raise HTTPException(status_code=400, detail=f"Token exchange failed: {str(e)}")
         
         # Step 2: Get long-lived token
-        long_lived_token = instagram_graph_api.get_long_lived_token(access_token)
+        try:
+            long_lived_token = instagram_graph_api.get_long_lived_token(access_token)
+            logger.info(f"Successfully got long-lived token")
+        except Exception as e:
+            logger.error(f"Long-lived token failed: {str(e)}")
+            raise HTTPException(status_code=400, detail=f"Long-lived token failed: {str(e)}")
         
         # Step 3: Get user's Facebook pages
-        pages_data = instagram_graph_api.get_user_pages(long_lived_token)
+        try:
+            pages_data = instagram_graph_api.get_user_pages(long_lived_token)
+            logger.info(f"Got pages data: {pages_data}")
+        except Exception as e:
+            logger.error(f"Get pages failed: {str(e)}")
+            raise HTTPException(status_code=400, detail=f"Get pages failed: {str(e)}")
         
         if not pages_data.get('data'):
             raise HTTPException(status_code=400, detail="No Facebook pages found. Please connect a Facebook page to your Instagram account.")
