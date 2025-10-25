@@ -8,6 +8,8 @@ import YouTubeConnection from './components/YouTubeConnection';
 import TikTokConnection from './components/TikTokConnection';
 import VideoUploader from './components/VideoUploader';
 import ModernWelcomeFlow from './components/ModernWelcomeFlow';
+import RealOAuthTest from './components/RealOAuthTest';
+import { Suspense } from 'react';
 
 export default function Home() {
   const [connectedAccounts, setConnectedAccounts] = useState({
@@ -25,6 +27,7 @@ export default function Home() {
   const [isShowingComplete, setIsShowingComplete] = useState(false);
   const [isFadingToComplete, setIsFadingToComplete] = useState(false);
   const [showWelcomeFlow, setShowWelcomeFlow] = useState(false);
+  const [showInstagramTest, setShowInstagramTest] = useState(false);
   const TOTAL_COUNTDOWN = 3;
 
   // Check localStorage on mount to initialize connected state
@@ -33,6 +36,13 @@ export default function Home() {
     const youtubeUserId = localStorage.getItem('youtube_user_id');
     const tiktokUserId = localStorage.getItem('tiktok_user_id');
     const hasSeenOnboarding = localStorage.getItem('has_seen_onboarding');
+    
+    // Check for Instagram OAuth errors in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const instagramError = urlParams.get('instagram_error');
+    if (instagramError) {
+      setShowInstagramTest(true);
+    }
     
     const initialConnectedAccounts = {
       instagram: !!instagramUsername,
@@ -246,13 +256,22 @@ export default function Home() {
           <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">
             Connect your social accounts and publish content across platforms
           </p>
-          <a 
-            href="/test-instagram" 
-            className="inline-flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm"
-          >
-            <TestTube className="w-4 h-4" />
-            Test Instagram API
-          </a>
+          <div className="flex gap-2">
+            <a 
+              href="/test-instagram" 
+              className="inline-flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm"
+            >
+              <TestTube className="w-4 h-4" />
+              Test Instagram API
+            </a>
+            <button
+              onClick={() => setShowInstagramTest(!showInstagramTest)}
+              className="inline-flex items-center gap-2 bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors text-sm"
+            >
+              <TestTube className="w-4 h-4" />
+              Debug OAuth
+            </button>
+          </div>
         </div>
 
         {/* Platform Cards */}
@@ -305,6 +324,29 @@ export default function Home() {
             />
           </div>
         </div>
+
+        {/* Instagram OAuth Test - Show when there's an error or user wants to test */}
+        {showInstagramTest && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                🔧 Instagram OAuth Debug
+              </h2>
+              <button
+                onClick={() => setShowInstagramTest(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              This debug tool helps troubleshoot Instagram OAuth issues. It will guide you through the complete authorization flow.
+            </p>
+            <Suspense fallback={<div>Loading OAuth test...</div>}>
+              <RealOAuthTest />
+            </Suspense>
+          </div>
+        )}
 
         {/* Video Upload Section */}
         {(connectedAccounts.instagram || connectedAccounts.youtube || connectedAccounts.tiktok) ? (
