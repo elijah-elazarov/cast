@@ -12,6 +12,7 @@ import ModernWelcomeFlow from './components/ModernWelcomeFlow';
 import RealOAuthTest from './components/RealOAuthTest';
 import RealInstagramTest from './components/RealInstagramTest';
 import InstagramTestComponent from './components/InstagramTestComponent';
+import SimpleInstagramAuth from './components/SimpleInstagramAuth';
 import { Suspense } from 'react';
 
 export default function Home() {
@@ -288,36 +289,9 @@ export default function Home() {
 
         {/* Platform Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Instagram Graph API Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center mb-4">
-              <Instagram className="w-8 h-8 text-pink-500 mr-3" />
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Instagram (Graph API)
-              </h2>
-            </div>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Connect via Facebook Graph API - requires Facebook page
-            </p>
-            <InstagramGraphConnection 
-              onConnect={(connected) => handleAccountConnect('instagram', connected)}
-            />
-          </div>
-
-          {/* Instagram Platform API Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center mb-4">
-              <Instagram className="w-8 h-8 text-pink-500 mr-3" />
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Instagram (Direct)
-              </h2>
-            </div>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Direct Instagram OAuth - no Facebook page required
-            </p>
-            <InstagramPlatformConnection 
-              onConnect={(connected) => handleAccountConnect('instagram', connected)}
-            />
+          {/* Simplified Instagram Card */}
+          <div className="md:col-span-2">
+            <SimpleInstagramAuth />
           </div>
 
           {/* YouTube Card */}
