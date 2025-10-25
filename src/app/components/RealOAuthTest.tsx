@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Instagram, CheckCircle, XCircle, Loader2, ExternalLink } from 'lucide-react';
 
@@ -18,9 +18,9 @@ export default function RealOAuthTest() {
   const [results, setResults] = useState<TestResult[]>([]);
   const [authUrl, setAuthUrl] = useState('');
   const [accessToken, setAccessToken] = useState('');
-  const [longLivedToken, setLongLivedToken] = useState('');
-  const [pagesData, setPagesData] = useState<Record<string, unknown> | null>(null);
-  const [igAccount, setIgAccount] = useState<Record<string, unknown> | null>(null);
+  // const [longLivedToken, setLongLivedToken] = useState('');
+  // const [pagesData, setPagesData] = useState<Record<string, unknown> | null>(null);
+  // const [igAccount, setIgAccount] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     const handleOAuthFlow = async () => {
@@ -49,7 +49,7 @@ export default function RealOAuthTest() {
     handleOAuthFlow();
   }, [searchParams]);
 
-  const getOAuthUrl = async () => {
+  const getOAuthUrl = useCallback(async () => {
     setIsLoading(true);
     setResults([]);
     
@@ -78,9 +78,9 @@ export default function RealOAuthTest() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const exchangeCodeForToken = async (code: string) => {
+  const exchangeCodeForToken = useCallback(async (code: string) => {
     setIsLoading(true);
     setResults(prev => [...prev, {
       step: '2. Token Exchange',
@@ -127,9 +127,9 @@ export default function RealOAuthTest() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const getLongLivedToken = async (token: string) => {
+  const getLongLivedToken = useCallback(async (token: string) => {
     setResults(prev => [...prev, {
       step: '3. Long-lived Token',
       success: false,
@@ -148,7 +148,7 @@ export default function RealOAuthTest() {
       const data = await response.json();
       
       if (data.success && data.data?.access_token) {
-        setLongLivedToken(data.data.access_token);
+        // setLongLivedToken(data.data.access_token);
         setResults(prev => [...prev, {
           step: '3. Long-lived Token',
           success: true,
@@ -172,9 +172,9 @@ export default function RealOAuthTest() {
         error: String(error)
       }]);
     }
-  };
+  }, []);
 
-  const getFacebookPages = async (token: string) => {
+  const getFacebookPages = useCallback(async (token: string) => {
     setResults(prev => [...prev, {
       step: '4. Facebook Pages',
       success: false,
@@ -193,7 +193,7 @@ export default function RealOAuthTest() {
       const data = await response.json();
       
       if (data.success && data.data?.data) {
-        setPagesData(data.data);
+        // setPagesData(data.data);
         setResults(prev => [...prev, {
           step: '4. Facebook Pages',
           success: true,
@@ -214,9 +214,9 @@ export default function RealOAuthTest() {
         error: String(error)
       }]);
     }
-  };
+  }, []);
 
-  const getInstagramAccount = async (pages: Record<string, unknown>) => {
+  const getInstagramAccount = useCallback(async (pages: Record<string, unknown>) => {
     setResults(prev => [...prev, {
       step: '5. Instagram Account',
       success: false,
@@ -247,13 +247,13 @@ export default function RealOAuthTest() {
             igAccount = data.data;
             break;
           }
-        } catch (error) {
+        } catch {
           continue; // Try next page
         }
       }
       
       if (igAccount) {
-        setIgAccount(igAccount);
+        // setIgAccount(igAccount);
         setResults(prev => [...prev, {
           step: '5. Instagram Account',
           success: true,
@@ -271,7 +271,7 @@ export default function RealOAuthTest() {
         error: String(error)
       }]);
     }
-  };
+  }, []);
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-lg border border-gray-200">

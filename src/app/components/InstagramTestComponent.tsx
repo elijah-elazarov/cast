@@ -13,7 +13,7 @@ interface TestResult {
 export default function InstagramTestComponent() {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<TestResult[]>([]);
-  const [accessToken, setAccessToken] = useState('');
+  // const [accessToken, setAccessToken] = useState('');
 
   const runInstagramTest = async () => {
     setIsLoading(true);
@@ -133,7 +133,7 @@ export default function InstagramTestComponent() {
             }
           };
         }
-      } catch (error) {
+      } catch {
         // Fallback to show what the original working flow returned
         testResults[3] = {
           step: '4. Get Facebook Pages',
@@ -208,8 +208,9 @@ export default function InstagramTestComponent() {
   };
 
   const openOAuthUrl = () => {
-    const authUrl = results.find(r => r.step === '1. Generate OAuth URL')?.data;
-    if (authUrl) {
+    const authUrlData = results.find(r => r.step === '1. Generate OAuth URL')?.data;
+    if (authUrlData && typeof authUrlData === 'object' && 'auth_url' in authUrlData) {
+      const authUrl = authUrlData.auth_url as string;
       window.open(authUrl, '_blank');
     }
   };

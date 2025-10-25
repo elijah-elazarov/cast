@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Suspense } from 'react';
 import InstagramTestComponent from '../components/InstagramTestComponent';
 import RealInstagramTest from '../components/RealInstagramTest';
 import RealOAuthTest from '../components/RealOAuthTest';
@@ -30,7 +31,9 @@ export default function TestInstagramPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div>
             <h2 className="text-xl font-semibold mb-4">🎯 Real OAuth Flow (Get Real Tokens)</h2>
-            <RealOAuthTest />
+            <Suspense fallback={<div>Loading OAuth test...</div>}>
+              <RealOAuthTest />
+            </Suspense>
           </div>
           <div>
             <h2 className="text-xl font-semibold mb-4">⚡ Quick Test (Automated)</h2>
