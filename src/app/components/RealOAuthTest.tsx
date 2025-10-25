@@ -293,17 +293,35 @@ export default function RealOAuthTest() {
 
       {authUrl && !searchParams.get('code') && (
         <div className="mb-6">
-          <a
-            href={authUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={() => {
+              const popup = window.open(
+                authUrl,
+                'instagram-oauth-test',
+                'width=500,height=600,scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no'
+              );
+              
+              if (!popup) {
+                alert('Popup blocked. Please allow popups for this site.');
+                return;
+              }
+
+              // Monitor the popup for completion
+              const checkClosed = setInterval(() => {
+                if (popup.closed) {
+                  clearInterval(checkClosed);
+                  // Refresh the page to check for new authorization code
+                  window.location.reload();
+                }
+              }, 1000);
+            }}
             className="inline-flex items-center gap-2 bg-pink-500 text-white px-6 py-3 rounded-lg hover:bg-pink-600 transition-colors"
           >
             <ExternalLink className="w-4 h-4" />
-            Authorize with Instagram
-          </a>
+            Authorize with Instagram (Popup)
+          </button>
           <p className="text-sm text-gray-500 mt-2">
-            Click this button to go through the real Instagram authorization process
+            Click this button to open Instagram authorization in a small popup window
           </p>
         </div>
       )}

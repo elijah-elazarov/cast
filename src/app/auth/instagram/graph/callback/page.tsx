@@ -39,7 +39,7 @@ function InstagramGraphCallbackContent() {
 
           if (data.success) {
             setStatus('success');
-            setMessage('Connection successful! Redirecting...');
+            setMessage('Connection successful! Closing window...');
             
             // Store credentials and account info
             localStorage.setItem('instagram_user_id', data.data.user_id);
@@ -48,45 +48,89 @@ function InstagramGraphCallbackContent() {
             localStorage.setItem('instagram_followers_count', data.data.followers_count.toString());
             localStorage.setItem('instagram_media_count', data.data.media_count.toString());
             
-            // Redirect to home with success flag
-            setTimeout(() => {
-              window.location.href = '/?instagram_connected=true';
-            }, 1500);
+            // Check if we're in a popup window
+            if (window.opener) {
+              // Send success message to parent window
+              window.opener.postMessage({
+                type: 'INSTAGRAM_OAUTH_SUCCESS',
+                data: data.data
+              }, window.location.origin);
+              
+              // Close the popup after a short delay
+              setTimeout(() => {
+                window.close();
+              }, 1500);
+            } else {
+              // Regular redirect if not in popup
+              setTimeout(() => {
+                window.location.href = '/?instagram_connected=true';
+              }, 1500);
+            }
           } else {
             setStatus('error');
             // Check if we have detailed error information
             if (data.detail && typeof data.detail === 'object') {
-              setMessage(data.detail.message || 'Failed to connect. Redirecting...');
+              setMessage(data.detail.message || 'Failed to connect. Closing window...');
             } else {
-              setMessage('Failed to connect. Redirecting...');
+              setMessage('Failed to connect. Closing window...');
             }
-            setTimeout(() => {
-              window.location.href = '/?instagram_error=failed';
-            }, 2000);
+            
+            // Check if we're in a popup window
+            if (window.opener) {
+              // Send error message to parent window
+              window.opener.postMessage({
+                type: 'INSTAGRAM_OAUTH_ERROR',
+                error: data.detail?.message || 'Instagram connection failed'
+              }, window.location.origin);
+              
+              // Close the popup after a short delay
+              setTimeout(() => {
+                window.close();
+              }, 2000);
+            } else {
+              // Regular redirect if not in popup
+              setTimeout(() => {
+                window.location.href = '/?instagram_error=failed';
+              }, 2000);
+            }
           }
         } catch (err) {
           console.error('Instagram Graph login error:', err);
           setStatus('error');
           
           // Try to extract error message from response
+          let errorMessage = 'An error occurred.';
           if (err instanceof Response) {
             try {
               const errorData = await err.json();
               if (errorData.detail && typeof errorData.detail === 'object') {
-                setMessage(errorData.detail.message || 'An error occurred. Redirecting...');
-              } else {
-                setMessage('An error occurred. Redirecting...');
+                errorMessage = errorData.detail.message || 'An error occurred.';
               }
             } catch {
-              setMessage('An error occurred. Redirecting...');
+              errorMessage = 'An error occurred.';
             }
-          } else {
-            setMessage('An error occurred. Redirecting...');
           }
           
-          setTimeout(() => {
-            window.location.href = '/?instagram_error=error';
-          }, 2000);
+          setMessage(errorMessage + (window.opener ? ' Closing window...' : ' Redirecting...'));
+          
+          // Check if we're in a popup window
+          if (window.opener) {
+            // Send error message to parent window
+            window.opener.postMessage({
+              type: 'INSTAGRAM_OAUTH_ERROR',
+              error: errorMessage
+            }, window.location.origin);
+            
+            // Close the popup after a short delay
+            setTimeout(() => {
+              window.close();
+            }, 2000);
+          } else {
+            // Regular redirect if not in popup
+            setTimeout(() => {
+              window.location.href = '/?instagram_error=error';
+            }, 2000);
+          }
         }
       } else {
         window.location.href = '/';

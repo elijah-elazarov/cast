@@ -92,8 +92,56 @@ export default function InstagramGraphConnection({ onConnect }: InstagramGraphCo
       const data = await response.json();
 
       if (data.success) {
-        // Redirect to Instagram OAuth
-        window.location.href = data.auth_url;
+        // Open Instagram OAuth in a small popup window
+        const popup = window.open(
+          data.auth_url,
+          'instagram-oauth',
+          'width=500,height=600,scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no'
+        );
+        
+        if (!popup) {
+          throw new Error('Popup blocked. Please allow popups for this site.');
+        }
+
+        // Monitor the popup for completion
+        const checkClosed = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkClosed);
+            setIsConnecting(false);
+            // Check if connection was successful by looking at localStorage
+            setTimeout(() => {
+              const username = localStorage.getItem('instagram_username');
+              if (username) {
+                setIsConnected(true);
+                onConnect(true);
+                setShowSuccessAnimation(true);
+              }
+            }, 1000);
+          }
+        }, 1000);
+
+        // Listen for messages from the popup
+        const messageHandler = (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) return;
+          
+          if (event.data.type === 'INSTAGRAM_OAUTH_SUCCESS') {
+            clearInterval(checkClosed);
+            popup.close();
+            setIsConnecting(false);
+            setIsConnected(true);
+            onConnect(true);
+            setShowSuccessAnimation(true);
+            window.removeEventListener('message', messageHandler);
+          } else if (event.data.type === 'INSTAGRAM_OAUTH_ERROR') {
+            clearInterval(checkClosed);
+            popup.close();
+            setIsConnecting(false);
+            setError(event.data.error || 'Instagram connection failed');
+            window.removeEventListener('message', messageHandler);
+          }
+        };
+
+        window.addEventListener('message', messageHandler);
       } else {
         throw new Error(data.error || 'Failed to get Instagram auth URL');
       }

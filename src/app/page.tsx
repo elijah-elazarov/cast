@@ -9,6 +9,8 @@ import TikTokConnection from './components/TikTokConnection';
 import VideoUploader from './components/VideoUploader';
 import ModernWelcomeFlow from './components/ModernWelcomeFlow';
 import RealOAuthTest from './components/RealOAuthTest';
+import RealInstagramTest from './components/RealInstagramTest';
+import InstagramTestComponent from './components/InstagramTestComponent';
 import { Suspense } from 'react';
 
 export default function Home() {
@@ -28,6 +30,8 @@ export default function Home() {
   const [isFadingToComplete, setIsFadingToComplete] = useState(false);
   const [showWelcomeFlow, setShowWelcomeFlow] = useState(false);
   const [showInstagramTest, setShowInstagramTest] = useState(false);
+  const [showInstagramDebug, setShowInstagramDebug] = useState(false);
+  const [showInstagramStepByStep, setShowInstagramStepByStep] = useState(false);
   const TOTAL_COUNTDOWN = 3;
 
   // Check localStorage on mount to initialize connected state
@@ -256,20 +260,27 @@ export default function Home() {
           <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">
             Connect your social accounts and publish content across platforms
           </p>
-          <div className="flex gap-2">
-            <a 
-              href="/test-instagram" 
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setShowInstagramTest(!showInstagramTest)}
               className="inline-flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm"
             >
               <TestTube className="w-4 h-4" />
-              Test Instagram API
-            </a>
+              Quick Test
+            </button>
             <button
-              onClick={() => setShowInstagramTest(!showInstagramTest)}
+              onClick={() => setShowInstagramDebug(!showInstagramDebug)}
               className="inline-flex items-center gap-2 bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors text-sm"
             >
               <TestTube className="w-4 h-4" />
-              Debug OAuth
+              Real OAuth
+            </button>
+            <button
+              onClick={() => setShowInstagramStepByStep(!showInstagramStepByStep)}
+              className="inline-flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors text-sm"
+            >
+              <TestTube className="w-4 h-4" />
+              Step-by-Step
             </button>
           </div>
         </div>
@@ -325,12 +336,12 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Instagram OAuth Test - Show when there's an error or user wants to test */}
+        {/* Instagram Test Components */}
         {showInstagramTest && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                🔧 Instagram OAuth Debug
+                ⚡ Quick Instagram Test
               </h2>
               <button
                 onClick={() => setShowInstagramTest(false)}
@@ -340,11 +351,51 @@ export default function Home() {
               </button>
             </div>
             <p className="text-gray-600 dark:text-gray-300 mb-4">
-              This debug tool helps troubleshoot Instagram OAuth issues. It will guide you through the complete authorization flow.
+              Quick automated test of Instagram Graph API connectivity and backend health.
+            </p>
+            <RealInstagramTest />
+          </div>
+        )}
+
+        {showInstagramDebug && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                🎯 Real Instagram OAuth Flow
+              </h2>
+              <button
+                onClick={() => setShowInstagramDebug(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Complete real OAuth flow to get actual access tokens for posting to Instagram.
             </p>
             <Suspense fallback={<div>Loading OAuth test...</div>}>
               <RealOAuthTest />
             </Suspense>
+          </div>
+        )}
+
+        {showInstagramStepByStep && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                🔧 Step-by-Step Instagram Test
+              </h2>
+              <button
+                onClick={() => setShowInstagramStepByStep(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Manual step-by-step testing of Instagram Graph API components.
+            </p>
+            <InstagramTestComponent />
           </div>
         )}
 
