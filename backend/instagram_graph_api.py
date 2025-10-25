@@ -26,9 +26,7 @@ class InstagramGraphAPI:
         self.base_url = "https://graph.facebook.com/v19.0"
         self.scopes = [
             "instagram_basic",
-            "instagram_content_publish",
-            "pages_show_list",
-            "pages_read_engagement"
+            "pages_show_list"
         ]
         
         # AWS S3 Configuration for video uploads
