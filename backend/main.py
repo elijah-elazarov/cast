@@ -1850,6 +1850,121 @@ def load_existing_sessions():
 # Load sessions on startup
 load_existing_sessions()
 
+# Debug endpoints for production testing
+@app.get("/api/debug/instagram/status")
+async def debug_instagram_status():
+    """
+    Debug endpoint to check Instagram Graph API status
+    """
+    try:
+        # Test credentials
+        if not instagram_graph_api.validate_credentials():
+            return JSONResponse({
+                "success": False,
+                "error": "Instagram Graph API credentials not configured",
+                "details": {
+                    "app_id": instagram_graph_api.app_id,
+                    "redirect_uri": instagram_graph_api.redirect_uri,
+                    "scopes": instagram_graph_api.scopes
+                }
+            })
+        
+        # Test auth URL generation
+        try:
+            auth_url, state = instagram_graph_api.get_auth_url()
+            return JSONResponse({
+                "success": True,
+                "message": "Instagram Graph API is properly configured",
+                "details": {
+                    "app_id": instagram_graph_api.app_id,
+                    "redirect_uri": instagram_graph_api.redirect_uri,
+                    "scopes": instagram_graph_api.scopes,
+                    "auth_url": auth_url,
+                    "state": state
+                }
+            })
+        except Exception as e:
+            return JSONResponse({
+                "success": False,
+                "error": "Failed to generate auth URL",
+                "details": str(e)
+            })
+            
+    except Exception as e:
+        logger.error(f"Debug Instagram status error: {str(e)}")
+        return JSONResponse({
+            "success": False,
+            "error": "Debug check failed",
+            "details": str(e)
+        })
+
+@app.post("/api/debug/instagram/test-token")
+async def debug_test_token(request: dict):
+    """
+    Debug endpoint to test access token and get detailed info
+    """
+    try:
+        access_token = request.get('access_token')
+        if not access_token:
+            return JSONResponse({
+                "success": False,
+                "error": "Access token required"
+            })
+        
+        # Test access token validation
+        try:
+            user_info = instagram_graph_api.get_user_info(access_token)
+            logger.info(f"Debug - User info: {user_info}")
+        except Exception as e:
+            return JSONResponse({
+                "success": False,
+                "error": "Access token validation failed",
+                "details": str(e)
+            })
+        
+        # Test Facebook Pages retrieval
+        try:
+            pages_data = instagram_graph_api.get_user_pages(access_token)
+            pages = pages_data.get('data', [])
+            
+            # Check Instagram connections
+            pages_with_instagram = []
+            for page in pages:
+                if page.get('instagram_business_account'):
+                    pages_with_instagram.append({
+                        'page_id': page.get('id'),
+                        'page_name': page.get('name'),
+                        'instagram_id': page['instagram_business_account'].get('id'),
+                        'has_access_token': bool(page.get('access_token'))
+                    })
+            
+            return JSONResponse({
+                "success": True,
+                "message": "Token test completed",
+                "details": {
+                    "user_info": user_info,
+                    "total_pages": len(pages),
+                    "pages_with_instagram": len(pages_with_instagram),
+                    "pages": pages,
+                    "instagram_connected_pages": pages_with_instagram
+                }
+            })
+            
+        except Exception as e:
+            return JSONResponse({
+                "success": False,
+                "error": "Failed to get Facebook pages",
+                "details": str(e)
+            })
+            
+    except Exception as e:
+        logger.error(f"Debug token test error: {str(e)}")
+        return JSONResponse({
+            "success": False,
+            "error": "Debug test failed",
+            "details": str(e)
+        })
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
