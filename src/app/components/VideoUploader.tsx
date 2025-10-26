@@ -268,9 +268,13 @@ export default function VideoUploader({ connectedAccounts }: VideoUploaderProps)
                 <p className="font-medium text-gray-900 dark:text-white">
                   {selectedFile.name}
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {formatFileSize(selectedFile.size)}
-                </p>
+                <div className="flex items-center justify-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                  <span>{formatFileSize(selectedFile.size)}</span>
+                  <span>•</span>
+                  <span>{selectedFile.type || 'video/mp4'}</span>
+                  <span>•</span>
+                  <span>{selectedFile.lastModified ? new Date(selectedFile.lastModified).toLocaleDateString() : 'Unknown date'}</span>
+                </div>
               </div>
               <button
                 onClick={removeFile}
@@ -308,10 +312,10 @@ export default function VideoUploader({ connectedAccounts }: VideoUploaderProps)
         </div>
 
         {/* Upload Progress */}
-        {isUploading && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
-              <span>Uploading...</span>
+        {isUploading && selectedFile && (
+          <div className="space-y-3 bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300">
+              <span>Uploading {selectedFile.name}</span>
               <span>{uploadProgress}%</span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
@@ -319,6 +323,10 @@ export default function VideoUploader({ connectedAccounts }: VideoUploaderProps)
                 className="bg-purple-500 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${uploadProgress}%` }}
               ></div>
+            </div>
+            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+              <span>{formatFileSize(selectedFile.size)}</span>
+              <span>{selectedFile.type || 'video/mp4'}</span>
             </div>
           </div>
         )}
