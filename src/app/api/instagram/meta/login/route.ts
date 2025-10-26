@@ -5,7 +5,7 @@ export async function POST(request: Request) {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
     const body = await request.json();
     
-    const response = await fetch(`${backendUrl}/api/instagram/meta/login`, {
+          const response = await fetch(`${backendUrl}/api/instagram/basic/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

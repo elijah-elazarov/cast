@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
 from instagrapi import Client
 from instagrapi.exceptions import LoginRequired, BadPassword
-from instagram_graph_api import InstagramGraphAPI
+from instagram_basic_display_api import InstagramBasicDisplayAPI
 from instagram_platform_api import InstagramPlatformAPI
 import os
 import json
@@ -74,8 +74,8 @@ tiktok_sessions = {}  # Store TikTok credentials
 instagram_meta_sessions = {}  # Store Instagram Meta API credentials
 instagram_graph_sessions = {}  # Store Instagram Graph API credentials
 
-# Initialize Instagram Graph API
-instagram_graph_api = InstagramGraphAPI()
+# Initialize Instagram Basic Display API
+instagram_basic_api = InstagramBasicDisplayAPI()
 
 # Session persistence
 SESSIONS_DIR = "sessions"
@@ -475,20 +475,20 @@ async def get_account_info(username: str):
 
 
 # ============================================================================
-# Instagram Meta API Endpoints (Official Meta/Facebook Graph API)
+# Instagram Basic Display API Endpoints (Simple Personal Account API)
 # ============================================================================
 
-@app.get("/api/instagram/meta/auth-url")
-async def get_instagram_meta_auth_url():
+@app.get("/api/instagram/basic/auth-url")
+async def get_instagram_basic_auth_url():
     """
-    Get Instagram Meta OAuth authorization URL
-    Uses refactored Instagram Graph API class
+    Get Instagram Basic Display OAuth authorization URL
+    Uses simple Instagram Basic Display API - no advanced access required
     """
     try:
-        if not instagram_graph_api.validate_credentials():
-            raise HTTPException(status_code=500, detail="Instagram Graph API credentials not configured")
+        if not instagram_basic_api.validate_credentials():
+            raise HTTPException(status_code=500, detail="Instagram Basic Display API credentials not configured")
         
-        auth_url, state = instagram_graph_api.get_auth_url()
+        auth_url, state = instagram_basic_api.get_auth_url()
         
         return JSONResponse({
             "success": True,
@@ -498,7 +498,7 @@ async def get_instagram_meta_auth_url():
             }
         })
     except Exception as e:
-        logger.error(f"Instagram Meta auth URL error: {str(e)}")
+        logger.error(f"Instagram Basic auth URL error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to generate auth URL: {str(e)}")
 
 
@@ -538,11 +538,11 @@ async def instagram_meta_oauth_callback(code: str = None, state: str = None, err
         return RedirectResponse(url=f"{frontend_url}/?instagram_error=callback_failed")
 
 
-@app.post("/api/instagram/meta/login")
-async def instagram_meta_login(request: dict):
+@app.post("/api/instagram/basic/login")
+async def instagram_basic_login(request: dict):
     """
-    Exchange authorization code for Instagram Meta access token
-    Uses refactored Instagram Graph API class
+    Exchange authorization code for Instagram Basic Display access token
+    Uses simple Instagram Basic Display API - works with personal accounts
     """
     try:
         code = request.get('code')
@@ -550,47 +550,40 @@ async def instagram_meta_login(request: dict):
             raise HTTPException(status_code=400, detail="Authorization code required")
         
         # Step 1: Exchange code for access token
-        token_data = instagram_graph_api.exchange_code_for_token(code)
+        token_data = instagram_basic_api.exchange_code_for_token(code)
         access_token = token_data['access_token']
         
-        # Step 2: Get user's Facebook Pages
-        pages_data = instagram_graph_api.get_user_pages(access_token)
+        # Step 2: Get user info
+        user_info = instagram_basic_api.get_user_info(access_token)
+        ig_user_id = user_info['id']
         
-        # Get first page (could be extended to let user select from multiple pages)
-        page = pages_data['data'][0]
-        page_id = page['id']
-        page_access_token = page['access_token']
-        
-        # Step 3: Get Instagram Business Account from Page
-        instagram_account = instagram_graph_api.get_instagram_account_from_page(page_id, page_access_token)
-        ig_user_id = instagram_account['id']
-        
-        # Step 4: Get detailed Instagram account info
-        ig_info = instagram_graph_api.get_instagram_user_info(ig_user_id, page_access_token)
+        # Step 3: Get user media (optional)
+        try:
+            media_data = instagram_basic_api.get_user_media(access_token, limit=5)
+            media_count = len(media_data.get('data', []))
+        except:
+            media_count = 0
         
         # Store session
         instagram_meta_sessions[ig_user_id] = {
-            'access_token': page_access_token,
+            'access_token': access_token,
             'ig_user_id': ig_user_id,
-            'username': ig_info.get('username'),
-            'page_id': page_id,
-            'followers_count': ig_info.get('followers_count', 0),
-            'media_count': ig_info.get('media_count', 0)
+            'username': user_info.get('username'),
+            'account_type': user_info.get('account_type', 'PERSONAL'),
+            'media_count': media_count
         }
         
-        # Log Instagram Meta connection event
-        social_logger.info(f"INSTAGRAM_META_CONNECTED - User: {ig_info.get('username')} | ID: {ig_user_id} | Followers: {ig_info.get('followers_count', 0)}")
-        logger.info(f"Instagram Meta login successful for user: {ig_user_id}")
+        # Log Instagram Basic connection event
+        social_logger.info(f"INSTAGRAM_BASIC_CONNECTED - User: {user_info.get('username')} | ID: {ig_user_id} | Media: {media_count}")
+        logger.info(f"Instagram Basic login successful for user: {ig_user_id}")
         
         return JSONResponse({
             "success": True,
             "data": {
                 "user_id": ig_user_id,
-                "username": ig_info.get('username'),
-                "followers_count": ig_info.get('followers_count', 0),
-                "media_count": ig_info.get('media_count', 0),
-                "profile_picture_url": ig_info.get('profile_picture_url'),
-                "account_type": "business"  # Meta API only works with business accounts
+                "username": user_info.get('username'),
+                "account_type": user_info.get('account_type', 'PERSONAL'),
+                "media_count": media_count
             },
             "message": "Successfully connected to Instagram"
         })
@@ -598,7 +591,7 @@ async def instagram_meta_login(request: dict):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Instagram Meta login error: {str(e)}")
+        logger.error(f"Instagram Basic login error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
 
 
