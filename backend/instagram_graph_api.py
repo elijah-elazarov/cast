@@ -129,10 +129,12 @@ class InstagramGraphAPI:
         url = f"{self.graph_base}/me/accounts"
         params = {
             "access_token": access_token,
-            "fields": "id,name,access_token,instagram_business_account"
+            "fields": "id,name,access_token,instagram_business_account,instagram_accounts"
         }
         
         logger.info("Fetching user's Facebook pages")
+        logger.info(f"Request URL: {url}")
+        logger.info(f"Request params: {params}")
         
         try:
             response = requests.get(url, params=params, timeout=30)
@@ -144,6 +146,8 @@ class InstagramGraphAPI:
                 raise HTTPException(status_code=400, detail=error_msg)
             
             data = response.json()
+            logger.info(f"Response status: {response.status_code}")
+            logger.info(f"Response data: {data}")
             
             if "error" in data:
                 error_msg = data['error'].get('message', 'Failed to get pages')
