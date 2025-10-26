@@ -131,10 +131,11 @@ class InstagramGraphAPI:
         Returns:
             dict with pages data
         """
+        # Try multiple endpoints to get pages
         url = f"{self.graph_base}/me/accounts"
         params = {
             "access_token": access_token,
-            "fields": "id,name,access_token,instagram_business_account,instagram_accounts"
+            "fields": "id,name,access_token,instagram_business_account,instagram_accounts,instagram_connected_accounts"
         }
         
         logger.info("Fetching user's Facebook pages")
@@ -160,11 +161,41 @@ class InstagramGraphAPI:
                 raise HTTPException(status_code=400, detail=error_msg)
             
             if 'data' not in data or len(data['data']) == 0:
-                logger.warning("No Facebook pages found for user")
-                raise HTTPException(
-                    status_code=404,
-                    detail="No Facebook Pages found. Please create a Facebook Page and connect it to your Instagram Business account."
-                )
+                logger.warning("No Facebook pages found for user, trying alternative endpoint")
+                
+                # Try alternative endpoint
+                alt_url = f"{self.graph_base}/me"
+                alt_params = {
+                    "access_token": access_token,
+                    "fields": "accounts{id,name,access_token,instagram_business_account}"
+                }
+                
+                logger.info(f"Trying alternative endpoint: {alt_url}")
+                logger.info(f"Alternative params: {alt_params}")
+                
+                try:
+                    alt_response = requests.get(alt_url, params=alt_params, timeout=30)
+                    logger.info(f"Alternative response status: {alt_response.status_code}")
+                    logger.info(f"Alternative response: {alt_response.text}")
+                    
+                    if alt_response.status_code == 200:
+                        alt_data = alt_response.json()
+                        if 'accounts' in alt_data and 'data' in alt_data['accounts']:
+                            data = {'data': alt_data['accounts']['data']}
+                            logger.info(f"Found {len(data['data'])} pages via alternative endpoint")
+                        else:
+                            logger.warning("No pages found via alternative endpoint either")
+                    else:
+                        logger.warning(f"Alternative endpoint failed with status {alt_response.status_code}")
+                except Exception as e:
+                    logger.error(f"Alternative endpoint failed: {str(e)}")
+                
+                if 'data' not in data or len(data['data']) == 0:
+                    logger.warning("No Facebook pages found for user")
+                    raise HTTPException(
+                        status_code=404,
+                        detail="No Facebook Pages found. Please create a Facebook Page and connect it to your Instagram Business account."
+                    )
             
             # Check if any page has an Instagram Business account
             pages_with_instagram = [page for page in data['data'] if page.get('instagram_business_account')]
