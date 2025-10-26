@@ -349,8 +349,8 @@ class InstagramGraphAPI:
             return data
             
         except requests.exceptions.RequestException as e:
-        logger.error(f"Failed to publish Reel: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to publish Reel: {str(e)}")
+            logger.error(f"Failed to publish Reel: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to publish Reel: {str(e)}")
 
     def create_story_container(self, ig_user_id: str, access_token: str, media_url: str, media_type: str, caption: str = "") -> str:
         """
