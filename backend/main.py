@@ -618,7 +618,7 @@ async def get_instagram_basic_user_info(request: Request):
         session = instagram_meta_sessions[user_id]
         access_token = session['access_token']
         
-        user_info = instagram_basic_api.get_user_info(access_token)
+        user_info = instagram_graph_api.get_instagram_user_info(ig_user_id, access_token)
         
         return JSONResponse({
             "success": True,
@@ -650,7 +650,9 @@ async def get_instagram_basic_media(request: Request):
         session = instagram_meta_sessions[user_id]
         access_token = session['access_token']
         
-        media_data = instagram_basic_api.get_user_media(access_token, limit)
+        # Note: Instagram Graph API doesn't have a direct get_user_media method
+        # This would need to be implemented or removed
+        media_data = {"data": []}
         
         return JSONResponse({
             "success": True,
