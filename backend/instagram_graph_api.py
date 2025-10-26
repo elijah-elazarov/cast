@@ -35,10 +35,15 @@ class InstagramGraphAPI:
         self.api_version = "v21.0"
         self.graph_base = f"https://graph.facebook.com/{self.api_version}"
         
-        # Required permissions for Instagram publishing (Instagram Login API)
+        # Required permissions for Instagram publishing (Facebook Login for Business)
         self.scopes = [
-            "instagram_business_basic",
-            "instagram_business_content_publish"
+            "instagram_basic",
+            "pages_show_list",
+            "pages_read_engagement",
+            "business_management",
+            "instagram_content_publish",
+            "instagram_manage_comments",
+            "instagram_manage_insights"
         ]
         
         # OAuth endpoints - Use Facebook OAuth with Instagram scopes
