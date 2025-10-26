@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Instagram, Youtube, Music, TestTube } from 'lucide-react';
+import { Youtube, Music, TestTube } from 'lucide-react';
 // import InstagramConnection from './components/InstagramConnection';
 import InstagramOAuthConnection from './components/InstagramOAuthConnection';
 import InstagramVideoUploader from './components/InstagramVideoUploader';
@@ -12,7 +12,7 @@ import ModernWelcomeFlow from './components/ModernWelcomeFlow';
 import RealOAuthTest from './components/RealOAuthTest';
 import RealInstagramTest from './components/RealInstagramTest';
 import InstagramTestComponent from './components/InstagramTestComponent';
-import SimpleInstagramAuth from './components/SimpleInstagramAuth';
+// import SimpleInstagramAuth from './components/SimpleInstagramAuth';
 import { Suspense } from 'react';
 
 export default function Home() {
@@ -292,7 +292,7 @@ export default function Home() {
           {/* Instagram OAuth Card */}
           <div className="md:col-span-2">
             <InstagramOAuthConnection 
-              onConnect={(connected, accountInfo) => handleAccountConnect('instagram', connected)}
+              onConnect={(connected) => handleAccountConnect('instagram', connected)}
             />
           </div>
 

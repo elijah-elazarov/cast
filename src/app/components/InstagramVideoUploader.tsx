@@ -3,9 +3,18 @@
 import { useState } from 'react';
 import { Upload, Instagram, Loader2, Check, AlertTriangle, Video, Image } from 'lucide-react';
 
+interface AccountInfo {
+  user_id: string;
+  username: string;
+  followers_count: number;
+  media_count: number;
+  profile_picture_url?: string;
+  account_type: string;
+}
+
 interface InstagramVideoUploaderProps {
   isConnected: boolean;
-  accountInfo?: any;
+  accountInfo?: AccountInfo;
 }
 
 export default function InstagramVideoUploader({ isConnected, accountInfo }: InstagramVideoUploaderProps) {
@@ -86,7 +95,9 @@ export default function InstagramVideoUploader({ isConnected, accountInfo }: Ins
   if (!isConnected) {
     return (
       <div className="bg-gray-50 rounded-lg border border-gray-200 p-6 text-center">
-        <Instagram className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <div className="h-12 w-12 text-gray-400 mx-auto mb-4 flex items-center justify-center">
+                <Instagram className="h-12 w-12" />
+              </div>
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Connect Instagram First</h3>
         <p className="text-gray-600">Please connect your Instagram account to upload content.</p>
       </div>
@@ -124,6 +135,7 @@ export default function InstagramVideoUploader({ isConnected, accountInfo }: Ins
                   : 'border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
             >
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <Image className="h-4 w-4 mr-2" />
               Story
             </button>

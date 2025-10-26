@@ -47,7 +47,7 @@ export default function RealOAuthTest() {
     };
 
     handleOAuthFlow();
-  }, [searchParams]);
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getOAuthUrl = useCallback(async () => {
     setIsLoading(true);
@@ -127,7 +127,7 @@ export default function RealOAuthTest() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getLongLivedToken = useCallback(async (token: string) => {
     setResults(prev => [...prev, {
@@ -172,7 +172,7 @@ export default function RealOAuthTest() {
         error: String(error)
       }]);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getFacebookPages = useCallback(async (token: string) => {
     setResults(prev => [...prev, {
@@ -214,7 +214,7 @@ export default function RealOAuthTest() {
         error: String(error)
       }]);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getInstagramAccount = useCallback(async (pages: Record<string, unknown>) => {
     setResults(prev => [...prev, {

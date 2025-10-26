@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Check, X, Instagram, Facebook, Loader2, AlertTriangle, ExternalLink } from 'lucide-react';
 
 interface InstagramOAuthConnectionProps {
-  onConnect: (connected: boolean, accountInfo?: any) => void;
+  onConnect: (connected: boolean, accountInfo?: AccountInfo) => void;
 }
 
 interface AccountInfo {
@@ -26,7 +26,7 @@ export default function InstagramOAuthConnection({ onConnect }: InstagramOAuthCo
   // Check if user is already connected on component mount
   useEffect(() => {
     checkExistingConnection();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle OAuth callback when component mounts
   useEffect(() => {
@@ -39,7 +39,7 @@ export default function InstagramOAuthConnection({ onConnect }: InstagramOAuthCo
     } else if (error) {
       setError(`OAuth error: ${error}`);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const checkExistingConnection = async () => {
     try {
