@@ -169,9 +169,7 @@ TIKTOK_SCOPES = [
     'video.publish',
 ]
 
-# Meta/Instagram OAuth configuration  
-META_APP_ID = os.getenv('META_APP_ID', '')
-META_APP_SECRET = os.getenv('META_APP_SECRET', '')
+# Instagram OAuth configuration
 META_REDIRECT_URI = f'{BASE_URL}/auth/instagram/callback' if BASE_URL else None
 # Instagram Content Publishing API scopes
 META_INSTAGRAM_SCOPES = [

@@ -10,12 +10,15 @@ This document outlines all environment variables used in the Cast application.
 
 | Variable | Description | Example | Used For |
 |----------|-------------|---------|----------|
-| `BASE_URL` | Backend's own URL | `https://backrooms-e8nm.onrender.com` | OAuth redirect URIs that OAuth providers call |
-| `FRONTEND_URL` | Frontend application URL | `https://cast-five.vercel.app` | Redirecting users back to frontend after OAuth |
+| `BASE_URL` | Backend's own URL | `https://your-backend.onrender.com` | OAuth redirect URIs that OAuth providers call |
+| `FRONTEND_URL` | Frontend application URL | `https://your-frontend.vercel.app` | Redirecting users back to frontend after OAuth |
 | `YOUTUBE_CLIENT_ID` | Google OAuth Client ID | `205595763733-xxx.apps.googleusercontent.com` | YouTube authentication |
 | `YOUTUBE_CLIENT_SECRET` | Google OAuth Client Secret | `GOCSPX-xxxxx` | YouTube authentication |
-| `TIKTOK_CLIENT_KEY` | TikTok OAuth Client Key | `awtev7p5b6bj2c96` | TikTok authentication |
-| `TIKTOK_CLIENT_SECRET` | TikTok OAuth Client Secret | `tvFnGKKeezrGrMtQ9x2yRMQdGRZR6yzS` | TikTok authentication |
+| `TIKTOK_CLIENT_KEY` | TikTok OAuth Client Key | `your_tiktok_client_key` | TikTok authentication |
+| `TIKTOK_CLIENT_SECRET` | TikTok OAuth Client Secret | `your_tiktok_client_secret` | TikTok authentication |
+| `FACEBOOK_APP_ID` | Facebook App ID for Instagram | `your_facebook_app_id` | Instagram Graph API authentication |
+| `FACEBOOK_APP_SECRET` | Facebook App Secret for Instagram | `your_facebook_app_secret` | Instagram Graph API authentication |
+| `INSTAGRAM_REDIRECT_URI` | Instagram OAuth redirect URI | `https://your-frontend.vercel.app/auth/instagram/callback` | Instagram OAuth callback |
 
 ### Variable Details
 
@@ -36,6 +39,12 @@ This document outlines all environment variables used in the Cast application.
 #### OAuth Credentials
 - **YouTube:** Obtained from [Google Cloud Console](https://console.cloud.google.com/)
 - **TikTok:** Obtained from [TikTok Developer Portal](https://developers.tiktok.com/)
+- **Instagram:** Obtained from [Meta for Developers](https://developers.facebook.com/)
+
+#### Instagram Variables
+- **`FACEBOOK_APP_ID`:** Your Facebook App ID (used for Instagram Graph API)
+- **`FACEBOOK_APP_SECRET`:** Your Facebook App Secret (used for Instagram Graph API)
+- **`INSTAGRAM_REDIRECT_URI`:** Where Instagram redirects after OAuth (must match Facebook App settings)
 
 ---
 
@@ -47,7 +56,7 @@ This document outlines all environment variables used in the Cast application.
 
 | Variable | Description | Example | Used For |
 |----------|-------------|---------|----------|
-| `BACKEND_URL` | Backend API URL | `https://backrooms-e8nm.onrender.com` | API calls from frontend to backend |
+| `BACKEND_URL` | Backend API URL | `https://your-backend.onrender.com` | API calls from frontend to backend |
 
 ### Variable Details
 
@@ -61,8 +70,9 @@ This document outlines all environment variables used in the Cast application.
 
 ## OAuth Flow Architecture
 
-### YouTube/TikTok OAuth Flow
+### OAuth Flow
 
+#### YouTube/TikTok OAuth Flow
 ```
 1. User clicks "Connect" → Frontend
 2. Frontend calls → Backend /api/youtube/auth-url
@@ -73,6 +83,19 @@ This document outlines all environment variables used in the Cast application.
 7. Frontend processes code → Backend /api/youtube/login
 8. Backend exchanges code for tokens → Stores session
 9. Frontend receives user info → Updates UI
+```
+
+#### Instagram OAuth Flow
+```
+1. User clicks "Connect Instagram" → Frontend
+2. Frontend calls → Backend /api/instagram/meta/auth-url
+3. Backend generates Facebook OAuth URL with redirect_uri = {INSTAGRAM_REDIRECT_URI}
+4. User authorizes on Facebook/Instagram
+5. Facebook redirects to → Frontend {INSTAGRAM_REDIRECT_URI}?code=xyz
+6. Frontend processes code → Backend /api/instagram/graph/login
+7. Backend exchanges code for access token → Gets Instagram Business account
+8. Backend stores session → Returns user info
+9. Frontend receives Instagram account info → Updates UI
 ```
 
 ---
@@ -129,6 +152,7 @@ This document outlines all environment variables used in the Cast application.
 ### "redirect_uri_mismatch" Error
 - Check that `BASE_URL` matches the authorized redirect URI in OAuth provider console
 - For YouTube: Must match exactly in Google Cloud Console → Credentials
+- For Instagram: Must match exactly in Facebook App Dashboard → Instagram → Basic Display → Valid OAuth Redirect URIs
 
 ### Frontend Can't Connect to Backend
 - Verify `BACKEND_URL` is set correctly in frontend environment
@@ -136,7 +160,7 @@ This document outlines all environment variables used in the Cast application.
 
 ### OAuth Callback 404
 - Ensure `FRONTEND_URL` is set in backend environment
-- Verify frontend callback page exists at `/auth/youtube/callback` or `/auth/tiktok/callback`
+- Verify frontend callback page exists at `/auth/youtube/callback`, `/auth/tiktok/callback`, or `/auth/instagram/callback`
 
 ### Environment Variables Not Loading
 - Run `python -c "import dotenv; dotenv.load_dotenv(); import os; print(os.getenv('BASE_URL'))"` to test

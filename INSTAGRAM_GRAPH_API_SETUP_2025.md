@@ -37,16 +37,16 @@ Based on the [Phyllo article](https://www.getphyllo.com/post/how-to-add-instagra
    - Click "Set Up"
 
 2. **Configure Instagram Graph API:**
-   - **Valid OAuth Redirect URIs:** `https://cast-five.vercel.app/auth/instagram/callback`
-   - **Deauthorize Callback URL:** `https://cast-five.vercel.app/auth/instagram/callback`
-   - **Data Deletion Request URL:** `https://cast-five.vercel.app/auth/instagram/callback`
+   - **Valid OAuth Redirect URIs:** `https://your-frontend.vercel.app/auth/instagram/callback`
+   - **Deauthorize Callback URL:** `https://your-frontend.vercel.app/auth/instagram/callback`
+   - **Data Deletion Request URL:** `https://your-frontend.vercel.app/auth/instagram/callback`
 
 ### **Step 3: Add Facebook Login Product**
 
 1. **Add Product:** Facebook Login
 2. **Configure Facebook Login:**
-   - **Valid OAuth Redirect URIs:** `https://cast-five.vercel.app/auth/instagram/callback`
-   - **App Domains:** `cast-five.vercel.app`
+   - **Valid OAuth Redirect URIs:** `https://your-frontend.vercel.app/auth/instagram/callback`
+   - **App Domains:** `your-frontend.vercel.app`
 
 ### **Step 4: Set App Permissions**
 
@@ -77,21 +77,21 @@ Based on the [Phyllo article](https://www.getphyllo.com/post/how-to-add-instagra
 **Backend (.env):**
 ```env
 # Instagram Graph API (2025) - Business Account API with Posting Capabilities
-FACEBOOK_APP_ID=717044718072411
-FACEBOOK_APP_SECRET=884aa846ae8dbb2212f757748cda486d
-INSTAGRAM_REDIRECT_URI=https://cast-five.vercel.app/auth/instagram/callback
+FACEBOOK_APP_ID=your_facebook_app_id
+FACEBOOK_APP_SECRET=your_facebook_app_secret
+INSTAGRAM_REDIRECT_URI=https://your-frontend.vercel.app/auth/instagram/callback
 ```
 
 **Frontend (.env.local):**
 ```env
-NEXT_PUBLIC_BACKEND_URL=https://backrooms-e8nm.onrender.com
+NEXT_PUBLIC_BACKEND_URL=https://your-backend.onrender.com
 ```
 
 ### **Step 8: Test the API**
 
 **Test Auth URL:**
 ```bash
-curl -s https://backrooms-e8nm.onrender.com/api/instagram/graph/auth-url
+curl -s https://your-backend.onrender.com/api/instagram/graph/auth-url
 ```
 
 **Expected Response:**

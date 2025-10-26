@@ -20,7 +20,7 @@ This tests the complete OAuth flow with a real authorization code.
 
 ## 🚀 How to Get an Authorization Code
 
-1. **Go to your app**: https://cast-five.vercel.app
+1. **Go to your app**: https://your-frontend.vercel.app
 2. **Click "Connect with Instagram"**
 3. **Complete the OAuth flow** (select pages and Instagram account)
 4. **Copy the 'code' parameter** from the callback URL
