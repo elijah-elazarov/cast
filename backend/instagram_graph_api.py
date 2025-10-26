@@ -177,6 +177,14 @@ class InstagramGraphAPI:
             
             logger.info(f"Found {len(data['data'])} Facebook pages")
             logger.info(f"Pages data: {data['data']}")
+            
+            # Log each page's Instagram connection status
+            for i, page in enumerate(data['data']):
+                logger.info(f"Page {i+1}: {page.get('name', 'Unknown')} (ID: {page.get('id', 'Unknown')})")
+                logger.info(f"  - Has Instagram Business Account: {bool(page.get('instagram_business_account'))}")
+                if page.get('instagram_business_account'):
+                    logger.info(f"  - Instagram Account ID: {page['instagram_business_account'].get('id', 'Unknown')}")
+            
             return data
             
         except requests.exceptions.RequestException as e:
