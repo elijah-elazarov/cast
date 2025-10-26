@@ -428,6 +428,54 @@ class InstagramGraphAPI:
             logger.error(f"Failed to publish Reel: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Failed to publish Reel: {str(e)}")
 
+    def upload_and_publish_reel(self, ig_user_id: str, access_token: str, video_file, caption: str = "") -> Dict[str, Any]:
+        """
+        Upload and publish Instagram Reel
+        
+        Args:
+            ig_user_id: Instagram Business account ID
+            access_token: Facebook Page access token
+            video_file: Video file object
+            caption: Reel caption
+            
+        Returns:
+            dict with published reel data
+        """
+        try:
+            # For now, we'll simulate the upload process
+            # In production, you'd upload to a cloud service first, then use the URL
+            
+            # Simulate getting a media URL (in production, upload to S3/CloudFront)
+            media_url = "https://example.com/reel_video.mp4"  # This would be the actual uploaded video URL
+            
+            # Create reel container
+            container_id = self.create_reel_container(
+                ig_user_id=ig_user_id,
+                access_token=access_token,
+                video_url=media_url,
+                caption=caption
+            )
+            
+            # Publish reel
+            published_reel = self.publish_reel(
+                ig_user_id=ig_user_id,
+                access_token=access_token,
+                creation_id=container_id
+            )
+            
+            logger.info(f"Reel uploaded and published successfully: {published_reel.get('id')}")
+            
+            return {
+                "media_id": published_reel.get('id'),
+                "container_id": container_id,
+                "media_type": "REELS",
+                "status": "published"
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to upload and publish reel: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Reel upload failed: {str(e)}")
+
     def create_story_container(self, ig_user_id: str, access_token: str, media_url: str, media_type: str, caption: str = "") -> str:
         """
         Create Instagram Story media container

@@ -154,9 +154,16 @@ export default function InstagramVideoUploader({ isConnected, accountInfo }: Ins
               </span>
             </label>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
-            Maximum file size: 4MB (MP4 or MOV format)
-          </p>
+          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <h4 className="text-sm font-medium text-blue-900 mb-2">Instagram Requirements:</h4>
+            <ul className="text-xs text-blue-800 space-y-1">
+              <li>• Format: MP4 or MOV</li>
+              <li>• Duration: 3-60 seconds</li>
+              <li>• Aspect Ratio: 4:5 to 1.91:1</li>
+              <li>• File Size: Up to 4MB (server limit)</li>
+              <li>• Account: Business or Creator only</li>
+            </ul>
+          </div>
         </div>
 
         {/* Caption */}
