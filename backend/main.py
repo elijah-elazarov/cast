@@ -80,6 +80,7 @@ instagram_graph_api = InstagramGraphAPI()
 # Session persistence
 SESSIONS_DIR = "sessions"
 INSTAGRAM_SESSIONS_FILE = os.path.join(SESSIONS_DIR, "instagram_sessions.json")
+INSTAGRAM_GRAPH_SESSIONS_FILE = os.path.join(SESSIONS_DIR, "instagram_graph_sessions.json")
 
 def ensure_sessions_dir():
     """Create sessions directory if it doesn't exist"""
@@ -142,6 +143,63 @@ def remove_instagram_session(username: str):
         logger.info(f"Removed Instagram session for {username}")
     except Exception as e:
         logger.error(f"Failed to remove Instagram session: {e}")
+
+def save_instagram_graph_session(user_id: str, session_data: dict):
+    """Save Instagram Graph session data to file"""
+    try:
+        ensure_sessions_dir()
+        
+        # Load existing sessions
+        sessions = {}
+        if os.path.exists(INSTAGRAM_GRAPH_SESSIONS_FILE):
+            with open(INSTAGRAM_GRAPH_SESSIONS_FILE, 'r') as f:
+                sessions = json.load(f)
+        
+        # Update with new session
+        sessions[user_id] = session_data
+        
+        # Save back to file
+        with open(INSTAGRAM_GRAPH_SESSIONS_FILE, 'w') as f:
+            json.dump(sessions, f, indent=2)
+            
+        logger.info(f"Saved Instagram Graph session for user: {user_id}")
+    except Exception as e:
+        logger.error(f"Failed to save Instagram Graph session: {e}")
+
+def load_instagram_graph_sessions():
+    """Load Instagram Graph sessions from file"""
+    try:
+        if not os.path.exists(INSTAGRAM_GRAPH_SESSIONS_FILE):
+            return {}
+            
+        with open(INSTAGRAM_GRAPH_SESSIONS_FILE, 'r') as f:
+            sessions = json.load(f)
+            
+        logger.info(f"Loaded {len(sessions)} Instagram Graph sessions from file")
+        return sessions
+    except Exception as e:
+        logger.error(f"Failed to load Instagram Graph sessions: {e}")
+        return {}
+
+def remove_instagram_graph_session(user_id: str):
+    """Remove Instagram Graph session from file"""
+    try:
+        if not os.path.exists(INSTAGRAM_GRAPH_SESSIONS_FILE):
+            return
+            
+        sessions = {}
+        with open(INSTAGRAM_GRAPH_SESSIONS_FILE, 'r') as f:
+            sessions = json.load(f)
+            
+        if user_id in sessions:
+            del sessions[user_id]
+            
+            with open(INSTAGRAM_GRAPH_SESSIONS_FILE, 'w') as f:
+                json.dump(sessions, f, indent=2)
+                
+        logger.info(f"Removed Instagram Graph session for user: {user_id}")
+    except Exception as e:
+        logger.error(f"Failed to remove Instagram Graph session: {e}")
 
 # YouTube OAuth configuration
 YOUTUBE_CLIENT_ID = os.getenv('YOUTUBE_CLIENT_ID', '')
@@ -911,8 +969,8 @@ async def instagram_graph_login(request: dict):
         # Step 4: Get Instagram user info
         ig_user_info = instagram_graph_api.get_instagram_user_info(ig_user_id, page_access_token)
         
-        # Store session
-        instagram_graph_sessions[ig_user_id] = {
+        # Store session in memory and on disk
+        session_data = {
             'access_token': page_access_token,
             'ig_user_id': ig_user_id,
             'username': ig_user_info.get('username'),
@@ -921,6 +979,8 @@ async def instagram_graph_login(request: dict):
             'media_count': ig_user_info.get('media_count', 0),
             'account_type': 'BUSINESS'  # Graph API only works with business accounts
         }
+        instagram_graph_sessions[ig_user_id] = session_data
+        save_instagram_graph_session(ig_user_id, session_data)
         
         logger.info(f"Instagram Graph login successful for user: {ig_user_info.get('username')}")
         
@@ -950,6 +1010,7 @@ async def instagram_graph_logout(request: dict):
         user_id = request.get('user_id')
         if user_id and user_id in instagram_graph_sessions:
             del instagram_graph_sessions[user_id]
+            remove_instagram_graph_session(user_id)
             logger.info(f"Instagram Graph logout successful for user: {user_id}")
             
         return JSONResponse({
@@ -1748,15 +1809,18 @@ async def instagram_platform_login(request: dict):
 def load_existing_sessions():
     """Load existing sessions from file on startup"""
     try:
+        # Load Instagram (instagrapi) sessions
         sessions = load_instagram_sessions()
         logger.info(f"Found {len(sessions)} saved Instagram sessions")
         
-        # Note: We don't restore the actual Client instances here
-        # as they would need to be re-authenticated. Instead, we just
-        # log that sessions exist and let users re-login if needed.
-        
         for username, session_data in sessions.items():
             logger.info(f"Saved session for user: {username}")
+        
+        # Load Instagram Graph sessions
+        global instagram_graph_sessions
+        graph_sessions = load_instagram_graph_sessions()
+        instagram_graph_sessions = graph_sessions
+        logger.info(f"Loaded {len(graph_sessions)} Instagram Graph sessions")
             
     except Exception as e:
         logger.error(f"Failed to load existing sessions: {e}")
