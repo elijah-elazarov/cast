@@ -1,77 +1,88 @@
 """
 Instagram Graph API Integration - 2025
-Handles Instagram Business/Creator account authentication and content publishing
+Modern web-based Instagram authentication and content publishing
+Supports Instagram Business/Creator accounts only
 """
 
 import os
 import requests
 import logging
+import uuid
+import secrets
 from typing import Dict, Optional, Any
 from fastapi import HTTPException
-import boto3
-from botocore.exceptions import ClientError
-import uuid
 from urllib.parse import urlencode
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+
 class InstagramGraphAPI:
+    """
+    Instagram Graph API integration for web-based authentication and Reels publishing
+    Requires: Instagram Business or Creator account with Facebook Page connection
+    """
+    
     def __init__(self):
-        # Facebook App Configuration (Instagram Graph API uses Facebook App ID)
+        # Facebook App Configuration (required for Instagram Graph API)
         self.app_id = os.getenv("FACEBOOK_APP_ID")
         self.app_secret = os.getenv("FACEBOOK_APP_SECRET")
-        self.redirect_uri = os.getenv("INSTAGRAM_REDIRECT_URI", "http://localhost:3000/auth/instagram/graph/callback")
+        self.redirect_uri = os.getenv("INSTAGRAM_REDIRECT_URI", "http://localhost:3000/auth/instagram/callback")
         
-        # Instagram Graph API Configuration
-        self.base_url = "https://graph.facebook.com/v21.0"
+        if not self.app_id or not self.app_secret:
+            logger.warning("Instagram Graph API: Missing FACEBOOK_APP_ID or FACEBOOK_APP_SECRET")
+        
+        # API Configuration
+        self.api_version = "v21.0"
+        self.graph_base = f"https://graph.facebook.com/{self.api_version}"
+        
+        # Required permissions for Instagram publishing
         self.scopes = [
             "instagram_basic",
-            "instagram_content_publish",
+            "instagram_content_publish", 
             "pages_show_list",
             "pages_read_engagement"
         ]
         
-        # AWS S3 Configuration for video uploads
-        self.aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-        self.aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-        self.aws_bucket_name = os.getenv("AWS_BUCKET_NAME")
-        self.aws_region = os.getenv("AWS_REGION", "us-east-1")
+        # OAuth endpoints
+        self.auth_base = "https://www.facebook.com"
         
-        # Initialize S3 client if credentials are provided
-        if self.aws_access_key_id and self.aws_secret_access_key:
-            self.s3_client = boto3.client(
-                's3',
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
-                region_name=self.aws_region
-            )
-        else:
-            self.s3_client = None
-            logger.warning("AWS S3 credentials not provided. Video uploads will not work.")
+        logger.info("Instagram Graph API initialized")
 
-    def get_auth_url(self, state: str = None) -> str:
-        """Generate Instagram OAuth authorization URL"""
+    def get_auth_url(self, state: Optional[str] = None) -> tuple[str, str]:
+        """
+        Generate Instagram OAuth authorization URL
+        
+        Returns:
+            tuple: (auth_url, state_token) for CSRF protection
+        """
         if not state:
-            state = str(uuid.uuid4())
-            
+            state = secrets.token_urlsafe(32)
+        
         params = {
             "client_id": self.app_id,
             "redirect_uri": self.redirect_uri,
             "scope": ",".join(self.scopes),
             "response_type": "code",
             "state": state,
-            "auth_type": "rerequest"  # Force user to grant permissions again
+            "auth_type": "rerequest"  # Force re-consent to ensure permissions
         }
         
-        return f"https://www.facebook.com/v21.0/dialog/oauth?{urlencode(params)}"
+        auth_url = f"{self.auth_base}/{self.api_version}/dialog/oauth?{urlencode(params)}"
+        
+        logger.info(f"Generated Instagram auth URL for app: {self.app_id}")
+        return auth_url, state
 
     def exchange_code_for_token(self, code: str) -> Dict[str, Any]:
-        """Exchange authorization code for access token"""
-        token_url = f"{self.base_url}/oauth/access_token"
+        """
+        Exchange authorization code for access token
+        
+        Args:
+            code: Authorization code from OAuth callback
+            
+        Returns:
+            dict with access_token, token_type, expires_in
+        """
+        token_url = f"{self.graph_base}/oauth/access_token"
         
         params = {
             "client_id": self.app_id,
@@ -80,306 +91,270 @@ class InstagramGraphAPI:
             "code": code
         }
         
-        logger.info(f"Token exchange request: {token_url}")
-        logger.info(f"Token exchange params: {params}")
+        logger.info("Exchanging code for access token")
         
         try:
-            response = requests.post(token_url, data=params)
-            logger.info(f"Token exchange response status: {response.status_code}")
-            logger.info(f"Token exchange response: {response.text}")
+            response = requests.post(token_url, data=params, timeout=30)
             
             if response.status_code != 200:
-                logger.error(f"Token exchange failed with status {response.status_code}: {response.text}")
-                raise HTTPException(status_code=400, detail=f"Token exchange failed: {response.text}")
+                error_data = response.json() if response.text else {}
+                error_msg = error_data.get('error', {}).get('message', 'Token exchange failed')
+                logger.error(f"Token exchange failed: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
             
             data = response.json()
             
             if "error" in data:
-                logger.error(f"Token exchange error: {data['error']}")
-                raise HTTPException(status_code=400, detail=data["error"]["message"])
-                
+                error_msg = data['error'].get('message', 'Token exchange failed')
+                logger.error(f"Token exchange error: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
+            
+            logger.info("Access token obtained successfully")
             return data
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Token exchange request failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Token exchange request failed: {str(e)}")
-
-    def get_long_lived_token(self, short_lived_token: str) -> str:
-        """Exchange short-lived token for long-lived token"""
-        token_url = f"{self.base_url}/oauth/access_token"
-        
-        params = {
-            "grant_type": "fb_exchange_token",
-            "client_id": self.app_id,
-            "client_secret": self.app_secret,
-            "fb_exchange_token": short_lived_token
-        }
-        
-        logger.info(f"Long-lived token request: {token_url}")
-        logger.info(f"Long-lived token params: {params}")
-        
-        try:
-            response = requests.post(token_url, data=params)
-            logger.info(f"Long-lived token response status: {response.status_code}")
-            logger.info(f"Long-lived token response: {response.text}")
-            
-            if response.status_code != 200:
-                logger.error(f"Long-lived token exchange failed with status {response.status_code}: {response.text}")
-                raise HTTPException(status_code=400, detail=f"Long-lived token exchange failed: {response.text}")
-            
-            data = response.json()
-            
-            if "error" in data:
-                logger.error(f"Long-lived token error: {data['error']}")
-                raise HTTPException(status_code=400, detail=data["error"]["message"])
-                
-            return data["access_token"]
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Long-lived token request failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Long-lived token request failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Token exchange failed: {str(e)}")
 
     def get_user_pages(self, access_token: str) -> Dict[str, Any]:
-        """Get Facebook pages associated with the user"""
-        url = f"{self.base_url}/me/accounts"
-        params = {"access_token": access_token}
+        """
+        Get Facebook pages associated with the user
         
-        logger.info(f"Getting user pages: {url}")
-        
-        try:
-            response = requests.get(url, params=params)
-            logger.info(f"User pages response status: {response.status_code}")
-            logger.info(f"User pages response: {response.text}")
+        Args:
+            access_token: User's access token
             
-            if response.status_code != 200:
-                logger.error(f"Get user pages failed with status {response.status_code}: {response.text}")
-                raise HTTPException(status_code=400, detail=f"Get user pages failed: {response.text}")
-            
-            data = response.json()
-            
-            if "error" in data:
-                logger.error(f"Get user pages error: {data['error']}")
-                raise HTTPException(status_code=400, detail=data["error"]["message"])
-                
-            return data
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Get user pages request failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Get user pages request failed: {str(e)}")
-
-    def get_user_instagram_account(self, access_token: str) -> Dict[str, Any]:
-        """Get Instagram Business account directly from user"""
-        url = f"{self.base_url}/me"
+        Returns:
+            dict with pages data
+        """
+        url = f"{self.graph_base}/me/accounts"
         params = {
-            "fields": "instagram_business_account",
-            "access_token": access_token
+            "access_token": access_token,
+            "fields": "id,name,access_token,instagram_business_account"
         }
         
-        logger.info(f"Getting user Instagram account: {url}")
+        logger.info("Fetching user's Facebook pages")
         
         try:
-            response = requests.get(url, params=params)
-            logger.info(f"User Instagram account response status: {response.status_code}")
-            logger.info(f"User Instagram account response: {response.text}")
+            response = requests.get(url, params=params, timeout=30)
             
             if response.status_code != 200:
-                logger.error(f"Get user Instagram account failed with status {response.status_code}: {response.text}")
-                raise HTTPException(status_code=400, detail=f"Get user Instagram account failed: {response.text}")
+                error_data = response.json() if response.text else {}
+                error_msg = error_data.get('error', {}).get('message', 'Failed to get pages')
+                logger.error(f"Failed to get pages: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
             
             data = response.json()
             
             if "error" in data:
-                logger.error(f"Get user Instagram account error: {data['error']}")
-                raise HTTPException(status_code=400, detail=data["error"]["message"])
-                
+                error_msg = data['error'].get('message', 'Failed to get pages')
+                logger.error(f"Error getting pages: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
+            
+            if 'data' not in data or len(data['data']) == 0:
+                logger.warning("No Facebook pages found for user")
+                raise HTTPException(
+                    status_code=404,
+                    detail="No Facebook Pages found. Please create a Facebook Page and connect it to your Instagram Business account."
+                )
+            
+            logger.info(f"Found {len(data['data'])} Facebook pages")
             return data
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"Get user Instagram account request failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Get user Instagram account request failed: {str(e)}")
+            logger.error(f"Failed to get pages: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to get pages: {str(e)}")
 
-    def get_instagram_account(self, page_id: str, page_access_token: str) -> Dict[str, Any]:
-        """Get Instagram Business account connected to Facebook page"""
-        url = f"{self.base_url}/{page_id}"
+    def get_instagram_account_from_page(self, page_id: str, page_access_token: str) -> Dict[str, Any]:
+        """
+        Get Instagram Business account connected to Facebook page
+        
+        Args:
+            page_id: Facebook page ID
+            page_access_token: Page access token
+            
+        Returns:
+            dict with Instagram account data
+        """
+        url = f"{self.graph_base}/{page_id}"
         params = {
-            "fields": "instagram_business_account",
+            "fields": "instagram_business_account{id,username,account_type}",
             "access_token": page_access_token
         }
         
-        logger.info(f"Getting Instagram account for page {page_id}: {url}")
+        logger.info(f"Fetching Instagram account for page: {page_id}")
         
         try:
-            response = requests.get(url, params=params)
-            logger.info(f"Instagram account response status: {response.status_code}")
-            logger.info(f"Instagram account response: {response.text}")
+            response = requests.get(url, params=params, timeout=30)
             
             if response.status_code != 200:
-                logger.error(f"Get Instagram account failed with status {response.status_code}: {response.text}")
-                raise HTTPException(status_code=400, detail=f"Get Instagram account failed: {response.text}")
+                error_data = response.json() if response.text else {}
+                error_msg = error_data.get('error', {}).get('message', 'Failed to get Instagram account')
+                logger.error(f"Failed to get Instagram account: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
             
             data = response.json()
             
             if "error" in data:
-                logger.error(f"Get Instagram account error: {data['error']}")
-                raise HTTPException(status_code=400, detail=data["error"]["message"])
-                
-            return data
+                error_msg = data['error'].get('message', 'Failed to get Instagram account')
+                logger.error(f"Error getting Instagram account: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
+            
+            if 'instagram_business_account' not in data:
+                logger.warning(f"No Instagram account connected to page: {page_id}")
+                raise HTTPException(
+                    status_code=404,
+                    detail="No Instagram Business account connected to this Facebook Page. Please connect your Instagram account in Facebook Page settings."
+                )
+            
+            instagram_account = data['instagram_business_account']
+            logger.info(f"Instagram account found: {instagram_account.get('username')}")
+            return instagram_account
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"Get Instagram account request failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Get Instagram account request failed: {str(e)}")
+            logger.error(f"Failed to get Instagram account: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to get Instagram account: {str(e)}")
 
     def get_instagram_user_info(self, ig_user_id: str, access_token: str) -> Dict[str, Any]:
-        """Get Instagram user information"""
-        url = f"{self.base_url}/{ig_user_id}"
+        """
+        Get Instagram user information
+        
+        Args:
+            ig_user_id: Instagram user ID
+            access_token: Page access token
+            
+        Returns:
+            dict with user info
+        """
+        url = f"{self.graph_base}/{ig_user_id}"
         params = {
             "fields": "id,username,account_type,followers_count,media_count",
             "access_token": access_token
         }
         
-        logger.info(f"Getting Instagram user info for {ig_user_id}: {url}")
+        logger.info(f"Fetching Instagram user info: {ig_user_id}")
         
         try:
-            response = requests.get(url, params=params)
-            logger.info(f"Instagram user info response status: {response.status_code}")
-            logger.info(f"Instagram user info response: {response.text}")
+            response = requests.get(url, params=params, timeout=30)
             
             if response.status_code != 200:
-                logger.error(f"Get Instagram user info failed with status {response.status_code}: {response.text}")
-                raise HTTPException(status_code=400, detail=f"Get Instagram user info failed: {response.text}")
+                error_data = response.json() if response.text else {}
+                error_msg = error_data.get('error', {}).get('message', 'Failed to get user info')
+                logger.error(f"Failed to get user info: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
             
             data = response.json()
             
             if "error" in data:
-                logger.error(f"Get Instagram user info error: {data['error']}")
-                raise HTTPException(status_code=400, detail=data["error"]["message"])
-                
+                error_msg = data['error'].get('message', 'Failed to get user info')
+                logger.error(f"Error getting user info: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
+            
+            logger.info(f"User info retrieved: @{data.get('username')}")
             return data
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"Get Instagram user info request failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Get Instagram user info request failed: {str(e)}")
+            logger.error(f"Failed to get user info: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to get user info: {str(e)}")
 
-    def upload_video_to_s3(self, video_file, filename: str = None) -> str:
-        """Upload video to S3 and return public URL"""
-        if not self.s3_client:
-            raise HTTPException(status_code=500, detail="S3 client not configured")
+    def create_reel_container(self, ig_user_id: str, access_token: str, video_url: str, caption: str = "") -> str:
+        """
+        Create Instagram Reel media container
+        
+        Args:
+            ig_user_id: Instagram user ID
+            access_token: Page access token
+            video_url: Public HTTPS URL to the video file
+            caption: Caption for the Reel
             
-        if not filename:
-            filename = f"instagram_videos/{uuid.uuid4()}.mp4"
-            
-        try:
-            # Upload file to S3
-            self.s3_client.upload_fileobj(
-                video_file,
-                self.aws_bucket_name,
-                filename,
-                ExtraArgs={
-                    'ContentType': 'video/mp4',
-                    'ACL': 'public-read'  # Make file publicly accessible
-                }
-            )
-            
-            # Return public URL
-            return f"https://{self.aws_bucket_name}.s3.{self.aws_region}.amazonaws.com/{filename}"
-            
-        except ClientError as e:
-            logger.error(f"S3 upload error: {e}")
-            raise HTTPException(status_code=500, detail="Failed to upload video to cloud storage")
-
-    def create_media_container(self, ig_user_id: str, access_token: str, video_url: str, caption: str = "") -> str:
-        """Create Instagram media container for video"""
-        url = f"{self.base_url}/{ig_user_id}/media"
+        Returns:
+            Container ID (creation_id)
+        """
+        url = f"{self.graph_base}/{ig_user_id}/media"
         
         params = {
             "video_url": video_url,
             "caption": caption,
-            "media_type": "REELS",  # For Instagram Reels
+            "media_type": "REELS",
             "access_token": access_token
         }
         
-        response = requests.post(url, data=params)
-        data = response.json()
+        logger.info(f"Creating Reel container for user: {ig_user_id}")
         
-        if "error" in data:
-            raise HTTPException(status_code=400, detail=data["error"]["message"])
+        try:
+            response = requests.post(url, data=params, timeout=30)
             
-        return data["id"]  # Return container ID
+            if response.status_code != 200:
+                error_data = response.json() if response.text else {}
+                error_msg = error_data.get('error', {}).get('message', 'Failed to create media container')
+                logger.error(f"Failed to create container: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
+            
+            data = response.json()
+            
+            if "error" in data:
+                error_msg = data['error'].get('message', 'Failed to create media container')
+                logger.error(f"Error creating container: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
+            
+            container_id = data.get('id')
+            if not container_id:
+                logger.error("No container ID returned")
+                raise HTTPException(status_code=400, detail="No container ID returned")
+            
+            logger.info(f"Reel container created: {container_id}")
+            return container_id
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to create container: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to create container: {str(e)}")
 
-    def publish_media(self, ig_user_id: str, access_token: str, creation_id: str) -> Dict[str, Any]:
-        """Publish Instagram media from container"""
-        url = f"{self.base_url}/{ig_user_id}/media_publish"
+    def publish_reel(self, ig_user_id: str, access_token: str, creation_id: str) -> Dict[str, Any]:
+        """
+        Publish Instagram Reel from container
+        
+        Args:
+            ig_user_id: Instagram user ID
+            access_token: Page access token
+            creation_id: Container/creation ID from create_reel_container
+            
+        Returns:
+            Published media data
+        """
+        url = f"{self.graph_base}/{ig_user_id}/media_publish"
         
         params = {
             "creation_id": creation_id,
             "access_token": access_token
         }
         
-        response = requests.post(url, data=params)
-        data = response.json()
+        logger.info(f"Publishing Reel: {creation_id}")
         
-        if "error" in data:
-            raise HTTPException(status_code=400, detail=data["error"]["message"])
-            
-        return data
-
-    def upload_and_publish_reel(self, ig_user_id: str, access_token: str, video_file, caption: str = "") -> Dict[str, Any]:
-        """Complete flow: upload video and publish as Instagram Reel"""
         try:
-            # Step 1: Upload video to S3
-            video_url = self.upload_video_to_s3(video_file)
-            logger.info(f"Video uploaded to S3: {video_url}")
+            response = requests.post(url, data=params, timeout=30)
             
-            # Step 2: Create media container
-            container_id = self.create_media_container(ig_user_id, access_token, video_url, caption)
-            logger.info(f"Media container created: {container_id}")
+            if response.status_code != 200:
+                error_data = response.json() if response.text else {}
+                error_msg = error_data.get('error', {}).get('message', 'Failed to publish Reel')
+                logger.error(f"Failed to publish Reel: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
             
-            # Step 3: Publish media
-            result = self.publish_media(ig_user_id, access_token, container_id)
-            logger.info(f"Media published successfully: {result}")
+            data = response.json()
             
-            return {
-                "success": True,
-                "media_id": result["id"],
-                "video_url": video_url,
-                "container_id": container_id
-            }
+            if "error" in data:
+                error_msg = data['error'].get('message', 'Failed to publish Reel')
+                logger.error(f"Error publishing Reel: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
             
-        except Exception as e:
-            logger.error(f"Failed to upload and publish reel: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to upload and publish reel: {str(e)}")
+            logger.info(f"Reel published successfully: {data.get('id')}")
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to publish Reel: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to publish Reel: {str(e)}")
 
     def validate_credentials(self) -> bool:
-        """Validate that all required credentials are configured"""
-        # Required for Instagram Graph API
-        required_vars = [
-            "FACEBOOK_APP_ID",
-            "FACEBOOK_APP_SECRET"
-        ]
-        
-        # Optional for video uploads (AWS S3)
-        optional_vars = [
-            "AWS_ACCESS_KEY_ID",
-            "AWS_SECRET_ACCESS_KEY", 
-            "AWS_BUCKET_NAME"
-        ]
-        
-        missing_vars = []
-        for var in required_vars:
-            if not os.getenv(var):
-                missing_vars.append(var)
-                
-        if missing_vars:
-            logger.error(f"Missing required environment variables: {missing_vars}")
+        """Validate that required credentials are configured"""
+        if not self.app_id or not self.app_secret:
+            logger.error("Missing FACEBOOK_APP_ID or FACEBOOK_APP_SECRET")
             return False
-        
-        # Check optional AWS credentials
-        aws_missing = []
-        for var in optional_vars:
-            if not os.getenv(var):
-                aws_missing.append(var)
-        
-        if aws_missing:
-            logger.warning(f"AWS S3 credentials not configured: {aws_missing}. Video uploads will not work.")
-            
         return True

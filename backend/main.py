@@ -482,20 +482,13 @@ async def get_account_info(username: str):
 async def get_instagram_meta_auth_url():
     """
     Get Instagram Meta OAuth authorization URL
+    Uses refactored Instagram Graph API class
     """
     try:
-        import secrets
-        state = secrets.token_urlsafe(32)
+        if not instagram_graph_api.validate_credentials():
+            raise HTTPException(status_code=500, detail="Instagram Graph API credentials not configured")
         
-        # Meta OAuth URL for Instagram Business
-        auth_url = (
-            f"https://www.facebook.com/v18.0/dialog/oauth?"
-            f"client_id={META_APP_ID}"
-            f"&redirect_uri={META_REDIRECT_URI}"
-            f"&scope={','.join(META_INSTAGRAM_SCOPES)}"
-            f"&response_type=code"
-            f"&state={state}"
-        )
+        auth_url, state = instagram_graph_api.get_auth_url()
         
         return JSONResponse({
             "success": True,
@@ -549,77 +542,31 @@ async def instagram_meta_oauth_callback(code: str = None, state: str = None, err
 async def instagram_meta_login(request: dict):
     """
     Exchange authorization code for Instagram Meta access token
+    Uses refactored Instagram Graph API class
     """
     try:
-        import requests
-        
         code = request.get('code')
         if not code:
             raise HTTPException(status_code=400, detail="Authorization code required")
         
-        # Exchange code for access token
-        token_url = "https://graph.facebook.com/v18.0/oauth/access_token"
-        token_params = {
-            "client_id": META_APP_ID,
-            "client_secret": META_APP_SECRET,
-            "redirect_uri": META_REDIRECT_URI,
-            "code": code
-        }
-        
-        token_response = requests.get(token_url, params=token_params)
-        token_data = token_response.json()
-        
-        if 'access_token' not in token_data:
-            error_msg = token_data.get('error', {}).get('message', 'Failed to get access token')
-            raise HTTPException(status_code=400, detail=error_msg)
-        
+        # Step 1: Exchange code for access token
+        token_data = instagram_graph_api.exchange_code_for_token(code)
         access_token = token_data['access_token']
         
-        # Get Facebook Pages
-        pages_url = "https://graph.facebook.com/v18.0/me/accounts"
-        pages_response = requests.get(pages_url, params={"access_token": access_token})
-        pages_data = pages_response.json()
-        
-        if 'data' not in pages_data or len(pages_data['data']) == 0:
-            raise HTTPException(
-                status_code=404, 
-                detail="No Facebook Pages found. You need to connect your Instagram account to a Facebook Page first."
-            )
+        # Step 2: Get user's Facebook Pages
+        pages_data = instagram_graph_api.get_user_pages(access_token)
         
         # Get first page (could be extended to let user select from multiple pages)
         page = pages_data['data'][0]
         page_id = page['id']
         page_access_token = page['access_token']
         
-        # Get Instagram Business Account ID
-        ig_account_url = f"https://graph.facebook.com/v18.0/{page_id}"
-        ig_account_response = requests.get(
-            ig_account_url,
-            params={
-                "fields": "instagram_business_account",
-                "access_token": page_access_token
-            }
-        )
-        ig_account_data = ig_account_response.json()
+        # Step 3: Get Instagram Business Account from Page
+        instagram_account = instagram_graph_api.get_instagram_account_from_page(page_id, page_access_token)
+        ig_user_id = instagram_account['id']
         
-        if 'instagram_business_account' not in ig_account_data:
-            raise HTTPException(
-                status_code=404,
-                detail="No Instagram Business Account found. Connect your Instagram Business account to the Facebook Page."
-            )
-        
-        ig_user_id = ig_account_data['instagram_business_account']['id']
-        
-        # Get Instagram account info
-        ig_info_url = f"https://graph.facebook.com/v18.0/{ig_user_id}"
-        ig_info_response = requests.get(
-            ig_info_url,
-            params={
-                "fields": "username,profile_picture_url,followers_count,media_count",
-                "access_token": page_access_token
-            }
-        )
-        ig_info = ig_info_response.json()
+        # Step 4: Get detailed Instagram account info
+        ig_info = instagram_graph_api.get_instagram_user_info(ig_user_id, page_access_token)
         
         # Store session
         instagram_meta_sessions[ig_user_id] = {
@@ -1511,10 +1458,10 @@ async def health_check():
     return {"status": "healthy", "service": "Social Media API"}
 
 
-@app.get("/api/instagram/graph/webhook")
+@app.get("/api/instagram/webhook")
 async def instagram_webhook_verify(request: Request):
     """
-    Verify Instagram webhook subscription
+    Verify Instagram webhook subscription for Meta API
     """
     try:
         # Get verification parameters
@@ -1523,7 +1470,7 @@ async def instagram_webhook_verify(request: Request):
         hub_verify_token = request.query_params.get("hub.verify_token")
         
         # Verify the webhook
-        if hub_mode == "subscribe" and hub_verify_token == "instagram_webhook_verify_token_2025":
+        if hub_mode == "subscribe" and hub_verify_token == "instagram_webhook_verify_2025":
             logger.info("Instagram webhook verification successful")
             return int(hub_challenge)
         else:
@@ -1535,10 +1482,10 @@ async def instagram_webhook_verify(request: Request):
         raise HTTPException(status_code=500, detail="Webhook verification error")
 
 
-@app.post("/api/instagram/graph/webhook")
+@app.post("/api/instagram/webhook")
 async def instagram_webhook_receive(request: Request):
     """
-    Receive Instagram webhook notifications
+    Receive Instagram webhook notifications for Meta API
     """
     try:
         body = await request.json()
