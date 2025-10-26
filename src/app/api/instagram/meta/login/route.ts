@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+    console.log('Instagram Meta login proxy - Backend URL:', backendUrl);
     const body = await request.json();
     
           const response = await fetch(`${backendUrl}/api/instagram/graph/login`, {

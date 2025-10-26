@@ -35,7 +35,7 @@ export default function InstagramCallbackPage() {
         setMessage('Exchanging code for access token...');
 
         // Exchange code for access token
-        const response = await fetch('/api/instagram/meta/login', {
+        const response = await fetch('/api/instagram/graph/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
