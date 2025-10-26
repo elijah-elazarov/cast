@@ -47,6 +47,14 @@ export default function InstagramVideoUploader({ isConnected, accountInfo }: Ins
   };
 
 
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   const handleUpload = async () => {
     if (!selectedFile || !isConnected || !accountInfo) return;
 
@@ -165,6 +173,15 @@ export default function InstagramVideoUploader({ isConnected, accountInfo }: Ins
               <span className="text-sm text-gray-600">
                 {selectedFile ? selectedFile.name : 'Click to select video file'}
               </span>
+              {selectedFile && (
+                <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
+                  <span>{formatFileSize(selectedFile.size)}</span>
+                  <span>•</span>
+                  <span>{selectedFile.type || 'video/mp4'}</span>
+                  <span>•</span>
+                  <span>{selectedFile.lastModified ? new Date(selectedFile.lastModified).toLocaleDateString() : 'Unknown date'}</span>
+                </div>
+              )}
             </label>
           </div>
           <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
@@ -192,24 +209,37 @@ export default function InstagramVideoUploader({ isConnected, accountInfo }: Ins
         </div>
 
         {/* Upload Status */}
-        {uploadStatus !== 'idle' && (
+        {uploadStatus !== 'idle' && selectedFile && (
           <div className={`p-3 rounded-lg ${
             uploadStatus === 'success' ? 'bg-green-50 border border-green-200' :
             uploadStatus === 'error' ? 'bg-red-50 border border-red-200' :
             'bg-blue-50 border border-blue-200'
           }`}>
-            <div className="flex items-center">
-              {uploadStatus === 'success' && <Check className="h-5 w-5 text-green-600 mr-2" />}
-              {uploadStatus === 'error' && <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />}
-              {uploadStatus === 'uploading' && <Loader2 className="h-5 w-5 animate-spin text-blue-600 mr-2" />}
-              <span className={`text-sm ${
-                uploadStatus === 'success' ? 'text-green-800' :
-                uploadStatus === 'error' ? 'text-red-800' :
-                'text-blue-800'
-              }`}>
-                {uploadMessage}
-              </span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                {uploadStatus === 'success' && <Check className="h-5 w-5 text-green-600 mr-2" />}
+                {uploadStatus === 'error' && <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />}
+                {uploadStatus === 'uploading' && <Loader2 className="h-5 w-5 animate-spin text-blue-600 mr-2" />}
+                <span className={`text-sm font-medium ${
+                  uploadStatus === 'success' ? 'text-green-800' :
+                  uploadStatus === 'error' ? 'text-red-800' :
+                  'text-blue-800'
+                }`}>
+                  {uploadMessage}
+                </span>
+              </div>
+              {uploadStatus === 'uploading' && (
+                <span className="text-xs text-blue-600">
+                  {selectedFile.name}
+                </span>
+              )}
             </div>
+            {uploadStatus === 'uploading' && (
+              <div className="flex items-center justify-between text-xs text-blue-700 mt-2">
+                <span>{formatFileSize(selectedFile.size)}</span>
+                <span>{selectedFile.type || 'video/mp4'}</span>
+              </div>
+            )}
           </div>
         )}
 
