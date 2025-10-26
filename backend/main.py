@@ -1856,3 +1856,4 @@ if __name__ == "__main__":
         log_level="error",  # Only show errors, not INFO messages
         access_log=False  # Completely disable access logs
     )
+# Backend restart trigger - Sun Oct 26 10:49:19 EDT 2025
