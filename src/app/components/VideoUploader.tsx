@@ -85,8 +85,24 @@ export default function VideoUploader({ connectedAccounts }: VideoUploaderProps)
 
       // Upload to Instagram if connected
       if (connectedAccounts.instagram) {
-        const instagramUserId = localStorage.getItem('instagram_user_id');
         const accountType = localStorage.getItem('instagram_account_type');
+        const accountInfoStr = localStorage.getItem('instagram_account_info');
+        
+        // Try to get user_id from account_info first (for Graph API)
+        let instagramUserId = null;
+        if (accountInfoStr) {
+          try {
+            const accountInfo = JSON.parse(accountInfoStr);
+            instagramUserId = accountInfo.user_id || accountInfo.userId;
+          } catch (e) {
+            console.error('Failed to parse account_info:', e);
+          }
+        }
+        
+        // Fallback to old localStorage key
+        if (!instagramUserId) {
+          instagramUserId = localStorage.getItem('instagram_user_id');
+        }
         
         if (instagramUserId) {
           const formData = new FormData();
