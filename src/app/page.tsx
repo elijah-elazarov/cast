@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Instagram, Youtube, Music, TestTube } from 'lucide-react';
 // import InstagramConnection from './components/InstagramConnection';
-import InstagramGraphConnection from './components/InstagramGraphConnection';
-import InstagramPlatformConnection from './components/InstagramPlatformConnection';
+import InstagramOAuthConnection from './components/InstagramOAuthConnection';
+import InstagramVideoUploader from './components/InstagramVideoUploader';
 import YouTubeConnection from './components/YouTubeConnection';
 import TikTokConnection from './components/TikTokConnection';
 import VideoUploader from './components/VideoUploader';
@@ -289,9 +289,11 @@ export default function Home() {
 
         {/* Platform Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Simplified Instagram Card */}
+          {/* Instagram OAuth Card */}
           <div className="md:col-span-2">
-            <SimpleInstagramAuth />
+            <InstagramOAuthConnection 
+              onConnect={(connected, accountInfo) => handleAccountConnect('instagram', connected)}
+            />
           </div>
 
           {/* YouTube Card */}
@@ -326,6 +328,16 @@ export default function Home() {
             />
           </div>
         </div>
+
+        {/* Video Upload Section */}
+        {connectedAccounts.instagram && (
+          <div className="mb-8">
+            <InstagramVideoUploader 
+              isConnected={connectedAccounts.instagram}
+              accountInfo={JSON.parse(localStorage.getItem('instagram_account_info') || '{}')}
+            />
+          </div>
+        )}
 
         {/* Instagram Test Components */}
         {showInstagramTest && (
