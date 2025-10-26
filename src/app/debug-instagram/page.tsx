@@ -5,7 +5,7 @@ import { Loader2, CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-
 
 export default function DebugInstagramPage() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState('');
 
@@ -201,10 +201,10 @@ export default function DebugInstagramPage() {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 className="text-lg font-semibold text-blue-900 mb-2">How to Use</h3>
               <ol className="list-decimal list-inside space-y-2 text-blue-800">
-                <li><strong>Test 1:</strong> Click "Test Instagram Status" to check if your backend is properly configured</li>
-                <li><strong>Test 2:</strong> Click "Test OAuth URL" to verify the frontend proxy is working</li>
-                <li><strong>Test 3:</strong> Get an access token by completing the OAuth flow, then paste it here to test</li>
-                <li>Check the results to see exactly what's working and what's not</li>
+            <li><strong>Test 1:</strong> Click &quot;Test Instagram Status&quot; to check if your backend is properly configured</li>
+            <li><strong>Test 2:</strong> Click &quot;Test OAuth URL&quot; to verify the frontend proxy is working</li>
+            <li><strong>Test 3:</strong> Get an access token by completing the OAuth flow, then paste it here to test</li>
+            <li>Check the results to see exactly what&apos;s working and what&apos;s not</li>
               </ol>
             </div>
           </div>

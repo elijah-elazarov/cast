@@ -411,7 +411,7 @@ export default function Home() {
         )}
 
         {showDebugConsole && (
-          <DebugConsole />
+          <DebugConsole onClose={() => setShowDebugConsole(false)} />
         )}
 
         {/* Video Upload Section */}
@@ -443,9 +443,9 @@ export default function Home() {
 }
 
 // Debug Console Component
-function DebugConsole() {
+function DebugConsole({ onClose }: { onClose: () => void }) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState('');
 
@@ -542,7 +542,7 @@ function DebugConsole() {
           🔧 Instagram Debug Console
         </h2>
         <button
-          onClick={() => setShowDebugConsole(false)}
+          onClick={onClose}
           className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
         >
           ✕
@@ -648,10 +648,10 @@ function DebugConsole() {
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <h4 className="text-lg font-semibold text-blue-900 dark:text-blue-200 mb-2">How to Use</h4>
           <ol className="list-decimal list-inside space-y-2 text-blue-800 dark:text-blue-200">
-            <li><strong>Test 1:</strong> Click "Test Instagram Status" to check if your backend is properly configured</li>
-            <li><strong>Test 2:</strong> Click "Test OAuth URL" to verify the frontend proxy is working</li>
+            <li><strong>Test 1:</strong> Click &quot;Test Instagram Status&quot; to check if your backend is properly configured</li>
+            <li><strong>Test 2:</strong> Click &quot;Test OAuth URL&quot; to verify the frontend proxy is working</li>
             <li><strong>Test 3:</strong> Get an access token by completing the OAuth flow, then paste it here to test</li>
-            <li>Check the results to see exactly what's working and what's not</li>
+            <li>Check the results to see exactly what&apos;s working and what&apos;s not</li>
           </ol>
         </div>
       </div>
