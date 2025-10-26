@@ -349,8 +349,105 @@ class InstagramGraphAPI:
             return data
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to publish Reel: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Failed to publish Reel: {str(e)}")
+        logger.error(f"Failed to publish Reel: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to publish Reel: {str(e)}")
+
+    def create_story_container(self, ig_user_id: str, access_token: str, media_url: str, media_type: str, caption: str = "") -> str:
+        """
+        Create Instagram Story media container
+        
+        Args:
+            ig_user_id: Instagram user ID
+            access_token: Page access token
+            media_url: Public HTTPS URL to the media file
+            media_type: "VIDEO" or "IMAGE"
+            caption: Caption for the Story
+            
+        Returns:
+            Container ID (creation_id)
+        """
+        url = f"{self.graph_base}/{ig_user_id}/media"
+        
+        params = {
+            "media_url": media_url,
+            "caption": caption,
+            "media_type": media_type,
+            "access_token": access_token
+        }
+        
+        logger.info(f"Creating Story container for user: {ig_user_id}")
+        
+        try:
+            response = requests.post(url, data=params, timeout=30)
+            
+            if response.status_code != 200:
+                error_data = response.json() if response.text else {}
+                error_msg = error_data.get('error', {}).get('message', 'Failed to create media container')
+                logger.error(f"Failed to create container: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
+            
+            data = response.json()
+            
+            if "error" in data:
+                error_msg = data['error'].get('message', 'Failed to create media container')
+                logger.error(f"Error creating container: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
+            
+            container_id = data.get('id')
+            if not container_id:
+                logger.error("No container ID returned")
+                raise HTTPException(status_code=400, detail="No container ID returned")
+            
+            logger.info(f"Story container created: {container_id}")
+            return container_id
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to create container: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to create container: {str(e)}")
+
+    def publish_story(self, ig_user_id: str, access_token: str, creation_id: str) -> Dict[str, Any]:
+        """
+        Publish Instagram Story from container
+        
+        Args:
+            ig_user_id: Instagram user ID
+            access_token: Page access token
+            creation_id: Container/creation ID from create_story_container
+            
+        Returns:
+            Published media data
+        """
+        url = f"{self.graph_base}/{ig_user_id}/media_publish"
+        
+        params = {
+            "creation_id": creation_id,
+            "access_token": access_token
+        }
+        
+        logger.info(f"Publishing Story: {creation_id}")
+        
+        try:
+            response = requests.post(url, data=params, timeout=30)
+            
+            if response.status_code != 200:
+                error_data = response.json() if response.text else {}
+                error_msg = error_data.get('error', {}).get('message', 'Failed to publish Story')
+                logger.error(f"Failed to publish Story: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
+            
+            data = response.json()
+            
+            if "error" in data:
+                error_msg = data['error'].get('message', 'Failed to publish Story')
+                logger.error(f"Error publishing Story: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
+            
+            logger.info(f"Story published successfully: {data.get('id')}")
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to publish Story: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to publish Story: {str(e)}")
 
     def validate_credentials(self) -> bool:
         """Validate that required credentials are configured"""

@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       headers['ngrok-skip-browser-warning'] = ngrokHeader;
     }
     
-          const response = await fetch(`${backendUrl}/api/instagram/basic/auth-url`, {
+          const response = await fetch(`${backendUrl}/api/instagram/graph/auth-url`, {
       headers,
     });
     const data = await response.json();

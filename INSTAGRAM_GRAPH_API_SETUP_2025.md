@@ -1,137 +1,246 @@
-# Instagram Graph API Setup Guide - 2025
+# Instagram Graph API Setup - 2025 (With Posting Capabilities)
 
-## Overview
-This guide will help you set up Instagram Graph API integration for login and posting functionality using the latest 2025 API requirements.
+## 🎯 **Instagram Graph API for Content Publishing**
 
-## Prerequisites
-- Facebook Developer Account
-- Instagram Business or Creator Account
-- Facebook Page connected to Instagram account
-- Cloud storage service (AWS S3, Google Cloud, etc.)
+Based on the [Phyllo article](https://www.getphyllo.com/post/how-to-add-instagram-api-to-your-app-or-website), the Instagram Graph API is the **only way** to post content to Instagram (Reels, Stories, Posts). The Basic Display API is read-only.
 
-## Step 1: Facebook App Setup
+## **✅ What You Get:**
+- ✅ **Post Reels to Instagram**
+- ✅ **Post Stories to Instagram**
+- ✅ **Post regular posts to Instagram**
+- ✅ **Read user profile and media**
+- ✅ **Business account insights**
+- ✅ **Full publishing capabilities**
 
-### 1.1 Create Facebook App
-1. Go to [Facebook for Developers](https://developers.facebook.com/)
-2. Click "My Apps" → "Create App"
-3. Choose "Business" as app type
-4. Fill in app details:
-   - App Name: "Cast - Social Media Publisher"
-   - App Contact Email: your-email@example.com
-   - App Purpose: "Business"
+## **❌ Requirements:**
+- ❌ **Instagram Business or Creator account required**
+- ❌ **Facebook Page connected to Instagram account**
+- ❌ **Facebook App with Instagram Graph API product**
+- ❌ **App review may be required for production**
 
-### 1.2 Configure Instagram Product
-1. In your app dashboard, go to "Add Product"
-2. Find "Instagram" and click "Set Up"
-3. Enable "Instagram Graph API"
+## **🔧 Setup Steps:**
 
-### 1.3 Configure Facebook Login
-1. Go to "Facebook Login" → "Settings"
-2. Add Valid OAuth Redirect URIs:
-   - `http://localhost:3000/auth/instagram/callback` (development)
-   - `https://yourdomain.com/auth/instagram/callback` (production)
+### **Step 1: Create Facebook App**
 
-## Step 2: App Configuration
+1. **Go to:** [Facebook Developers](https://developers.facebook.com/)
+2. **Click:** "My Apps" → "Create App"
+3. **Select:** "Business" (not Consumer)
+4. **App Name:** "Cast Social Media App"
+5. **App Contact Email:** your-email@example.com
+6. **App Purpose:** "Other"
 
-### 2.1 Basic Settings
-- App Domains: your-domain.com
-- Privacy Policy URL: https://your-domain.com/privacy
-- Terms of Service URL: https://your-domain.com/terms
+### **Step 2: Add Instagram Graph API Product**
 
-### 2.2 Instagram Graph API Settings
-- Instagram Basic Display: Enabled
-- Instagram Graph API: Enabled
-- Permissions: `instagram_basic`, `instagram_content_publish`, `pages_show_list`
+1. **In your app dashboard:**
+   - Click "Add Product"
+   - Find "Instagram Graph API"
+   - Click "Set Up"
 
-## Step 3: Environment Variables
+2. **Configure Instagram Graph API:**
+   - **Valid OAuth Redirect URIs:** `https://cast-five.vercel.app/auth/instagram/callback`
+   - **Deauthorize Callback URL:** `https://cast-five.vercel.app/auth/instagram/callback`
+   - **Data Deletion Request URL:** `https://cast-five.vercel.app/auth/instagram/callback`
 
-Add to your backend `.env` file:
+### **Step 3: Add Facebook Login Product**
 
+1. **Add Product:** Facebook Login
+2. **Configure Facebook Login:**
+   - **Valid OAuth Redirect URIs:** `https://cast-five.vercel.app/auth/instagram/callback`
+   - **App Domains:** `cast-five.vercel.app`
+
+### **Step 4: Set App Permissions**
+
+**Required Permissions:**
+- `instagram_basic`
+- `instagram_content_publish`
+- `pages_show_list`
+- `pages_read_engagement`
+
+### **Step 5: Connect Instagram Business Account**
+
+1. **Create Facebook Page** (if you don't have one)
+2. **Convert Instagram to Business Account:**
+   - Go to Instagram Settings
+   - Switch to Professional Account
+   - Choose Business Account
+3. **Connect to Facebook Page:**
+   - In Instagram Settings → Account → Linked Accounts
+   - Connect to your Facebook Page
+
+### **Step 6: Get App Credentials**
+
+1. **App ID:** Copy from "App ID" field
+2. **App Secret:** Click "Show" next to "App Secret" and copy
+
+### **Step 7: Update Environment Variables**
+
+**Backend (.env):**
 ```env
-# Facebook/Instagram App Credentials
-FACEBOOK_APP_ID=your_facebook_app_id
-FACEBOOK_APP_SECRET=your_facebook_app_secret
-INSTAGRAM_REDIRECT_URI=http://localhost:3000/auth/instagram/callback
-
-# Cloud Storage (choose one)
-AWS_ACCESS_KEY_ID=your_aws_access_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret_key
-AWS_BUCKET_NAME=your_bucket_name
-AWS_REGION=us-east-1
-
-# Or Google Cloud
-GOOGLE_CLOUD_PROJECT_ID=your_project_id
-GOOGLE_CLOUD_BUCKET_NAME=your_bucket_name
+# Instagram Graph API (2025) - Business Account API with Posting Capabilities
+FACEBOOK_APP_ID=717044718072411
+FACEBOOK_APP_SECRET=884aa846ae8dbb2212f757748cda486d
+INSTAGRAM_REDIRECT_URI=https://cast-five.vercel.app/auth/instagram/callback
 ```
 
-## Step 4: Required Permissions
+**Frontend (.env.local):**
+```env
+NEXT_PUBLIC_BACKEND_URL=https://backrooms-e8nm.onrender.com
+```
 
-Your app needs these permissions:
-- `instagram_basic`: Access to basic profile information
-- `instagram_content_publish`: Permission to publish content
-- `pages_show_list`: Access to pages user manages
-- `pages_read_engagement`: Read engagement metrics
+### **Step 8: Test the API**
 
-## Step 5: Instagram Account Requirements
+**Test Auth URL:**
+```bash
+curl -s https://backrooms-e8nm.onrender.com/api/instagram/graph/auth-url
+```
 
-Users must have:
-- Instagram Business or Creator account
-- Facebook Page connected to Instagram account
-- Admin or Editor role on the connected Facebook Page
+**Expected Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "auth_url": "https://www.facebook.com/v21.0/dialog/oauth?client_id=...",
+    "state": "random_state_token"
+  }
+}
+```
 
-## Step 6: Video Upload Requirements
+## **🚀 How to Use:**
 
-Instagram Graph API requires:
-- Videos must be publicly accessible via HTTPS
-- Maximum file size: 100MB
-- Supported formats: MP4, MOV
-- Duration: 3 seconds to 60 seconds for Reels
-- Resolution: Minimum 720p
+### **1. Get Auth URL:**
+```bash
+GET /api/instagram/graph/auth-url
+```
 
-## Step 7: Testing
+### **2. User Authorizes:**
+- User clicks auth URL
+- User logs into Facebook
+- User grants permissions to your app
+- User is redirected to callback
 
-### 7.1 Add Test Users
-1. Go to "Roles" → "Test Users"
-2. Add test users with Instagram Business accounts
-3. Test the complete flow
+### **3. Exchange Code for Token:**
+```bash
+POST /api/instagram/graph/login
+{
+  "code": "authorization_code_from_callback"
+}
+```
 
-### 7.2 App Review Process
-Before going live:
-1. Submit app for review
-2. Provide detailed use case description
-3. Include screencast of functionality
-4. Wait for approval (can take several days)
+### **4. Upload Reel:**
+```bash
+POST /api/instagram/graph/upload-reel
+{
+  "user_id": "instagram_user_id",
+  "video_url": "https://example.com/video.mp4",
+  "caption": "Check out this amazing video! #reels"
+}
+```
 
-## Step 8: Production Deployment
+### **5. Upload Story:**
+```bash
+POST /api/instagram/graph/upload-story
+{
+  "user_id": "instagram_user_id",
+  "video_url": "https://example.com/story.mp4",
+  "caption": "Behind the scenes!"
+}
+```
 
-### 8.1 Switch to Live Mode
-1. Complete app review process
-2. Switch app from Development to Live mode
-3. Update redirect URIs for production domain
+## **📱 Frontend Integration:**
 
-### 8.2 Monitor Usage
-- Track API usage and rate limits
-- Monitor error rates and user feedback
-- Keep app updated with latest API changes
+```typescript
+// Get auth URL
+const response = await fetch('/api/instagram/graph/auth-url');
+const { data } = await response.json();
 
-## Troubleshooting
+// Redirect user to Facebook/Instagram
+window.location.href = data.auth_url;
 
-### Common Issues:
-1. **"App Not Approved"**: Ensure app review is completed
-2. **"Invalid Redirect URI"**: Check OAuth redirect URIs match exactly
-3. **"User Not Connected"**: Ensure user has Business/Creator account with connected Facebook Page
-4. **"Video Upload Failed"**: Check video format, size, and accessibility
+// Handle callback
+const urlParams = new URLSearchParams(window.location.search);
+const code = urlParams.get('code');
 
-### Support Resources:
-- [Instagram Graph API Documentation](https://developers.facebook.com/docs/instagram-api)
-- [Facebook for Developers Community](https://developers.facebook.com/community/)
-- [Instagram Platform Policies](https://developers.facebook.com/policy/)
+if (code) {
+  // Exchange code for token
+  const loginResponse = await fetch('/api/instagram/graph/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code })
+  });
+  
+  const result = await loginResponse.json();
+  console.log('Instagram connected:', result.data);
+}
 
-## Next Steps
+// Upload Reel
+const uploadReel = async (videoUrl: string, caption: string) => {
+  const response = await fetch('/api/instagram/graph/upload-reel', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id: 'instagram_user_id',
+      video_url: videoUrl,
+      caption: caption
+    })
+  });
+  
+  const result = await response.json();
+  console.log('Reel uploaded:', result.data);
+};
 
-After completing this setup:
-1. Implement OAuth flow in backend
-2. Create styled login UI
-3. Implement video upload functionality
-4. Test complete flow
-5. Deploy to production
+// Upload Story
+const uploadStory = async (mediaUrl: string, caption: string) => {
+  const response = await fetch('/api/instagram/graph/upload-story', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id: 'instagram_user_id',
+      video_url: mediaUrl, // or image_url for images
+      caption: caption
+    })
+  });
+  
+  const result = await response.json();
+  console.log('Story uploaded:', result.data);
+};
+```
+
+## **🔍 API Endpoints:**
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/instagram/graph/auth-url` | GET | Get OAuth authorization URL |
+| `/api/instagram/graph/login` | POST | Exchange code for access token |
+| `/api/instagram/graph/upload-reel` | POST | Upload and publish Reel |
+| `/api/instagram/graph/upload-story` | POST | Upload and publish Story |
+
+## **⚠️ Important Notes:**
+
+1. **Business Account Required:** Only works with Instagram Business or Creator accounts
+2. **Facebook Page Required:** Instagram account must be connected to a Facebook Page
+3. **App Review:** May need app review for production use
+4. **Video Requirements:** Videos must be publicly accessible HTTPS URLs
+5. **File Size Limits:** Check Instagram's current file size limits
+
+## **🔄 Video Upload Process:**
+
+1. **Upload video to cloud storage** (AWS S3, Google Cloud, etc.)
+2. **Get public HTTPS URL** for the video
+3. **Create media container** using the URL
+4. **Publish the content** to Instagram
+
+## **🎉 Success!**
+
+You now have a working Instagram integration that:
+- ✅ Authenticates users
+- ✅ Posts Reels to Instagram
+- ✅ Posts Stories to Instagram
+- ✅ Posts regular content to Instagram
+- ✅ Reads user profiles and media
+- ✅ Full publishing capabilities
+
+## **📚 References:**
+
+- [Instagram Graph API Documentation](https://developers.facebook.com/docs/instagram-api/)
+- [Phyllo Instagram API Guide](https://www.getphyllo.com/post/how-to-add-instagram-api-to-your-app-or-website)
+- [Facebook App Setup Guide](https://developers.facebook.com/docs/apps/)

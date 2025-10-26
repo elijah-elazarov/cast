@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
 from instagrapi import Client
 from instagrapi.exceptions import LoginRequired, BadPassword
-from instagram_basic_display_api import InstagramBasicDisplayAPI
+from instagram_graph_api import InstagramGraphAPI
 from instagram_platform_api import InstagramPlatformAPI
 import os
 import json
@@ -74,8 +74,8 @@ tiktok_sessions = {}  # Store TikTok credentials
 instagram_meta_sessions = {}  # Store Instagram Meta API credentials
 instagram_graph_sessions = {}  # Store Instagram Graph API credentials
 
-# Initialize Instagram Basic Display API
-instagram_basic_api = InstagramBasicDisplayAPI()
+# Initialize Instagram Graph API for posting capabilities
+instagram_graph_api = InstagramGraphAPI()
 
 # Session persistence
 SESSIONS_DIR = "sessions"
@@ -475,20 +475,20 @@ async def get_account_info(username: str):
 
 
 # ============================================================================
-# Instagram Basic Display API Endpoints (Simple Personal Account API)
+# Instagram Graph API Endpoints (Posting Capabilities)
 # ============================================================================
 
-@app.get("/api/instagram/basic/auth-url")
-async def get_instagram_basic_auth_url():
+@app.get("/api/instagram/graph/auth-url")
+async def get_instagram_graph_auth_url():
     """
-    Get Instagram Basic Display OAuth authorization URL
-    Uses simple Instagram Basic Display API - no advanced access required
+    Get Instagram Graph API OAuth authorization URL
+    Uses Instagram Graph API for posting capabilities (Reels, Stories, Posts)
     """
     try:
-        if not instagram_basic_api.validate_credentials():
-            raise HTTPException(status_code=500, detail="Instagram Basic Display API credentials not configured")
+        if not instagram_graph_api.validate_credentials():
+            raise HTTPException(status_code=500, detail="Instagram Graph API credentials not configured")
         
-        auth_url, state = instagram_basic_api.get_auth_url()
+        auth_url, state = instagram_graph_api.get_auth_url()
         
         return JSONResponse({
             "success": True,
@@ -498,7 +498,7 @@ async def get_instagram_basic_auth_url():
             }
         })
     except Exception as e:
-        logger.error(f"Instagram Basic auth URL error: {str(e)}")
+        logger.error(f"Instagram Graph auth URL error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to generate auth URL: {str(e)}")
 
 
@@ -538,11 +538,11 @@ async def instagram_meta_oauth_callback(code: str = None, state: str = None, err
         return RedirectResponse(url=f"{frontend_url}/?instagram_error=callback_failed")
 
 
-@app.post("/api/instagram/basic/login")
-async def instagram_basic_login(request: dict):
+@app.post("/api/instagram/graph/login")
+async def instagram_graph_login(request: dict):
     """
-    Exchange authorization code for Instagram Basic Display access token
-    Uses simple Instagram Basic Display API - works with personal accounts
+    Exchange authorization code for Instagram Graph API access token
+    Uses Instagram Graph API for posting capabilities (Reels, Stories, Posts)
     """
     try:
         code = request.get('code')
@@ -550,40 +550,47 @@ async def instagram_basic_login(request: dict):
             raise HTTPException(status_code=400, detail="Authorization code required")
         
         # Step 1: Exchange code for access token
-        token_data = instagram_basic_api.exchange_code_for_token(code)
+        token_data = instagram_graph_api.exchange_code_for_token(code)
         access_token = token_data['access_token']
         
-        # Step 2: Get user info
-        user_info = instagram_basic_api.get_user_info(access_token)
-        ig_user_id = user_info['id']
+        # Step 2: Get user's Facebook Pages
+        pages_data = instagram_graph_api.get_user_pages(access_token)
         
-        # Step 3: Get user media (optional)
-        try:
-            media_data = instagram_basic_api.get_user_media(access_token, limit=5)
-            media_count = len(media_data.get('data', []))
-        except:
-            media_count = 0
+        # Get first page (could be extended to let user select from multiple pages)
+        page = pages_data['data'][0]
+        page_id = page['id']
+        page_access_token = page['access_token']
+        
+        # Step 3: Get Instagram Business Account from Page
+        instagram_account = instagram_graph_api.get_instagram_account_from_page(page_id, page_access_token)
+        ig_user_id = instagram_account['id']
+        
+        # Step 4: Get detailed Instagram account info
+        ig_info = instagram_graph_api.get_instagram_user_info(ig_user_id, page_access_token)
         
         # Store session
         instagram_meta_sessions[ig_user_id] = {
-            'access_token': access_token,
+            'access_token': page_access_token,
             'ig_user_id': ig_user_id,
-            'username': user_info.get('username'),
-            'account_type': user_info.get('account_type', 'PERSONAL'),
-            'media_count': media_count
+            'username': ig_info.get('username'),
+            'page_id': page_id,
+            'followers_count': ig_info.get('followers_count', 0),
+            'media_count': ig_info.get('media_count', 0)
         }
         
-        # Log Instagram Basic connection event
-        social_logger.info(f"INSTAGRAM_BASIC_CONNECTED - User: {user_info.get('username')} | ID: {ig_user_id} | Media: {media_count}")
-        logger.info(f"Instagram Basic login successful for user: {ig_user_id}")
+        # Log Instagram Graph connection event
+        social_logger.info(f"INSTAGRAM_GRAPH_CONNECTED - User: {ig_info.get('username')} | ID: {ig_user_id} | Followers: {ig_info.get('followers_count', 0)}")
+        logger.info(f"Instagram Graph login successful for user: {ig_user_id}")
         
         return JSONResponse({
             "success": True,
             "data": {
                 "user_id": ig_user_id,
-                "username": user_info.get('username'),
-                "account_type": user_info.get('account_type', 'PERSONAL'),
-                "media_count": media_count
+                "username": ig_info.get('username'),
+                "followers_count": ig_info.get('followers_count', 0),
+                "media_count": ig_info.get('media_count', 0),
+                "profile_picture_url": ig_info.get('profile_picture_url'),
+                "account_type": "business"  # Graph API only works with business accounts
             },
             "message": "Successfully connected to Instagram"
         })
@@ -591,8 +598,189 @@ async def instagram_basic_login(request: dict):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Instagram Basic login error: {str(e)}")
+        logger.error(f"Instagram Graph login error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
+
+
+@app.get("/api/instagram/basic/user-info")
+async def get_instagram_basic_user_info(request: Request):
+    """
+    Get Instagram user information
+    """
+    try:
+        user_id = request.query_params.get('user_id')
+        if not user_id:
+            raise HTTPException(status_code=400, detail="User ID required")
+        
+        if user_id not in instagram_meta_sessions:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        session = instagram_meta_sessions[user_id]
+        access_token = session['access_token']
+        
+        user_info = instagram_basic_api.get_user_info(access_token)
+        
+        return JSONResponse({
+            "success": True,
+            "data": user_info
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Instagram Basic user info error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get user info: {str(e)}")
+
+
+@app.get("/api/instagram/basic/media")
+async def get_instagram_basic_media(request: Request):
+    """
+    Get Instagram user media
+    """
+    try:
+        user_id = request.query_params.get('user_id')
+        limit = int(request.query_params.get('limit', 25))
+        
+        if not user_id:
+            raise HTTPException(status_code=400, detail="User ID required")
+        
+        if user_id not in instagram_meta_sessions:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        session = instagram_meta_sessions[user_id]
+        access_token = session['access_token']
+        
+        media_data = instagram_basic_api.get_user_media(access_token, limit)
+        
+        return JSONResponse({
+            "success": True,
+            "data": media_data
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Instagram Basic media error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get media: {str(e)}")
+
+
+@app.post("/api/instagram/graph/upload-reel")
+async def upload_instagram_reel(request: dict):
+    """
+    Upload and publish Instagram Reel
+    """
+    try:
+        user_id = request.get('user_id')
+        video_url = request.get('video_url')
+        caption = request.get('caption', '')
+        
+        if not user_id or not video_url:
+            raise HTTPException(status_code=400, detail="User ID and video URL required")
+        
+        if user_id not in instagram_meta_sessions:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        session = instagram_meta_sessions[user_id]
+        access_token = session['access_token']
+        ig_user_id = session['ig_user_id']
+        
+        # Step 1: Create Reel container
+        container_id = instagram_graph_api.create_reel_container(
+            ig_user_id, 
+            access_token, 
+            video_url, 
+            caption
+        )
+        
+        # Step 2: Publish Reel
+        published_media = instagram_graph_api.publish_reel(
+            ig_user_id, 
+            access_token, 
+            container_id
+        )
+        
+        # Log Reel upload event
+        social_logger.info(f"INSTAGRAM_REEL_UPLOADED - User: {session['username']} | Media ID: {published_media.get('id')}")
+        logger.info(f"Instagram Reel uploaded successfully: {published_media.get('id')}")
+        
+        return JSONResponse({
+            "success": True,
+            "data": {
+                "media_id": published_media.get('id'),
+                "container_id": container_id,
+                "status": "published"
+            },
+            "message": "Reel uploaded successfully"
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Instagram Reel upload error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to upload Reel: {str(e)}")
+
+
+@app.post("/api/instagram/graph/upload-story")
+async def upload_instagram_story(request: dict):
+    """
+    Upload and publish Instagram Story
+    """
+    try:
+        user_id = request.get('user_id')
+        video_url = request.get('video_url')
+        image_url = request.get('image_url')
+        caption = request.get('caption', '')
+        
+        if not user_id or (not video_url and not image_url):
+            raise HTTPException(status_code=400, detail="User ID and video/image URL required")
+        
+        if user_id not in instagram_meta_sessions:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        session = instagram_meta_sessions[user_id]
+        access_token = session['access_token']
+        ig_user_id = session['ig_user_id']
+        
+        # Determine media type and URL
+        media_url = video_url or image_url
+        media_type = "VIDEO" if video_url else "IMAGE"
+        
+        # Step 1: Create Story container
+        container_id = instagram_graph_api.create_story_container(
+            ig_user_id, 
+            access_token, 
+            media_url, 
+            media_type,
+            caption
+        )
+        
+        # Step 2: Publish Story
+        published_media = instagram_graph_api.publish_story(
+            ig_user_id, 
+            access_token, 
+            container_id
+        )
+        
+        # Log Story upload event
+        social_logger.info(f"INSTAGRAM_STORY_UPLOADED - User: {session['username']} | Media ID: {published_media.get('id')}")
+        logger.info(f"Instagram Story uploaded successfully: {published_media.get('id')}")
+        
+        return JSONResponse({
+            "success": True,
+            "data": {
+                "media_id": published_media.get('id'),
+                "container_id": container_id,
+                "media_type": media_type,
+                "status": "published"
+            },
+            "message": "Story uploaded successfully"
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Instagram Story upload error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to upload Story: {str(e)}")
 
 
 @app.post("/api/instagram/meta/logout")
