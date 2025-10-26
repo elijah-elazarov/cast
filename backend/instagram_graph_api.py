@@ -92,9 +92,14 @@ class InstagramGraphAPI:
         }
         
         logger.info("Exchanging code for access token")
+        logger.info(f"Code received: {code[:10]}...{code[-10:] if len(code) > 20 else code}")
+        logger.info(f"Code length: {len(code)}")
         
         try:
             response = requests.post(token_url, data=params, timeout=30)
+            
+            logger.info(f"Facebook response status: {response.status_code}")
+            logger.info(f"Facebook response: {response.text}")
             
             if response.status_code != 200:
                 error_data = response.json() if response.text else {}
