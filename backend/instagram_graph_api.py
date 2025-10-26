@@ -41,8 +41,9 @@ class InstagramGraphAPI:
             "instagram_business_content_publish"
         ]
         
-        # OAuth endpoints
-        self.auth_base = "https://www.facebook.com"
+        # OAuth endpoints - Instagram Login API
+        self.auth_base = "https://www.instagram.com"
+        self.token_endpoint = "https://api.instagram.com/oauth/access_token"
         
         logger.info("Instagram Graph API initialized")
 
@@ -65,7 +66,7 @@ class InstagramGraphAPI:
             "auth_type": "rerequest"  # Force re-consent to ensure permissions
         }
         
-        auth_url = f"{self.auth_base}/{self.api_version}/dialog/oauth?{urlencode(params)}"
+        auth_url = f"{self.auth_base}/oauth/authorize?{urlencode(params)}"
         
         logger.info(f"Generated Instagram auth URL for app: {self.app_id}")
         return auth_url, state
@@ -80,12 +81,14 @@ class InstagramGraphAPI:
         Returns:
             dict with access_token, token_type, expires_in
         """
-        token_url = f"{self.graph_base}/oauth/access_token"
+        # Use Instagram Login API token endpoint
+        token_url = self.token_endpoint
         
         params = {
             "client_id": self.app_id,
             "client_secret": self.app_secret,
             "redirect_uri": self.redirect_uri,
+            "grant_type": "authorization_code",
             "code": code
         }
         
@@ -96,24 +99,35 @@ class InstagramGraphAPI:
         try:
             response = requests.post(token_url, data=params, timeout=30)
             
-            logger.info(f"Facebook response status: {response.status_code}")
-            logger.info(f"Facebook response: {response.text}")
+            logger.info(f"Instagram response status: {response.status_code}")
+            logger.info(f"Instagram response: {response.text}")
             
             if response.status_code != 200:
                 error_data = response.json() if response.text else {}
-                error_msg = error_data.get('error', {}).get('message', 'Token exchange failed')
+                error_msg = error_data.get('error_message', 'Token exchange failed')
                 logger.error(f"Token exchange failed: {error_msg}")
                 raise HTTPException(status_code=400, detail=error_msg)
             
             data = response.json()
             
-            if "error" in data:
-                error_msg = data['error'].get('message', 'Token exchange failed')
+            # Instagram Login API returns data in a different format
+            if "error_type" in data:
+                error_msg = data.get('error_message', 'Token exchange failed')
                 logger.error(f"Token exchange error: {error_msg}")
                 raise HTTPException(status_code=400, detail=error_msg)
             
-            logger.info("Access token obtained successfully")
-            return data
+            # Instagram Login API returns: {"data": [{"access_token": "...", "user_id": "...", "permissions": "..."}]}
+            if "data" in data and len(data["data"]) > 0:
+                token_data = data["data"][0]
+                logger.info("Access token obtained successfully")
+                return {
+                    "access_token": token_data["access_token"],
+                    "user_id": token_data["user_id"],
+                    "permissions": token_data.get("permissions", "")
+                }
+            else:
+                logger.error("No access token in response")
+                raise HTTPException(status_code=400, detail="No access token in response")
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Token exchange request failed: {str(e)}")
