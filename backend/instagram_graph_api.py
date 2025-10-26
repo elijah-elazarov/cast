@@ -157,7 +157,17 @@ class InstagramGraphAPI:
                     detail="No Facebook Pages found. Please create a Facebook Page and connect it to your Instagram Business account."
                 )
             
+            # Check if any page has an Instagram Business account
+            pages_with_instagram = [page for page in data['data'] if page.get('instagram_business_account')]
+            if not pages_with_instagram:
+                logger.warning("No Facebook pages with Instagram Business accounts found")
+                raise HTTPException(
+                    status_code=404,
+                    detail="No Facebook Pages with Instagram Business accounts found. Please ensure your Instagram Business account is connected to a Facebook Page."
+                )
+            
             logger.info(f"Found {len(data['data'])} Facebook pages")
+            logger.info(f"Pages data: {data['data']}")
             return data
             
         except requests.exceptions.RequestException as e:
