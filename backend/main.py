@@ -1829,6 +1829,42 @@ def load_existing_sessions():
 load_existing_sessions()
 
 # Debug endpoints for production testing
+@app.get("/api/debug/sessions")
+async def debug_sessions():
+    """
+    Debug endpoint to check stored sessions
+    """
+    try:
+        # Load sessions from disk
+        graph_sessions = load_instagram_graph_sessions()
+        
+        # Mask sensitive data
+        safe_sessions = {}
+        for user_id, session in graph_sessions.items():
+            safe_sessions[user_id] = {
+                'username': session.get('username'),
+                'ig_user_id': session.get('ig_user_id'),
+                'page_id': session.get('page_id'),
+                'followers_count': session.get('followers_count'),
+                'media_count': session.get('media_count'),
+                'account_type': session.get('account_type'),
+                'has_access_token': bool(session.get('access_token')),
+                'access_token_preview': session.get('access_token', '')[:10] + '...' if session.get('access_token') else None
+            }
+        
+        return JSONResponse({
+            "success": True,
+            "message": f"Found {len(graph_sessions)} Instagram Graph sessions",
+            "sessions": safe_sessions
+        })
+    except Exception as e:
+        logger.error(f"Debug sessions error: {str(e)}")
+        return JSONResponse({
+            "success": False,
+            "error": "Failed to load sessions",
+            "details": str(e)
+        })
+
 @app.get("/api/debug/instagram/status")
 async def debug_instagram_status():
     """
