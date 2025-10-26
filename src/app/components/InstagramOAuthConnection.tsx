@@ -35,9 +35,15 @@ export default function InstagramOAuthConnection({ onConnect }: InstagramOAuthCo
     const error = urlParams.get('error');
     
     if (code) {
+      console.log('[Instagram OAuth] Detected callback with code, processing...');
       handleOAuthCallback(code);
     } else if (error) {
+      console.log('[Instagram OAuth] Detected OAuth error:', error);
       setError(`OAuth error: ${error}`);
+      setIsConnecting(false);
+    } else {
+      // No callback parameters, reset connecting state
+      setIsConnecting(false);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -118,6 +124,15 @@ export default function InstagramOAuthConnection({ onConnect }: InstagramOAuthCo
 
       if (data.success) {
         console.log('[Instagram OAuth] Redirecting to:', data.data.auth_url);
+        
+        // Set a timeout to reset connecting state if user doesn't return
+        setTimeout(() => {
+          if (isConnecting && !window.location.search.includes('code')) {
+            console.log('[Instagram OAuth] Timeout - resetting connecting state');
+            setIsConnecting(false);
+          }
+        }, 30000); // 30 second timeout
+        
         // Redirect to Instagram OAuth
         window.location.href = data.data.auth_url;
       } else {
@@ -153,6 +168,14 @@ export default function InstagramOAuthConnection({ onConnect }: InstagramOAuthCo
             <p className="text-sm text-gray-600 mt-1">
               {window.location.search.includes('code') ? 'Processing authentication...' : 'Redirecting to Instagram...'}
             </p>
+            {!window.location.search.includes('code') && (
+              <button
+                onClick={() => setIsConnecting(false)}
+                className="mt-3 text-sm text-gray-500 hover:text-gray-700 underline"
+              >
+                Cancel
+              </button>
+            )}
           </div>
         </div>
       </div>
