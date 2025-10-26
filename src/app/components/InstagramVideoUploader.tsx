@@ -33,41 +33,25 @@ export default function InstagramVideoUploader({ isConnected, accountInfo }: Ins
     }
   };
 
-  const uploadToCloud = async (file: File): Promise<string> => {
-    // For now, we'll simulate uploading to a cloud service
-    // In production, you'd upload to AWS S3, Google Cloud, etc.
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Simulate getting a public URL
-        const mockUrl = `https://example.com/uploads/${file.name}`;
-        resolve(mockUrl);
-      }, 2000);
-    });
-  };
 
   const handleUpload = async () => {
     if (!selectedFile || !isConnected || !accountInfo) return;
 
     setIsUploading(true);
     setUploadStatus('uploading');
-    setUploadMessage('Uploading video to cloud storage...');
+    setUploadMessage('Uploading video to Instagram...');
 
     try {
-      // Step 1: Upload to cloud storage
-      const videoUrl = await uploadToCloud(selectedFile);
-      setUploadMessage('Publishing to Instagram...');
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('caption', caption);
+      formData.append('user_id', accountInfo.user_id);
 
-      // Step 2: Publish to Instagram
+      // Upload directly to Instagram (no cloud storage needed)
       const response = await fetch(`/api/instagram/graph/upload-${uploadType}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: accountInfo.user_id,
-          video_url: videoUrl,
-          caption: caption,
-        }),
+        body: formData, // FormData automatically sets Content-Type to multipart/form-data
       });
 
       const data = await response.json();

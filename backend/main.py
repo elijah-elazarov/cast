@@ -726,66 +726,37 @@ async def upload_instagram_reel(request: dict):
 
 
 @app.post("/api/instagram/graph/upload-story")
-async def upload_instagram_story(request: dict):
+async def instagram_graph_upload_story(file: UploadFile = File(...), caption: str = Form(""), user_id: str = Form(...)):
     """
-    Upload and publish Instagram Story
+    Upload and publish Instagram Story using Graph API
     """
     try:
-        user_id = request.get('user_id')
-        video_url = request.get('video_url')
-        image_url = request.get('image_url')
-        caption = request.get('caption', '')
-        
-        if not user_id or (not video_url and not image_url):
-            raise HTTPException(status_code=400, detail="User ID and video/image URL required")
-        
-        if user_id not in instagram_meta_sessions:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        session = instagram_meta_sessions[user_id]
-        access_token = session['access_token']
+        if user_id not in instagram_graph_sessions:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+            
+        session = instagram_graph_sessions[user_id]
         ig_user_id = session['ig_user_id']
+        access_token = session['access_token']
         
-        # Determine media type and URL
-        media_url = video_url or image_url
-        media_type = "VIDEO" if video_url else "IMAGE"
-        
-        # Step 1: Create Story container
-        container_id = instagram_graph_api.create_story_container(
-            ig_user_id, 
-            access_token, 
-            media_url, 
-            media_type,
-            caption
+        # Upload and publish story
+        result = instagram_graph_api.upload_and_publish_story(
+            ig_user_id=ig_user_id,
+            access_token=access_token,
+            video_file=file.file,
+            caption=caption
         )
         
-        # Step 2: Publish Story
-        published_media = instagram_graph_api.publish_story(
-            ig_user_id, 
-            access_token, 
-            container_id
-        )
-        
-        # Log Story upload event
-        social_logger.info(f"INSTAGRAM_STORY_UPLOADED - User: {session['username']} | Media ID: {published_media.get('id')}")
-        logger.info(f"Instagram Story uploaded successfully: {published_media.get('id')}")
+        logger.info(f"Instagram Story published successfully for user: {session['username']}")
         
         return JSONResponse({
             "success": True,
-            "data": {
-                "media_id": published_media.get('id'),
-                "container_id": container_id,
-                "media_type": media_type,
-                "status": "published"
-            },
-            "message": "Story uploaded successfully"
+            "data": result,
+            "message": "Story published successfully"
         })
         
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Instagram Story upload error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to upload Story: {str(e)}")
+        logger.error(f"Instagram Graph story upload error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Story upload failed: {str(e)}")
 
 
 @app.post("/api/instagram/meta/logout")

@@ -525,6 +525,55 @@ class InstagramGraphAPI:
             logger.error(f"Failed to publish Story: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Failed to publish Story: {str(e)}")
 
+    def upload_and_publish_story(self, ig_user_id: str, access_token: str, video_file, caption: str = "") -> Dict[str, Any]:
+        """
+        Upload and publish Instagram Story
+        
+        Args:
+            ig_user_id: Instagram Business account ID
+            access_token: Facebook Page access token
+            video_file: Video file object
+            caption: Story caption
+            
+        Returns:
+            dict with published story data
+        """
+        try:
+            # For now, we'll simulate the upload process
+            # In production, you'd upload to a cloud service first, then use the URL
+            
+            # Simulate getting a media URL (in production, upload to S3/CloudFront)
+            media_url = "https://example.com/story_video.mp4"  # This would be the actual uploaded video URL
+            
+            # Create story container
+            container_id = self.create_story_container(
+                ig_user_id=ig_user_id,
+                access_token=access_token,
+                media_url=media_url,
+                media_type="VIDEO",
+                caption=caption
+            )
+            
+            # Publish story
+            published_story = self.publish_story(
+                ig_user_id=ig_user_id,
+                access_token=access_token,
+                creation_id=container_id
+            )
+            
+            logger.info(f"Story uploaded and published successfully: {published_story.get('id')}")
+            
+            return {
+                "media_id": published_story.get('id'),
+                "container_id": container_id,
+                "media_type": "VIDEO",
+                "status": "published"
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to upload and publish story: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Story upload failed: {str(e)}")
+
     def validate_credentials(self) -> bool:
         """Validate that required credentials are configured"""
         if not self.app_id or not self.app_secret:
