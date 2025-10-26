@@ -14,7 +14,7 @@ class InstagramPlatformAPI:
     def __init__(self):
         self.app_id = os.getenv('FACEBOOK_APP_ID')
         self.app_secret = os.getenv('FACEBOOK_APP_SECRET')
-        self.redirect_uri = os.getenv('INSTAGRAM_PLATFORM_REDIRECT_URI') or os.getenv('INSTAGRAM_REDIRECT_URI')
+        self.redirect_uri = os.getenv('INSTAGRAM_REDIRECT_URI')
         
         if not all([self.app_id, self.app_secret, self.redirect_uri]):
             raise ValueError("Missing required Instagram Platform API credentials")
