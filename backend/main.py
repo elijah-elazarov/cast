@@ -617,6 +617,7 @@ async def get_instagram_basic_user_info(request: Request):
         
         session = instagram_meta_sessions[user_id]
         access_token = session['access_token']
+        ig_user_id = session['ig_user_id']
         
         user_info = instagram_graph_api.get_instagram_user_info(ig_user_id, access_token)
         
