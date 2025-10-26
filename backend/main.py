@@ -669,61 +669,6 @@ async def get_instagram_basic_media(request: Request):
         raise HTTPException(status_code=500, detail=f"Failed to get media: {str(e)}")
 
 
-@app.post("/api/instagram/graph/upload-reel")
-async def upload_instagram_reel(request: dict):
-    """
-    Upload and publish Instagram Reel
-    """
-    try:
-        user_id = request.get('user_id')
-        video_url = request.get('video_url')
-        caption = request.get('caption', '')
-        
-        if not user_id or not video_url:
-            raise HTTPException(status_code=400, detail="User ID and video URL required")
-        
-        if user_id not in instagram_meta_sessions:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        session = instagram_meta_sessions[user_id]
-        access_token = session['access_token']
-        ig_user_id = session['ig_user_id']
-        
-        # Step 1: Create Reel container
-        container_id = instagram_graph_api.create_reel_container(
-            ig_user_id, 
-            access_token, 
-            video_url, 
-            caption
-        )
-        
-        # Step 2: Publish Reel
-        published_media = instagram_graph_api.publish_reel(
-            ig_user_id, 
-            access_token, 
-            container_id
-        )
-        
-        # Log Reel upload event
-        social_logger.info(f"INSTAGRAM_REEL_UPLOADED - User: {session['username']} | Media ID: {published_media.get('id')}")
-        logger.info(f"Instagram Reel uploaded successfully: {published_media.get('id')}")
-        
-        return JSONResponse({
-            "success": True,
-            "data": {
-                "media_id": published_media.get('id'),
-                "container_id": container_id,
-                "status": "published"
-            },
-            "message": "Reel uploaded successfully"
-        })
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Instagram Reel upload error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to upload Reel: {str(e)}")
-
 
 @app.post("/api/instagram/graph/upload-story")
 async def instagram_graph_upload_story(file: UploadFile = File(...), caption: str = Form(""), user_id: str = Form(...)):
@@ -742,7 +687,7 @@ async def instagram_graph_upload_story(file: UploadFile = File(...), caption: st
         result = instagram_graph_api.upload_and_publish_story(
             ig_user_id=ig_user_id,
             access_token=access_token,
-            video_file=file.file,
+            video_file=file,
             caption=caption
         )
         
@@ -1033,7 +978,7 @@ async def instagram_graph_upload_reel(file: UploadFile = File(...), caption: str
         result = instagram_graph_api.upload_and_publish_reel(
             ig_user_id=ig_user_id,
             access_token=access_token,
-            video_file=file.file,
+            video_file=file,
             caption=caption
         )
         
