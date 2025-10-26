@@ -28,8 +28,21 @@ export default function InstagramVideoUploader({ isConnected, accountInfo }: Ins
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Validate file size immediately
+      if (file.size > 4 * 1024 * 1024) {
+        setUploadStatus('error');
+        setUploadMessage('File too large! Please use a video smaller than 4MB.');
+        setSelectedFile(null);
+        // Clear the input
+        if (event.target) {
+          event.target.value = '';
+        }
+        return;
+      }
+      
       setSelectedFile(file);
       setUploadStatus('idle');
+      setUploadMessage('');
     }
   };
 

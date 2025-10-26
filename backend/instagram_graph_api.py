@@ -8,10 +8,12 @@ import os
 import requests
 import logging
 import uuid
+import time
 import secrets
 from typing import Dict, Optional, Any
 from fastapi import HTTPException
 from urllib.parse import urlencode
+from file_upload_service import FileUploadService
 
 logger = logging.getLogger(__name__)
 
@@ -442,13 +444,26 @@ class InstagramGraphAPI:
             dict with published reel data
         """
         try:
-            # For now, we'll simulate the upload process
-            # In production, you'd upload to a cloud service first, then use the URL
+            logger.info(f"Processing Reel upload for user: {ig_user_id}")
+            logger.info(f"Caption: {caption}")
             
-            # Simulate getting a media URL (in production, upload to S3/CloudFront)
-            media_url = "https://example.com/reel_video.mp4"  # This would be the actual uploaded video URL
+            # Step 1: Upload video file to cloud storage
+            file_upload_service = FileUploadService()
             
-            # Create reel container
+            # Read file content
+            video_file.seek(0)  # Reset file pointer
+            file_content = video_file.read()
+            
+            # Upload to cloud storage and get public URL
+            media_url = file_upload_service.upload_video(
+                file_content=file_content,
+                filename=f"reel_{ig_user_id}_{int(time.time())}.mp4",
+                content_type="video/mp4"
+            )
+            
+            logger.info(f"Video uploaded to cloud storage: {media_url}")
+            
+            # Step 2: Create Reel container using Instagram Graph API
             container_id = self.create_reel_container(
                 ig_user_id=ig_user_id,
                 access_token=access_token,
@@ -456,7 +471,7 @@ class InstagramGraphAPI:
                 caption=caption
             )
             
-            # Publish reel
+            # Step 3: Publish the Reel
             published_reel = self.publish_reel(
                 ig_user_id=ig_user_id,
                 access_token=access_token,
@@ -469,7 +484,9 @@ class InstagramGraphAPI:
                 "media_id": published_reel.get('id'),
                 "container_id": container_id,
                 "media_type": "REELS",
-                "status": "published"
+                "status": "published",
+                "message": "Reel published successfully",
+                "video_url": media_url
             }
             
         except Exception as e:
@@ -587,13 +604,26 @@ class InstagramGraphAPI:
             dict with published story data
         """
         try:
-            # For now, we'll simulate the upload process
-            # In production, you'd upload to a cloud service first, then use the URL
+            logger.info(f"Processing Story upload for user: {ig_user_id}")
+            logger.info(f"Caption: {caption}")
             
-            # Simulate getting a media URL (in production, upload to S3/CloudFront)
-            media_url = "https://example.com/story_video.mp4"  # This would be the actual uploaded video URL
+            # Step 1: Upload video file to cloud storage
+            file_upload_service = FileUploadService()
             
-            # Create story container
+            # Read file content
+            video_file.seek(0)  # Reset file pointer
+            file_content = video_file.read()
+            
+            # Upload to cloud storage and get public URL
+            media_url = file_upload_service.upload_video(
+                file_content=file_content,
+                filename=f"story_{ig_user_id}_{int(time.time())}.mp4",
+                content_type="video/mp4"
+            )
+            
+            logger.info(f"Video uploaded to cloud storage: {media_url}")
+            
+            # Step 2: Create Story container using Instagram Graph API
             container_id = self.create_story_container(
                 ig_user_id=ig_user_id,
                 access_token=access_token,
@@ -602,7 +632,7 @@ class InstagramGraphAPI:
                 caption=caption
             )
             
-            # Publish story
+            # Step 3: Publish the Story
             published_story = self.publish_story(
                 ig_user_id=ig_user_id,
                 access_token=access_token,
@@ -615,7 +645,9 @@ class InstagramGraphAPI:
                 "media_id": published_story.get('id'),
                 "container_id": container_id,
                 "media_type": "VIDEO",
-                "status": "published"
+                "status": "published",
+                "message": "Story published successfully",
+                "video_url": media_url
             }
             
         except Exception as e:
