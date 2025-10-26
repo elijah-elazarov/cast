@@ -100,6 +100,15 @@ class InstagramGraphAPI:
         logger.info(f"Code received: {code[:10]}...{code[-10:] if len(code) > 20 else code}")
         logger.info(f"Code length: {len(code)}")
         
+        # Validate code format
+        if not code or len(code) < 10:
+            logger.error(f"Invalid code format: too short ({len(code)} chars)")
+            raise HTTPException(status_code=400, detail="Invalid verification code format.")
+        
+        if not code.replace('-', '').replace('_', '').isalnum():
+            logger.error(f"Invalid code format: contains invalid characters")
+            raise HTTPException(status_code=400, detail="Invalid verification code format.")
+        
         try:
             response = requests.post(token_url, data=params, timeout=30)
             
@@ -244,7 +253,7 @@ class InstagramGraphAPI:
         """
         url = f"{self.graph_base}/{page_id}"
         params = {
-            "fields": "instagram_business_account{id,username,account_type}",
+            "fields": "instagram_business_account{id,username}",
             "access_token": page_access_token
         }
         
@@ -294,7 +303,7 @@ class InstagramGraphAPI:
         """
         url = f"{self.graph_base}/{ig_user_id}"
         params = {
-            "fields": "id,username,account_type,followers_count,media_count",
+            "fields": "id,username,followers_count,media_count",
             "access_token": access_token
         }
         

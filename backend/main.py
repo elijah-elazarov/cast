@@ -1003,7 +1003,7 @@ async def instagram_graph_login(request: dict):
             'page_id': page_id,
             'followers_count': ig_user_info.get('followers_count', 0),
             'media_count': ig_user_info.get('media_count', 0),
-            'account_type': ig_user_info.get('account_type', 'BUSINESS')
+            'account_type': 'BUSINESS'  # Graph API only works with business accounts
         }
         
         logger.info(f"Instagram Graph login successful for user: {ig_user_info.get('username')}")
@@ -1815,7 +1815,7 @@ async def instagram_platform_login(request: dict):
                 "access_token": long_lived_token,
                 "user_id": user_info.get("id"),
                 "username": user_info.get("username"),
-                "account_type": user_info.get("account_type", "BUSINESS"),
+                "account_type": "BUSINESS",  # Graph API only works with business accounts
                 "followers_count": 0,  # Not available in basic scope
                 "media_count": user_info.get("media_count", 0)
             }
