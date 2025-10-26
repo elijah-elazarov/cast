@@ -35,12 +35,10 @@ class InstagramGraphAPI:
         self.api_version = "v21.0"
         self.graph_base = f"https://graph.facebook.com/{self.api_version}"
         
-        # Required permissions for Instagram publishing
+        # Required permissions for Instagram publishing (Instagram Login API)
         self.scopes = [
-            "instagram_basic",
-            "instagram_content_publish", 
-            "pages_show_list",
-            "pages_read_engagement"
+            "instagram_business_basic",
+            "instagram_business_content_publish"
         ]
         
         # OAuth endpoints
@@ -158,22 +156,24 @@ class InstagramGraphAPI:
 
     def get_user_pages(self, access_token: str) -> Dict[str, Any]:
         """
-        Get Facebook pages associated with the user
+        Get Instagram Business accounts for the user (Instagram Login API)
+        Note: This API does not require Facebook Pages
         
         Args:
             access_token: User's access token
             
         Returns:
-            dict with pages data
+            dict with Instagram account data
         """
-        # Use standard Instagram Graph API endpoint
-        url = f"{self.graph_base}/me/accounts"
+        # With Instagram Login API, we directly get the Instagram account
+        # No need to go through Facebook Pages
+        url = f"{self.graph_base}/me"
         params = {
             "access_token": access_token,
-            "fields": "id,name,access_token,instagram_business_account"
+            "fields": "id,name,instagram_business_account"
         }
         
-        logger.info("Fetching user's Facebook pages")
+        logger.info("Fetching user's Instagram Business account (Instagram Login API)")
         logger.info(f"Request URL: {url}")
         logger.info(f"Request params: {params}")
         
@@ -182,8 +182,8 @@ class InstagramGraphAPI:
             
             if response.status_code != 200:
                 error_data = response.json() if response.text else {}
-                error_msg = error_data.get('error', {}).get('message', 'Failed to get pages')
-                logger.error(f"Failed to get pages: {error_msg}")
+                error_msg = error_data.get('error', {}).get('message', 'Failed to get Instagram account')
+                logger.error(f"Failed to get Instagram account: {error_msg}")
                 raise HTTPException(status_code=400, detail=error_msg)
             
             data = response.json()
@@ -191,60 +191,59 @@ class InstagramGraphAPI:
             logger.info(f"Response data: {data}")
             
             if "error" in data:
-                error_msg = data['error'].get('message', 'Failed to get pages')
-                logger.error(f"Error getting pages: {error_msg}")
+                error_msg = data['error'].get('message', 'Failed to get Instagram account')
+                logger.error(f"Error getting Instagram account: {error_msg}")
                 raise HTTPException(status_code=400, detail=error_msg)
             
-            if 'data' not in data or len(data['data']) == 0:
-                logger.warning("No Facebook pages found for user")
+            # Check if user has an Instagram Business account
+            if not data.get('instagram_business_account'):
+                logger.warning("No Instagram Business account found for user")
                 raise HTTPException(
                     status_code=404,
-                    detail="No Facebook Pages found. Please create a Facebook Page and connect it to your Instagram Business account."
+                    detail="No Instagram Business account found. Please ensure your Instagram account is a Business or Creator account."
                 )
             
-            # Check if any page has an Instagram Business account
-            pages_with_instagram = [page for page in data['data'] if page.get('instagram_business_account')]
-            if not pages_with_instagram:
-                logger.warning("No Facebook pages with Instagram Business accounts found")
-                raise HTTPException(
-                    status_code=404,
-                    detail="No Facebook Pages with Instagram Business accounts found. Please ensure your Instagram Business account is connected to a Facebook Page."
-                )
+            # Return in the same format as before for compatibility
+            instagram_account = data['instagram_business_account']
+            result = {
+                "data": [{
+                    "id": data.get('id'),
+                    "name": data.get('name'),
+                    "access_token": access_token,  # Use the same access token
+                    "instagram_business_account": instagram_account
+                }]
+            }
             
-            logger.info(f"Found {len(data['data'])} Facebook pages")
-            logger.info(f"Pages data: {data['data']}")
+            logger.info(f"Found Instagram Business account: {instagram_account.get('id', 'Unknown')}")
+            logger.info(f"Instagram account data: {instagram_account}")
             
-            # Log each page's Instagram connection status
-            for i, page in enumerate(data['data']):
-                logger.info(f"Page {i+1}: {page.get('name', 'Unknown')} (ID: {page.get('id', 'Unknown')})")
-                logger.info(f"  - Has Instagram Business Account: {bool(page.get('instagram_business_account'))}")
-                if page.get('instagram_business_account'):
-                    logger.info(f"  - Instagram Account ID: {page['instagram_business_account'].get('id', 'Unknown')}")
-            
-            return data
+            return result
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to get pages: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Failed to get pages: {str(e)}")
+            logger.error(f"Failed to get Instagram account: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to get Instagram account: {str(e)}")
 
     def get_instagram_account_from_page(self, page_id: str, page_access_token: str) -> Dict[str, Any]:
         """
-        Get Instagram Business account connected to Facebook page
+        Get Instagram Business account (Instagram Login API)
+        Note: With Instagram Login API, we don't need Facebook Pages
         
         Args:
-            page_id: Facebook page ID
-            page_access_token: Page access token
+            page_id: User ID (not page ID in this case)
+            page_access_token: User access token
             
         Returns:
             dict with Instagram account data
         """
-        url = f"{self.graph_base}/{page_id}"
+        # With Instagram Login API, we directly get the Instagram account
+        # The page_id is actually the user ID, and page_access_token is the user access token
+        url = f"{self.graph_base}/me"
         params = {
             "fields": "instagram_business_account{id,username,account_type}",
             "access_token": page_access_token
         }
         
-        logger.info(f"Fetching Instagram account for page: {page_id}")
+        logger.info(f"Fetching Instagram account for user: {page_id}")
         
         try:
             response = requests.get(url, params=params, timeout=30)
@@ -263,10 +262,10 @@ class InstagramGraphAPI:
                 raise HTTPException(status_code=400, detail=error_msg)
             
             if 'instagram_business_account' not in data:
-                logger.warning(f"No Instagram account connected to page: {page_id}")
+                logger.warning(f"No Instagram account found for user: {page_id}")
                 raise HTTPException(
                     status_code=404,
-                    detail="No Instagram Business account connected to this Facebook Page. Please connect your Instagram account in Facebook Page settings."
+                    detail="No Instagram Business account found. Please ensure your Instagram account is a Business or Creator account."
                 )
             
             instagram_account = data['instagram_business_account']
