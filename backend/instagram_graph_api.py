@@ -204,7 +204,7 @@ class InstagramGraphAPI:
                 logger.warning("No Facebook Pages found for user")
                 raise HTTPException(
                     status_code=404,
-                    detail="No Facebook Pages found. Please ensure you have a Facebook Page connected to your Instagram Business account."
+                    detail="No Facebook Pages found. Please ensure you have a Facebook Page and that your Instagram Business account is connected to it."
                 )
             
             # Filter pages that have Instagram Business accounts
@@ -215,9 +215,10 @@ class InstagramGraphAPI:
             
             if not pages_with_instagram:
                 logger.warning("No Facebook Pages with Instagram Business accounts found")
+                logger.info(f"Available pages: {[page.get('name', 'Unknown') for page in data['data']]}")
                 raise HTTPException(
                     status_code=404,
-                    detail="No Facebook Pages with Instagram Business accounts found. Please ensure your Instagram account is a Business or Creator account and is connected to a Facebook Page."
+                    detail="No Facebook Pages with Instagram Business accounts found. Please ensure: 1) Your Instagram account is Business or Creator type, 2) It's connected to a Facebook Page, 3) You're logged in as the Page admin."
                 )
             
             logger.info(f"Found {len(pages_with_instagram)} Facebook Pages with Instagram Business accounts")
