@@ -553,7 +553,11 @@ async def instagram_graph_login(request: dict):
         token_data = instagram_graph_api.exchange_code_for_token(code)
         access_token = token_data['access_token']
         
-        # Step 2: Get user's Facebook Pages
+        # Step 2: Validate access token and get user info
+        user_info = instagram_graph_api.get_user_info(access_token)
+        logger.info(f"User authenticated: {user_info.get('name', 'Unknown')} (ID: {user_info.get('id', 'Unknown')})")
+        
+        # Step 3: Get user's Facebook Pages
         pages_data = instagram_graph_api.get_user_pages(access_token)
         
         # Get first page (could be extended to let user select from multiple pages)
