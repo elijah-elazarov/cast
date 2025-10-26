@@ -37,6 +37,13 @@ export default function InstagramVideoUploader({ isConnected, accountInfo }: Ins
   const handleUpload = async () => {
     if (!selectedFile || !isConnected || !accountInfo) return;
 
+    // Check file size before upload
+    if (selectedFile.size > 4 * 1024 * 1024) {
+      setUploadStatus('error');
+      setUploadMessage('File too large! Please use a video smaller than 4MB.');
+      return;
+    }
+
     setIsUploading(true);
     setUploadStatus('uploading');
     setUploadMessage('Uploading video to Instagram...');
@@ -147,6 +154,9 @@ export default function InstagramVideoUploader({ isConnected, accountInfo }: Ins
               </span>
             </label>
           </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Maximum file size: 4MB (MP4 or MOV format)
+          </p>
         </div>
 
         {/* Caption */}

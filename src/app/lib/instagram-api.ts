@@ -15,9 +15,9 @@ export class InstagramAPI {
       errors.push('File must be a video');
     }
 
-    // Check file size (100MB max)
-    if (file.size > 100 * 1024 * 1024) {
-      errors.push('File size must be less than 100MB');
+    // Check file size (4MB max for Vercel compatibility)
+    if (file.size > 4 * 1024 * 1024) {
+      errors.push('File size must be less than 4MB (due to server limits)');
     }
 
     // Check file extension
