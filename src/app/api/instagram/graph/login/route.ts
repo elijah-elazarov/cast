@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com';
     
     const response = await fetch(`${backendUrl}/api/instagram/graph/login`, {
       method: 'POST',
