@@ -4,13 +4,32 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Check, X, AlertTriangle } from 'lucide-react';
 
+interface SessionInfo {
+  user_id: string;
+  username: string;
+  page_id: string;
+  has_access_token: boolean;
+  access_token_preview: string;
+  account_type: string;
+  followers: number;
+  media_count: number;
+}
+
+interface AuthInfo {
+  instagram_user_id: string;
+  page_id: string;
+  page_access_token_length: number;
+  session_stored: boolean;
+  total_active_sessions: number;
+}
+
 export default function InstagramCallbackPage() {
   const router = useRouter();
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
   const [message, setMessage] = useState('Processing Instagram authentication...');
   const [error, setError] = useState<string | null>(null);
-  const [sessionInfo, setSessionInfo] = useState<any>(null);
-  const [authInfo, setAuthInfo] = useState<any>(null);
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
+  const [authInfo, setAuthInfo] = useState<AuthInfo | null>(null);
 
   useEffect(() => {
     const handleCallback = async () => {
