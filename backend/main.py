@@ -1987,6 +1987,42 @@ async def debug_test_token(request: dict):
             "details": str(e)
         })
 
+@app.get("/api/debug/login-history")
+async def debug_login_history():
+    """
+    Debug endpoint to check recent login attempts and session creation
+    """
+    try:
+        # Get current session count
+        session_count = len(instagram_graph_sessions)
+        
+        # Get session details
+        sessions_detail = {}
+        for user_id, session in instagram_graph_sessions.items():
+            sessions_detail[user_id] = {
+                'username': session.get('username'),
+                'has_token': bool(session.get('access_token')),
+                'token_preview': session.get('access_token', '')[:20] + '...' if session.get('access_token') else None
+            }
+        
+        return JSONResponse({
+            "success": True,
+            "message": "Login history retrieved",
+            "data": {
+                "total_sessions": session_count,
+                "sessions": sessions_detail,
+                "session_keys": list(instagram_graph_sessions.keys()),
+                "note": "This shows current in-memory sessions. Sessions are lost on server restart."
+            }
+        })
+    except Exception as e:
+        logger.error(f"Debug login history error: {str(e)}")
+        return JSONResponse({
+            "success": False,
+            "error": "Failed to get login history",
+            "details": str(e)
+        })
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
