@@ -813,6 +813,7 @@ async def instagram_graph_login(request: dict):
             user_ig_data = instagram_graph_api.get_user_instagram_account(access_token)
             if user_ig_data and user_ig_data.get('instagram_business_account'):
                 ig_user_id = user_ig_data['instagram_business_account']['id']
+                page_access_token = access_token  # Use original token if no page token available
                 logger.info(f"Found Instagram account directly: {ig_user_id}")
             else:
                 logger.info("No direct Instagram account found with original token, trying long-lived token...")
@@ -820,6 +821,7 @@ async def instagram_graph_login(request: dict):
                     user_ig_data = instagram_graph_api.get_user_instagram_account(long_lived_token)
                     if user_ig_data and user_ig_data.get('instagram_business_account'):
                         ig_user_id = user_ig_data['instagram_business_account']['id']
+                        page_access_token = long_lived_token  # Use long-lived token if no page token available
                         logger.info(f"Found Instagram account with long-lived token: {ig_user_id}")
                     else:
                         logger.info("No direct Instagram account found, checking pages...")
