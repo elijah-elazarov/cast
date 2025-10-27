@@ -940,7 +940,11 @@ async def instagram_graph_login(request: dict):
         instagram_graph_sessions[ig_user_id] = session_data
         save_instagram_graph_session(ig_user_id, session_data)
         
+        # Debug logging
         logger.info(f"Instagram Graph login successful for user: {ig_user_info.get('username')}")
+        logger.info(f"[DEBUG] Stored session for user_id: {ig_user_id}")
+        logger.info(f"[DEBUG] Total sessions now: {len(instagram_graph_sessions)}")
+        logger.info(f"[DEBUG] Session keys: {list(instagram_graph_sessions.keys())}")
         
         # Return session and auth info for debugging
         return JSONResponse({
