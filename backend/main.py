@@ -1818,12 +1818,14 @@ async def debug_sessions():
     Debug endpoint to check stored sessions
     """
     try:
-        # Load sessions from disk
-        graph_sessions = load_instagram_graph_sessions()
+        # Get sessions from memory (not disk)
+        logger.info(f"[DEBUG] Checking instagram_graph_sessions in memory")
+        logger.info(f"[DEBUG] Total sessions in memory: {len(instagram_graph_sessions)}")
+        logger.info(f"[DEBUG] Session keys: {list(instagram_graph_sessions.keys())}")
         
         # Mask sensitive data
         safe_sessions = {}
-        for user_id, session in graph_sessions.items():
+        for user_id, session in instagram_graph_sessions.items():
             safe_sessions[user_id] = {
                 'username': session.get('username'),
                 'ig_user_id': session.get('ig_user_id'),
@@ -1837,11 +1839,34 @@ async def debug_sessions():
         
         return JSONResponse({
             "success": True,
-            "message": f"Found {len(graph_sessions)} Instagram Graph sessions",
+            "message": f"Found {len(instagram_graph_sessions)} Instagram Graph sessions in memory",
             "sessions": safe_sessions
         })
     except Exception as e:
         logger.error(f"Debug sessions error: {str(e)}")
+        return JSONResponse({
+            "success": False,
+            "error": "Failed to load sessions",
+            "details": str(e)
+        })
+
+@app.get("/api/debug/sessions/full")
+async def debug_sessions_full():
+    """
+    Debug endpoint to show full session data including access tokens
+    WARNING: This exposes sensitive data - use only for debugging
+    """
+    try:
+        logger.info(f"[DEBUG] Full session check - Total sessions: {len(instagram_graph_sessions)}")
+        
+        return JSONResponse({
+            "success": True,
+            "message": f"Found {len(instagram_graph_sessions)} Instagram Graph sessions in memory",
+            "sessions": instagram_graph_sessions,
+            "warning": "This endpoint exposes sensitive data - use only for debugging"
+        })
+    except Exception as e:
+        logger.error(f"Debug sessions full error: {str(e)}")
         return JSONResponse({
             "success": False,
             "error": "Failed to load sessions",
