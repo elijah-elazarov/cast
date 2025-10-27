@@ -13,6 +13,7 @@ import RealOAuthTest from './components/RealOAuthTest';
 import RealInstagramTest from './components/RealInstagramTest';
 import InstagramTestComponent from './components/InstagramTestComponent';
 import InstagramTestPopup from './components/InstagramTestPopup';
+import FreshInstagramAuth from './components/FreshInstagramAuth';
 // import SimpleInstagramAuth from './components/SimpleInstagramAuth';
 import { Suspense } from 'react';
 
@@ -37,6 +38,7 @@ export default function Home() {
   const [showInstagramStepByStep, setShowInstagramStepByStep] = useState(false);
   const [showDebugConsole, setShowDebugConsole] = useState(false);
   const [showInstagramPopup, setShowInstagramPopup] = useState(false);
+  const [showFreshInstagram, setShowFreshInstagram] = useState(false);
   const TOTAL_COUNTDOWN = 3;
 
   // Check localStorage on mount to initialize connected state
@@ -301,6 +303,13 @@ export default function Home() {
               <TestTube className="w-4 h-4" />
               Instagram Popup Test
             </button>
+            <button
+              onClick={() => setShowFreshInstagram(true)}
+              className="inline-flex items-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors text-sm"
+            >
+              <TestTube className="w-4 h-4" />
+              Fresh Instagram Component
+            </button>
           </div>
         </div>
 
@@ -421,6 +430,27 @@ export default function Home() {
 
         {showDebugConsole && (
           <DebugConsole onClose={() => setShowDebugConsole(false)} />
+        )}
+
+        {/* Fresh Instagram Component */}
+        {showFreshInstagram && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                🚀 Fresh Instagram Component
+              </h2>
+              <button
+                onClick={() => setShowFreshInstagram(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Brand new Instagram authentication component built from scratch using Facebook's manual OAuth flow.
+            </p>
+            <FreshInstagramAuth />
+          </div>
         )}
 
         {/* Video Upload Section */}
