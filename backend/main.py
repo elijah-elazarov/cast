@@ -942,6 +942,7 @@ async def instagram_graph_login(request: dict):
         
         logger.info(f"Instagram Graph login successful for user: {ig_user_info.get('username')}")
         
+        # Return session and auth info for debugging
         return JSONResponse({
             "success": True,
             "data": {
@@ -951,7 +952,24 @@ async def instagram_graph_login(request: dict):
                 "media_count": ig_user_info.get('media_count', 0),
                 "account_type": "BUSINESS"
             },
-            "message": "Successfully connected to Instagram"
+            "message": "Successfully connected to Instagram",
+            "session_info": {
+                "user_id": ig_user_id,
+                "username": ig_user_info.get('username'),
+                "page_id": page_id,
+                "has_access_token": bool(page_access_token),
+                "access_token_preview": f"{page_access_token[:20]}..." if page_access_token else None,
+                "account_type": "BUSINESS",
+                "followers": ig_user_info.get('followers_count', 0),
+                "media_count": ig_user_info.get('media_count', 0)
+            },
+            "auth_info": {
+                "instagram_user_id": ig_user_id,
+                "page_id": page_id,
+                "page_access_token_length": len(page_access_token) if page_access_token else 0,
+                "session_stored": ig_user_id in instagram_graph_sessions,
+                "total_active_sessions": len(instagram_graph_sessions)
+            }
         })
         
     except Exception as e:
