@@ -95,12 +95,17 @@ class InstagramGraphAPI:
             "client_id": self.app_id,
             "client_secret": self.app_secret,
             "redirect_uri": self.redirect_uri,
-            "code": code
+            "code": code,
+            "grant_type": "authorization_code"
         }
         
         logger.info("Exchanging code for access token")
         logger.info(f"Code received: {code[:10]}...{code[-10:] if len(code) > 20 else code}")
         logger.info(f"Code length: {len(code)}")
+        logger.info(f"Token endpoint: {token_url}")
+        logger.info(f"Redirect URI: {self.redirect_uri}")
+        logger.info(f"Client ID: {self.app_id}")
+        logger.info(f"Request params: {dict(params)}")
         
         # Validate code format
         if not code or len(code) < 10:
@@ -120,14 +125,18 @@ class InstagramGraphAPI:
             if response.status_code != 200:
                 error_data = response.json() if response.text else {}
                 error_msg = error_data.get('error', {}).get('message', 'Token exchange failed')
-                logger.error(f"Token exchange failed: {error_msg}")
-                raise HTTPException(status_code=400, detail=error_msg)
+                error_code = error_data.get('error', {}).get('code', 'unknown')
+                logger.error(f"Token exchange failed: {error_msg} (Code: {error_code})")
+                logger.error(f"Full error response: {error_data}")
+                raise HTTPException(status_code=400, detail=f"Token exchange failed: {error_msg}")
             
             data = response.json()
             
             if "error" in data:
                 error_msg = data['error'].get('message', 'Token exchange failed')
-                logger.error(f"Token exchange error: {error_msg}")
+                error_code = data['error'].get('code', 'unknown')
+                logger.error(f"Token exchange error in response: {error_msg} (Code: {error_code})")
+                logger.error(f"Full error data: {data['error']}")
                 raise HTTPException(status_code=400, detail=error_msg)
             
             logger.info("Access token obtained successfully")
