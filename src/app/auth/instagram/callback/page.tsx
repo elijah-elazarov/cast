@@ -87,6 +87,19 @@ export default function InstagramCallbackPage() {
           localStorage.setItem('instagram_username', data.data.username);
           localStorage.setItem('instagram_account_type', 'graph');
           
+          // Send success message to parent window if opened in popup
+          if (window.opener) {
+            window.opener.postMessage({
+              type: 'INSTAGRAM_AUTH_SUCCESS',
+              code: code,
+              data: data
+            }, window.location.origin);
+            // Close popup after sending message
+            setTimeout(() => {
+              window.close();
+            }, 1000);
+          }
+          
           // Don't auto-redirect - let user see confirmation and choose when to proceed
           // setTimeout(() => {
           //   router.push('/');
@@ -95,6 +108,14 @@ export default function InstagramCallbackPage() {
           setStatus('error');
           setError(data.detail || 'Failed to connect to Instagram');
           setMessage('Authentication failed');
+          
+          // Send error message to parent window if opened in popup
+          if (window.opener) {
+            window.opener.postMessage({
+              type: 'INSTAGRAM_AUTH_ERROR',
+              error: data.detail || 'Failed to connect to Instagram'
+            }, window.location.origin);
+          }
         }
       } catch (error) {
         console.error('Instagram callback error:', error);
