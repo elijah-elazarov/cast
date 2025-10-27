@@ -14,6 +14,7 @@ import RealInstagramTest from './components/RealInstagramTest';
 import InstagramTestComponent from './components/InstagramTestComponent';
 import InstagramTestPopup from './components/InstagramTestPopup';
 import FreshInstagramAuth from './components/FreshInstagramAuth';
+import EnhancedInstagramAuth from './components/EnhancedInstagramAuth';
 // import SimpleInstagramAuth from './components/SimpleInstagramAuth';
 import { Suspense } from 'react';
 
@@ -39,6 +40,7 @@ export default function Home() {
   const [showDebugConsole, setShowDebugConsole] = useState(false);
   const [showInstagramPopup, setShowInstagramPopup] = useState(false);
   const [showFreshInstagram, setShowFreshInstagram] = useState(false);
+  const [showEnhancedInstagram, setShowEnhancedInstagram] = useState(false);
   const TOTAL_COUNTDOWN = 3;
 
   // Check localStorage on mount to initialize connected state
@@ -310,6 +312,13 @@ export default function Home() {
               <TestTube className="w-4 h-4" />
               Fresh Instagram Component
             </button>
+            <button
+              onClick={() => setShowEnhancedInstagram(true)}
+              className="inline-flex items-center gap-2 bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 transition-colors text-sm"
+            >
+              <TestTube className="w-4 h-4" />
+              Enhanced Instagram (Facebook SDK)
+            </button>
           </div>
         </div>
 
@@ -432,6 +441,27 @@ export default function Home() {
           <DebugConsole onClose={() => setShowDebugConsole(false)} />
         )}
 
+        {/* Enhanced Instagram Component */}
+        {showEnhancedInstagram && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                🚀 Enhanced Instagram (Facebook SDK)
+              </h2>
+              <button
+                onClick={() => setShowEnhancedInstagram(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Using Facebook SDK for JavaScript with automatic token management and persistence.
+            </p>
+            <EnhancedInstagramAuth />
+          </div>
+        )}
+
         {/* Fresh Instagram Component */}
         {showFreshInstagram && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
@@ -475,6 +505,14 @@ export default function Home() {
             setShowWelcomeFlow(false);
             localStorage.setItem('has_seen_onboarding', 'true');
           }}
+        />
+      )}
+
+      {/* Instagram Test Popup */}
+      {showInstagramPopup && (
+        <InstagramTestPopup 
+          isOpen={showInstagramPopup} 
+          onClose={() => setShowInstagramPopup(false)} 
         />
       )}
     </div>
@@ -695,11 +733,6 @@ function DebugConsole({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      {/* Instagram Test Popup */}
-      <InstagramTestPopup 
-        isOpen={showInstagramPopup} 
-        onClose={() => setShowInstagramPopup(false)} 
-      />
     </div>
   );
 }
