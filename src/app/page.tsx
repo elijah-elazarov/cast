@@ -12,6 +12,7 @@ import ModernWelcomeFlow from './components/ModernWelcomeFlow';
 import RealOAuthTest from './components/RealOAuthTest';
 import RealInstagramTest from './components/RealInstagramTest';
 import InstagramTestComponent from './components/InstagramTestComponent';
+import InstagramTestPopup from './components/InstagramTestPopup';
 // import SimpleInstagramAuth from './components/SimpleInstagramAuth';
 import { Suspense } from 'react';
 
@@ -35,6 +36,7 @@ export default function Home() {
   const [showInstagramDebug, setShowInstagramDebug] = useState(false);
   const [showInstagramStepByStep, setShowInstagramStepByStep] = useState(false);
   const [showDebugConsole, setShowDebugConsole] = useState(false);
+  const [showInstagramPopup, setShowInstagramPopup] = useState(false);
   const TOTAL_COUNTDOWN = 3;
 
   // Check localStorage on mount to initialize connected state
@@ -291,6 +293,13 @@ export default function Home() {
             >
               <TestTube className="w-4 h-4" />
               Debug Console
+            </button>
+            <button
+              onClick={() => setShowInstagramPopup(true)}
+              className="inline-flex items-center gap-2 bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors text-sm"
+            >
+              <TestTube className="w-4 h-4" />
+              Instagram Popup Test
             </button>
           </div>
         </div>
@@ -655,6 +664,12 @@ function DebugConsole({ onClose }: { onClose: () => void }) {
           </ol>
         </div>
       </div>
+
+      {/* Instagram Test Popup */}
+      <InstagramTestPopup 
+        isOpen={showInstagramPopup} 
+        onClose={() => setShowInstagramPopup(false)} 
+      />
     </div>
   );
 }
