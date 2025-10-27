@@ -654,6 +654,84 @@ class InstagramGraphAPI:
             logger.error(f"Failed to upload and publish story: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Story upload failed: {str(e)}")
 
+    def get_long_lived_token(self, short_lived_token: str) -> str:
+        """
+        Exchange a short-lived access token for a long-lived token.
+
+        Args:
+            short_lived_token: Short-lived user access token returned from the OAuth code exchange step.
+
+        Returns:
+            A long-lived access token string.
+        """
+        url = f"{self.graph_base}/oauth/access_token"
+        params = {
+            "grant_type": "fb_exchange_token",
+            "client_id": self.app_id,
+            "client_secret": self.app_secret,
+            "fb_exchange_token": short_lived_token,
+        }
+
+        logger.info("Exchanging short-lived token for long-lived token")
+        try:
+            response = requests.get(url, params=params, timeout=30)
+            logger.info(f"Long-lived token response status: {response.status_code}")
+            logger.debug(f"Long-lived token response body: {response.text}")
+
+            if response.status_code != 200:
+                error_data = response.json() if response.text else {}
+                error_msg = error_data.get("error", {}).get("message", "Failed to get long-lived token")
+                raise HTTPException(status_code=400, detail=error_msg)
+
+            data: Dict[str, Any] = response.json()
+            if "error" in data:
+                error_msg = data["error"].get("message", "Failed to get long-lived token")
+                raise HTTPException(status_code=400, detail=error_msg)
+
+            long_lived_token = data.get("access_token")
+            if not long_lived_token:
+                raise HTTPException(status_code=400, detail="No long-lived token returned")
+
+            expires_in = data.get("expires_in", 0)
+            logger.info(f"Obtained long-lived token. Expires in {expires_in} seconds")
+            return long_lived_token
+        except requests.exceptions.RequestException as exc:
+            logger.error(f"Error exchanging long-lived token: {exc}")
+            raise HTTPException(status_code=500, detail=f"Failed to get long-lived token: {exc}")
+
+    def get_user_instagram_account(self, access_token: str) -> Dict[str, Any]:
+        """
+        Attempt to fetch the Instagram Business account directly from the user node.  
+        This works if the Facebook user account is the owner of exactly one Instagram Business account.
+        """
+        url = f"{self.graph_base}/me"
+        params = {
+            "fields": "instagram_business_account{id,username}",
+            "access_token": access_token,
+        }
+        logger.info("Fetching Instagram Business account directly from user profile")
+        try:
+            response = requests.get(url, params=params, timeout=30)
+            if response.status_code != 200:
+                error_data = response.json() if response.text else {}
+                error_msg = error_data.get("error", {}).get("message", "Failed to get Instagram account")
+                raise HTTPException(status_code=400, detail=error_msg)
+
+            data: Dict[str, Any] = response.json()
+            if "error" in data:
+                error_msg = data["error"].get("message", "Failed to get Instagram account")
+                raise HTTPException(status_code=400, detail=error_msg)
+
+            return data
+        except requests.exceptions.RequestException as exc:
+            logger.error(f"Error fetching Instagram account from user: {exc}")
+            raise HTTPException(status_code=500, detail=f"Failed to get Instagram account: {exc}")
+
+    # Backwards-compatibility helper. main.py expects get_instagram_account(...)
+    def get_instagram_account(self, page_id: str, page_access_token: str) -> Dict[str, Any]:
+        """Wrapper around get_instagram_account_from_page for legacy usage."""
+        return self.get_instagram_account_from_page(page_id, page_access_token)
+
     def validate_credentials(self) -> bool:
         """Validate that required credentials are configured"""
         if not self.app_id or not self.app_secret:
