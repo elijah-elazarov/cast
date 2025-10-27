@@ -552,73 +552,7 @@ async def instagram_meta_oauth_callback(code: str = None, state: str = None, err
         return RedirectResponse(url=f"{frontend_url}/?instagram_error=callback_failed")
 
 
-@app.post("/api/instagram/graph/login")
-async def instagram_graph_login(request: dict):
-    """
-    Exchange authorization code for Instagram Graph API access token
-    Uses Instagram Graph API for posting capabilities (Reels, Stories, Posts)
-    """
-    try:
-        code = request.get('code')
-        if not code:
-            raise HTTPException(status_code=400, detail="Authorization code required")
-        
-        # Step 1: Exchange code for access token
-        token_data = instagram_graph_api.exchange_code_for_token(code)
-        access_token = token_data['access_token']
-        
-        # Step 2: Validate access token and get user info
-        user_info = instagram_graph_api.get_user_info(access_token)
-        logger.info(f"User authenticated: {user_info.get('name', 'Unknown')} (ID: {user_info.get('id', 'Unknown')})")
-        
-        # Step 3: Get user's Facebook Pages
-        pages_data = instagram_graph_api.get_user_pages(access_token)
-        
-        # Get first page (could be extended to let user select from multiple pages)
-        page = pages_data['data'][0]
-        page_id = page['id']
-        page_access_token = page['access_token']
-        
-        # Step 3: Get Instagram Business Account from Page
-        instagram_account = instagram_graph_api.get_instagram_account_from_page(page_id, page_access_token)
-        ig_user_id = instagram_account['id']
-        
-        # Step 4: Get detailed Instagram account info
-        ig_info = instagram_graph_api.get_instagram_user_info(ig_user_id, page_access_token)
-        
-        # Store session
-        instagram_meta_sessions[ig_user_id] = {
-            'access_token': page_access_token,
-            'ig_user_id': ig_user_id,
-            'username': ig_info.get('username'),
-            'page_id': page_id,
-            'followers_count': ig_info.get('followers_count', 0),
-            'media_count': ig_info.get('media_count', 0)
-        }
-        
-        # Log Instagram Graph connection event
-        social_logger.info(f"INSTAGRAM_GRAPH_CONNECTED - User: {ig_info.get('username')} | ID: {ig_user_id} | Followers: {ig_info.get('followers_count', 0)}")
-        logger.info(f"Instagram Graph login successful for user: {ig_user_id}")
-        
-        return JSONResponse({
-            "success": True,
-            "data": {
-                "user_id": ig_user_id,
-                "username": ig_info.get('username'),
-                "followers_count": ig_info.get('followers_count', 0),
-                "media_count": ig_info.get('media_count', 0),
-                "profile_picture_url": ig_info.get('profile_picture_url'),
-                "account_type": "business"  # Graph API only works with business accounts
-            },
-            "message": "Successfully connected to Instagram"
-        })
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Instagram Graph login error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
-
+# Old duplicate endpoint removed - using the one at line 764 instead
 
 @app.get("/api/instagram/basic/user-info")
 async def get_instagram_basic_user_info(request: Request):
