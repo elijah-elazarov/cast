@@ -87,10 +87,10 @@ export default function InstagramCallbackPage() {
           localStorage.setItem('instagram_username', data.data.username);
           localStorage.setItem('instagram_account_type', 'graph');
           
-          // Redirect to main page after a short delay
-          setTimeout(() => {
-            router.push('/');
-          }, 5000); // Increased delay to show debug info
+          // Don't auto-redirect - let user see confirmation and choose when to proceed
+          // setTimeout(() => {
+          //   router.push('/');
+          // }, 5000); // Increased delay to show debug info
         } else {
           setStatus('error');
           setError(data.detail || 'Failed to connect to Instagram');
@@ -156,7 +156,23 @@ export default function InstagramCallbackPage() {
               </div>
             )}
             
-            <p className="text-sm text-gray-500">Redirecting you back to the app...</p>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-500">✅ Instagram authentication completed successfully!</p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => router.push('/')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+                >
+                  Continue to App
+                </button>
+                <button
+                  onClick={() => window.open('https://backrooms-e8nm.onrender.com/api/debug/sessions', '_blank')}
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+                >
+                  Check Sessions
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
