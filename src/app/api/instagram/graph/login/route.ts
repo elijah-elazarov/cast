@@ -31,6 +31,11 @@ export async function POST(request: NextRequest) {
     // Log the full response for debugging
     console.log('[API PROXY] Backend response:', JSON.stringify(data, null, 2));
     
+    // Check if session_info is missing
+    if (!data.session_info) {
+      console.error('[API PROXY] WARNING: Backend response missing session_info!');
+    }
+    
     return NextResponse.json(data);
   } catch (error) {
     console.error('Instagram Graph login error:', error);
