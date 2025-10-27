@@ -9,6 +9,8 @@ export default function InstagramCallbackPage() {
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
   const [message, setMessage] = useState('Processing Instagram authentication...');
   const [error, setError] = useState<string | null>(null);
+  const [sessionInfo, setSessionInfo] = useState<any>(null);
+  const [authInfo, setAuthInfo] = useState<any>(null);
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -49,6 +51,16 @@ export default function InstagramCallbackPage() {
           setStatus('success');
           setMessage('Successfully connected to Instagram!');
           
+          // Store session and auth info for display
+          if (data.session_info) {
+            setSessionInfo(data.session_info);
+            console.log('Session Info:', data.session_info);
+          }
+          if (data.auth_info) {
+            setAuthInfo(data.auth_info);
+            console.log('Auth Info:', data.auth_info);
+          }
+          
           // Store account info
           localStorage.setItem('instagram_account_info', JSON.stringify(data.data));
           localStorage.setItem('instagram_username', data.data.username);
@@ -57,7 +69,7 @@ export default function InstagramCallbackPage() {
           // Redirect to main page after a short delay
           setTimeout(() => {
             router.push('/');
-          }, 2000);
+          }, 5000); // Increased delay to show debug info
         } else {
           setStatus('error');
           setError(data.detail || 'Failed to connect to Instagram');
@@ -92,6 +104,37 @@ export default function InstagramCallbackPage() {
             </div>
             <h2 className="text-xl font-semibold text-gray-900">Success!</h2>
             <p className="text-gray-600">{message}</p>
+            
+            {/* Session Info */}
+            {sessionInfo && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-md text-left mt-4">
+                <h3 className="font-semibold text-blue-900 mb-2">Session Info:</h3>
+                <div className="text-sm space-y-1">
+                  <p><span className="font-medium">Username:</span> {sessionInfo.username}</p>
+                  <p><span className="font-medium">User ID:</span> {sessionInfo.user_id}</p>
+                  <p><span className="font-medium">Page ID:</span> {sessionInfo.page_id}</p>
+                  <p><span className="font-medium">Followers:</span> {sessionInfo.followers}</p>
+                  <p><span className="font-medium">Media Count:</span> {sessionInfo.media_count}</p>
+                  <p><span className="font-medium">Has Token:</span> {sessionInfo.has_access_token ? 'Yes ✓' : 'No ✗'}</p>
+                  {sessionInfo.access_token_preview && (
+                    <p><span className="font-medium">Token:</span> {sessionInfo.access_token_preview}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Auth Info */}
+            {authInfo && (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-md text-left">
+                <h3 className="font-semibold text-green-900 mb-2">Auth Info:</h3>
+                <div className="text-sm space-y-1">
+                  <p><span className="font-medium">Session Stored:</span> {authInfo.session_stored ? 'Yes ✓' : 'No ✗'}</p>
+                  <p><span className="font-medium">Total Sessions:</span> {authInfo.total_active_sessions}</p>
+                  <p><span className="font-medium">Token Length:</span> {authInfo.page_access_token_length} chars</p>
+                </div>
+              </div>
+            )}
+            
             <p className="text-sm text-gray-500">Redirecting you back to the app...</p>
           </div>
         )}
