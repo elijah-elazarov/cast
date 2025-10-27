@@ -65,6 +65,8 @@ export default function InstagramCallbackPage() {
         });
 
         const data = await response.json();
+        
+        console.log('[CALLBACK] Full response:', data);
 
         if (data.success) {
           setStatus('success');

@@ -27,6 +27,10 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
+    
+    // Log the full response for debugging
+    console.log('[API PROXY] Backend response:', JSON.stringify(data, null, 2));
+    
     return NextResponse.json(data);
   } catch (error) {
     console.error('Instagram Graph login error:', error);
