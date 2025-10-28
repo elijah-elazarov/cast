@@ -40,10 +40,18 @@ const INSTAGRAM_CONFIG = {
   apiVersion: 'v21.0'
 };
 
+// Facebook SDK interfaces
+interface FacebookSDK {
+  init: (config: { appId: string; cookie: boolean; xfbml: boolean; version: string }) => void;
+  getLoginStatus: (callback: (response: FacebookLoginResponse) => void) => void;
+  login: (callback: (response: FacebookLoginResponse) => void, options: { scope: string; return_scopes: boolean }) => void;
+  logout: (callback: () => void) => void;
+}
+
 // Extend Window interface for Facebook SDK
 declare global {
   interface Window {
-    FB: any;
+    FB: FacebookSDK;
     fbAsyncInit: () => void;
   }
 }
@@ -464,7 +472,7 @@ export default function InstagramReelsDebugger() {
         <h3 className="text-lg font-semibold mb-3">Debug Logs</h3>
         <div className="bg-black text-green-400 p-4 rounded-lg font-mono text-sm max-h-96 overflow-y-auto">
           {debugLogs.length === 0 ? (
-            <div className="text-gray-500">No logs yet. Click "Connect Instagram" to start debugging.</div>
+            <div className="text-gray-500">No logs yet. Click &quot;Connect Instagram&quot; to start debugging.</div>
           ) : (
             debugLogs.map((log, index) => (
               <div key={index} className="mb-1">{log}</div>
