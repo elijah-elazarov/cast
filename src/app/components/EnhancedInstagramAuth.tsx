@@ -171,7 +171,7 @@ const EnhancedInstagramAuth: React.FC = () => {
 
       const data = await response.json();
       console.log('[ENHANCED AUTH] Long-lived token successful:', data);
-      return data.access_token;
+      return data.data.access_token;
     } catch (error) {
       console.error('[ENHANCED AUTH] Long-lived token error:', error);
       throw error;
