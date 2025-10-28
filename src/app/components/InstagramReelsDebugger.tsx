@@ -447,7 +447,7 @@ export default function InstagramReelsDebugger() {
             
             // Process video through backend with timeout
             const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Video processing timeout')), 10000)
+              setTimeout(() => reject(new Error('Video processing timeout')), 60000)
             );
             
             Promise.race([
@@ -703,7 +703,7 @@ export default function InstagramReelsDebugger() {
             
             // Process video through backend for Stories with timeout
             const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Video processing timeout')), 10000)
+              setTimeout(() => reject(new Error('Video processing timeout')), 60000)
             );
             
             Promise.race([

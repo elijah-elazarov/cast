@@ -119,7 +119,7 @@ async def process_video_for_reels(request: Request):
                 'ffmpeg', '-i', input_path,
                 '-vf', f'scale={target_width}:{target_height}:force_original_aspect_ratio=increase,crop={target_width}:{target_height}:(iw-{target_width})/2:(ih-{target_height})/2' if center_crop else f'scale={target_width}:{target_height}:force_original_aspect_ratio=increase,crop={target_width}:{target_height}',
                 '-c:v', 'libx264',
-                '-preset', 'medium',
+                '-preset', 'veryfast',
                 '-profile:v', 'high',
                 '-level', '4.0',
                 '-pix_fmt', 'yuv420p',  # 4:2:0 chroma subsampling
