@@ -393,6 +393,10 @@ export default function InstagramReelsDebugger() {
             addLog('✅ Instagram content publish permission granted');
             addLog('✅ Reels posting capability confirmed!');
             addLog('Your account can post Reels!');
+            
+            // Test 3: Try actual Reels posting with demo video
+            addLog('Testing actual Reels posting with demo video...');
+            await testActualReelsPosting();
           } else {
             addLog('❌ Instagram content publish permission not granted');
           }
@@ -405,6 +409,114 @@ export default function InstagramReelsDebugger() {
       }
     } catch (error) {
       addLog(`Reels capability test error: ${error}`);
+    }
+  };
+
+  // Test actual Reels posting with demo video
+  const testActualReelsPosting = async () => {
+    try {
+      // Step 1: Upload video to backend and get public URL
+      addLog('Step 1: Uploading demo video to backend...');
+      
+      const formData = new FormData();
+      formData.append('file', new File([''], 'demo.mp4', { type: 'video/mp4' }));
+      
+      // For testing, we'll use a direct URL to the demo video
+      const demoVideoUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com'}/static/demo.mp4`;
+      addLog(`Using demo video URL: ${demoVideoUrl}`);
+      
+      // Step 2: Create media container
+      addLog('Step 2: Creating media container...');
+      const containerUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}/media`;
+      const containerData = {
+        video_url: demoVideoUrl,
+        caption: '🎬 Test Reel from Instagram Reels Debugger - Posted via API! #test #reels #api',
+        access_token: authState.longLivedToken
+      };
+
+      const containerResponse = await fetch(containerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(containerData)
+      });
+
+      if (containerResponse.ok) {
+        const containerResult = await containerResponse.json();
+        const containerId = containerResult.id;
+        addLog(`✅ Media container created: ${containerId}`);
+        
+        // Step 3: Check container status
+        addLog('Step 3: Checking container status...');
+        await checkContainerStatus(containerId);
+        
+      } else {
+        const errorData = await containerResponse.json();
+        addLog(`❌ Container creation failed: ${JSON.stringify(errorData)}`);
+      }
+      
+    } catch (error) {
+      addLog(`❌ Reels posting test error: ${error}`);
+    }
+  };
+
+  // Check container status and publish if ready
+  const checkContainerStatus = async (containerId: string) => {
+    try {
+      const statusUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${containerId}`;
+      const statusParams = new URLSearchParams({
+        fields: 'status_code',
+        access_token: authState.longLivedToken!
+      });
+
+      const statusResponse = await fetch(`${statusUrl}?${statusParams.toString()}`);
+      
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        addLog(`Container status: ${statusData.status_code}`);
+        
+        if (statusData.status_code === 'FINISHED') {
+          addLog('✅ Container processing finished! Publishing Reel...');
+          await publishReel(containerId);
+        } else if (statusData.status_code === 'IN_PROGRESS') {
+          addLog('⏳ Container still processing, checking again in 5 seconds...');
+          setTimeout(() => checkContainerStatus(containerId), 5000);
+        } else {
+          addLog(`❌ Container failed with status: ${statusData.status_code}`);
+        }
+      } else {
+        const errorData = await statusResponse.json();
+        addLog(`❌ Status check failed: ${JSON.stringify(errorData)}`);
+      }
+    } catch (error) {
+      addLog(`❌ Status check error: ${error}`);
+    }
+  };
+
+  // Publish the Reel
+  const publishReel = async (containerId: string) => {
+    try {
+      const publishUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}/media_publish`;
+      const publishData = {
+        creation_id: containerId,
+        access_token: authState.longLivedToken!
+      };
+
+      const publishResponse = await fetch(publishUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(publishData)
+      });
+
+      if (publishResponse.ok) {
+        const publishResult = await publishResponse.json();
+        addLog(`🎉 SUCCESS! Reel published with ID: ${publishResult.id}`);
+        addLog('✅ Your Instagram Reel has been posted successfully!');
+      } else {
+        const errorData = await publishResponse.json();
+        addLog(`❌ Publishing failed: ${JSON.stringify(errorData)}`);
+      }
+    } catch (error) {
+      addLog(`❌ Publishing error: ${error}`);
     }
   };
 
