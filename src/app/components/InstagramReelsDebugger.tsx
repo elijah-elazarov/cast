@@ -533,23 +533,23 @@ export default function InstagramReelsDebugger() {
 
       {/* Status Section */}
       <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-        <h3 className="text-lg font-semibold mb-3">Authentication Status</h3>
+        <h3 className="text-lg font-semibold mb-3 text-gray-800">Authentication Status</h3>
         <div className="grid grid-cols-2 gap-4">
           <div className="flex items-center">
             <div className={`w-3 h-3 rounded-full mr-2 ${sdkLoaded ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <span>Facebook SDK: {sdkLoaded ? 'Loaded' : 'Loading...'}</span>
+            <span className="text-gray-700">Facebook SDK: {sdkLoaded ? 'Loaded' : 'Loading...'}</span>
           </div>
           <div className="flex items-center">
             <div className={`w-3 h-3 rounded-full mr-2 ${authState.isAuthenticated ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <span>Authenticated: {authState.isAuthenticated ? 'Yes' : 'No'}</span>
+            <span className="text-gray-700">Authenticated: {authState.isAuthenticated ? 'Yes' : 'No'}</span>
           </div>
           <div className="flex items-center">
             <div className={`w-3 h-3 rounded-full mr-2 ${authState.isLoading ? 'bg-yellow-500' : 'bg-gray-400'}`}></div>
-            <span>Loading: {authState.isLoading ? 'Yes' : 'No'}</span>
+            <span className="text-gray-700">Loading: {authState.isLoading ? 'Yes' : 'No'}</span>
           </div>
           <div className="flex items-center">
             <div className={`w-3 h-3 rounded-full mr-2 ${authState.error ? 'bg-red-500' : 'bg-green-500'}`}></div>
-            <span>Error: {authState.error ? 'Yes' : 'No'}</span>
+            <span className="text-gray-700">Error: {authState.error ? 'Yes' : 'No'}</span>
           </div>
         </div>
       </div>
@@ -559,12 +559,12 @@ export default function InstagramReelsDebugger() {
         <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <h3 className="text-lg font-semibold mb-3 text-blue-800">Account Information</h3>
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><strong>Instagram ID:</strong> {authState.userInfo.id}</div>
-            <div><strong>Username:</strong> @{authState.userInfo.username}</div>
-            <div><strong>Account Type:</strong> {authState.userInfo.account_type}</div>
-            <div><strong>Instagram Page ID:</strong> {authState.instagramPageId}</div>
-            <div><strong>Facebook User ID:</strong> {authState.facebookUserId}</div>
-            <div><strong>Token Status:</strong> {authState.longLivedToken ? 'Valid' : 'Missing'}</div>
+            <div className="text-gray-700"><strong className="text-gray-800">Instagram ID:</strong> {authState.userInfo.id}</div>
+            <div className="text-gray-700"><strong className="text-gray-800">Username:</strong> @{authState.userInfo.username}</div>
+            <div className="text-gray-700"><strong className="text-gray-800">Account Type:</strong> {authState.userInfo.account_type}</div>
+            <div className="text-gray-700"><strong className="text-gray-800">Instagram Page ID:</strong> {authState.instagramPageId}</div>
+            <div className="text-gray-700"><strong className="text-gray-800">Facebook User ID:</strong> {authState.facebookUserId}</div>
+            <div className="text-gray-700"><strong className="text-gray-800">Token Status:</strong> {authState.longLivedToken ? 'Valid' : 'Missing'}</div>
           </div>
         </div>
       )}
@@ -607,7 +607,7 @@ export default function InstagramReelsDebugger() {
 
       {/* Debug Logs */}
       <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-3">Debug Logs</h3>
+        <h3 className="text-lg font-semibold mb-3 text-gray-800">Debug Logs</h3>
         <div className="bg-black text-green-400 p-4 rounded-lg font-mono text-sm max-h-96 overflow-y-auto">
           {debugLogs.length === 0 ? (
             <div className="text-gray-500">No logs yet. Click &quot;Connect Instagram&quot; to start debugging.</div>
@@ -621,11 +621,18 @@ export default function InstagramReelsDebugger() {
 
       {/* Configuration */}
       <div className="p-4 bg-gray-50 rounded-lg">
-        <h3 className="text-lg font-semibold mb-3">Configuration</h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div><strong>App ID:</strong> {INSTAGRAM_CONFIG.appId}</div>
-          <div><strong>API Version:</strong> {INSTAGRAM_CONFIG.apiVersion}</div>
-          <div className="col-span-2"><strong>Scopes:</strong> {INSTAGRAM_CONFIG.scope}</div>
+        <h3 className="text-lg font-semibold mb-3 text-gray-800">Configuration</h3>
+        <div className="grid grid-cols-1 gap-4 text-sm">
+          <div className="flex justify-between">
+            <div className="text-gray-700"><strong className="text-gray-800">App ID:</strong> {INSTAGRAM_CONFIG.appId}</div>
+            <div className="text-gray-700"><strong className="text-gray-800">API Version:</strong> {INSTAGRAM_CONFIG.apiVersion}</div>
+          </div>
+          <div className="text-gray-700">
+            <strong className="text-gray-800">Scopes:</strong>
+            <div className="mt-1 text-xs text-gray-600 break-words">
+              {INSTAGRAM_CONFIG.scope}
+            </div>
+          </div>
         </div>
       </div>
     </div>
