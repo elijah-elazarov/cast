@@ -85,9 +85,10 @@ async def process_video_for_reels(request: Request):
     try:
         request_data = await request.json()
         video_url = request_data.get("video_url")
-        target_width = request_data.get("target_width", 720)
-        target_height = request_data.get("target_height", 1280)
-        target_ratio = request_data.get("target_ratio", 9/16)
+                target_width = request_data.get("target_width", 720)
+                target_height = request_data.get("target_height", 1280)
+                target_ratio = request_data.get("target_ratio", 9/16)
+                center_crop = request_data.get("center_crop", True)
         
         if not video_url:
             raise HTTPException(status_code=400, detail="Video URL is required")
@@ -110,14 +111,18 @@ async def process_video_for_reels(request: Request):
         try:
             # Use ffmpeg to crop video to 9:16 aspect ratio with Instagram-compatible encoding
             # Based on: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media#creating
+            # Determine max duration and file size based on content type
+            max_duration = 900 if target_ratio >= 0.5 else 60  # 15 mins for Reels, 60 secs for Stories
+            max_file_size = 300 if target_ratio >= 0.5 else 100  # 300MB for Reels, 100MB for Stories
+            
             cmd = [
                 'ffmpeg', '-i', input_path,
-                '-vf', f'scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,crop={target_width}:{target_height}',
+                '-vf', f'scale={target_width}:{target_height}:force_original_aspect_ratio=increase,crop={target_width}:{target_height}:(iw-{target_width})/2:(ih-{target_height})/2' if center_crop else f'scale={target_width}:{target_height}:force_original_aspect_ratio=increase,crop={target_width}:{target_height}',
                 '-c:v', 'libx264',
                 '-preset', 'medium',
                 '-profile:v', 'high',
                 '-level', '4.0',
-                '-pix_fmt', 'yuv420p',
+                '-pix_fmt', 'yuv420p',  # 4:2:0 chroma subsampling
                 '-g', '30',  # GOP size for closed GOP
                 '-keyint_min', '30',  # Minimum keyframe interval
                 '-sc_threshold', '0',  # Disable scene change detection for closed GOP
@@ -128,7 +133,9 @@ async def process_video_for_reels(request: Request):
                 '-ar', '48000',  # 48khz sample rate maximum
                 '-ac', '2',  # Stereo (2 channels)
                 '-b:a', '128k',  # 128kbps audio bitrate
-                '-movflags', '+faststart',
+                '-movflags', '+faststart',  # moov atom at front
+                '-t', str(max_duration),  # Max duration (15 mins for Reels, 60 secs for Stories)
+                '-fs', f'{max_file_size}M',  # Max file size (300MB for Reels, 100MB for Stories)
                 '-y',  # Overwrite output file
                 output_path
             ]
@@ -155,13 +162,28 @@ async def process_video_for_reels(request: Request):
             
             logger.info(f"Video processed successfully: {processed_url}")
             
-            return JSONResponse({
-                "success": True,
-                "processed_video_url": processed_url,
-                "original_dimensions": "analyzed",
-                "processed_dimensions": f"{target_width}x{target_height}",
-                "aspect_ratio": f"{target_ratio:.3f}"
-            })
+                    return JSONResponse({
+                        "success": True,
+                        "processed_video_url": processed_url,
+                        "original_dimensions": "analyzed",
+                        "processed_dimensions": f"{target_width}x{target_height}",
+                        "aspect_ratio": f"{target_ratio:.3f}",
+                        "center_crop": center_crop,
+                        "instagram_compliance": {
+                            "container": "MP4 (MPEG-4 Part 14)",
+                            "video_codec": "H.264",
+                            "audio_codec": "AAC",
+                            "chroma_subsampling": "4:2:0",
+                            "closed_gop": True,
+                            "max_duration_seconds": max_duration,
+                            "max_file_size_mb": max_file_size,
+                            "video_bitrate": "5Mbps (VBR, max 25Mbps)",
+                            "audio_bitrate": "128kbps",
+                            "sample_rate": "48kHz",
+                            "channels": "Stereo (2)",
+                            "moov_atom_front": True
+                        }
+                    })
             
         finally:
             # Clean up temporary files

@@ -493,7 +493,8 @@ export default function InstagramReelsDebugger() {
           video_url: videoUrl,
           target_width: 720,
           target_height: 1280,
-          target_ratio: targetRatio
+          target_ratio: targetRatio,
+          center_crop: true
         })
       });
 
@@ -748,7 +749,8 @@ export default function InstagramReelsDebugger() {
           video_url: videoUrl,
           target_width: 720,
           target_height: 1280,
-          target_ratio: targetRatio
+          target_ratio: targetRatio,
+          center_crop: true
         })
       });
 

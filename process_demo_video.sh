@@ -24,7 +24,7 @@ fi
 # Based on: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media#creating
 echo "🔄 Processing video with Instagram-compatible encoding..."
 ffmpeg -i backend/demo.mp4 \
-    -vf "scale=720:1280:force_original_aspect_ratio=decrease,crop=720:1280" \
+    -vf "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280:(iw-720)/2:(ih-1280)/2" \
     -c:v libx264 \
     -preset medium \
     -profile:v high \
@@ -41,6 +41,8 @@ ffmpeg -i backend/demo.mp4 \
     -ac 2 \
     -b:a 128k \
     -movflags +faststart \
+    -t 900 \
+    -fs 300M \
     -y \
     backend/demo_instagram_reels.mp4
 
