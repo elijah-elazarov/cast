@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg'
 
 interface UserInfo {
   id: string;
@@ -61,6 +62,100 @@ export default function InstagramReelsDebugger() {
     facebookUserId: null
   });
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [processing, setProcessing] = useState(false)
+  const [processingProgress, setProcessingProgress] = useState(0)
+  const [processedVideoUrl, setProcessedVideoUrl] = useState<string | null>(null)
+  const [processedThumbUrl, setProcessedThumbUrl] = useState<string | null>(null)
+
+  const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dkzbmeto1'
+  const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET || 'instagram_uploads'
+
+  const ffmpegRef = { current: null as any }
+
+  const ensureFfmpeg = async () => {
+    if (ffmpegRef.current) return ffmpegRef.current
+    const ffmpeg = createFFmpeg({ log: true, corePath: undefined })
+    ffmpeg.setProgress(({ ratio }) => setProcessingProgress(Math.min(99, Math.round(ratio * 100))))
+    await ffmpeg.load()
+    ffmpegRef.current = ffmpeg
+    return ffmpeg
+  }
+
+  const handleFileChange = async (file: File) => {
+    setSelectedFile(file)
+    setProcessedVideoUrl(null)
+    setProcessedThumbUrl(null)
+  }
+
+  const processClientSide = async () => {
+    if (!selectedFile) return
+    setProcessing(true)
+    setProcessingProgress(0)
+
+    try {
+      const ffmpeg = await ensureFfmpeg()
+
+      // Input/Output names
+      const inName = 'input.mp4'
+      const outName = 'output.mp4'
+      const jpgName = 'thumb.jpg'
+
+      ffmpeg.FS('writeFile', inName, await fetchFile(selectedFile))
+
+      // Center crop 9:16 to 720x1280 and encode H.264 yuv420p
+      await ffmpeg.run(
+        '-i', inName,
+        '-vf', 'scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280:(iw-720)/2:(ih-1280)/2',
+        '-c:v', 'libx264',
+        '-preset', 'veryfast',
+        '-pix_fmt', 'yuv420p',
+        '-profile:v', 'high',
+        '-level', '4.0',
+        '-b:v', '3000k',
+        '-maxrate', '8000k',
+        '-bufsize', '16000k',
+        '-movflags', '+faststart',
+        '-an', // no audio in wasm to simplify; IG accepts silent
+        outName
+      )
+
+      // Extract thumbnail
+      await ffmpeg.run('-i', outName, '-ss', '00:00:01', '-frames:v', '1', '-q:v', '2', jpgName)
+
+      const outData = ffmpeg.FS('readFile', outName)
+      const jpgData = ffmpeg.FS('readFile', jpgName)
+
+      // Upload to Cloudinary unsigned
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`
+
+      const uploadBlob = new Blob([outData.buffer], { type: 'video/mp4' })
+      const thumbBlob = new Blob([jpgData.buffer], { type: 'image/jpeg' })
+
+      const formVideo = new FormData()
+      formVideo.append('file', uploadBlob)
+      formVideo.append('upload_preset', UPLOAD_PRESET)
+      const vRes = await fetch(uploadUrl, { method: 'POST', body: formVideo })
+      const vJson = await vRes.json()
+      if (!vRes.ok) throw new Error(`Cloudinary video upload failed: ${JSON.stringify(vJson)}`)
+
+      const formImg = new FormData()
+      formImg.append('file', thumbBlob)
+      formImg.append('upload_preset', UPLOAD_PRESET)
+      const iRes = await fetch(uploadUrl, { method: 'POST', body: formImg })
+      const iJson = await iRes.json()
+      if (!iRes.ok) throw new Error(`Cloudinary image upload failed: ${JSON.stringify(iJson)}`)
+
+      setProcessedVideoUrl(vJson.secure_url)
+      setProcessedThumbUrl(iJson.secure_url)
+      setProcessingProgress(100)
+      addLog('✅ Client-side processing & Cloudinary upload complete')
+    } catch (e) {
+      addLog(`❌ Client processing error: ${e}`)
+    } finally {
+      setProcessing(false)
+    }
+  }
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -826,8 +921,8 @@ export default function InstagramReelsDebugger() {
         {
           name: 'Video with image_url',
           data: {
-            video_url: processedVideoUrl,
-            image_url: processedThumbnailUrl || processedVideoUrl,
+            video_url: processedVideoUrl || '',
+            image_url: processedThumbnailUrl || processedVideoUrl || '',
             caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
             access_token: authState.longLivedToken
           }
@@ -1034,6 +1129,37 @@ export default function InstagramReelsDebugger() {
             <span className="text-gray-700">Error: {authState.error ? 'Yes' : 'No'}</span>
           </div>
         </div>
+      </div>
+
+      {/* Local file selection and processing */}
+      <div className="mb-6 p-4 rounded-lg border">
+        <h3 className="text-lg font-semibold mb-2">Select Video</h3>
+        <input
+          type="file"
+          accept="video/*"
+          onChange={(e) => e.target.files && handleFileChange(e.target.files[0])}
+          className="block w-full text-sm"
+        />
+        <div className="mt-3 flex items-center gap-3">
+          <button
+            onClick={processClientSide}
+            disabled={!selectedFile || processing}
+            className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+          >
+            {processing ? `Processing... ${processingProgress}%` : 'Process with FFmpeg (client)'}
+          </button>
+          {processing && (
+            <div className="w-48 bg-gray-200 rounded h-2">
+              <div className="bg-blue-600 h-2 rounded" style={{ width: `${processingProgress}%` }} />
+            </div>
+          )}
+        </div>
+        {processedVideoUrl && (
+          <div className="mt-3 text-sm text-gray-700">
+            <div>Processed video: <a className="text-blue-600 underline" href={processedVideoUrl} target="_blank" rel="noreferrer">open</a></div>
+            {processedThumbUrl && <div>Thumbnail: <a className="text-blue-600 underline" href={processedThumbUrl} target="_blank" rel="noreferrer">open</a></div>}
+          </div>
+        )}
       </div>
 
       {/* Account Information */}

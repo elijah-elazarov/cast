@@ -11,6 +11,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.10",
+    "@ffmpeg/util": "^0.12.1",
     "@types/axios": "^0.9.36",
     "axios": "^1.12.2",
     "lucide-react": "^0.546.0",

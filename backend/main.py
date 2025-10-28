@@ -126,9 +126,9 @@ async def process_video_for_reels(request: Request):
                 '-g', '30',  # GOP size for closed GOP
                 '-keyint_min', '30',  # Minimum keyframe interval
                 '-sc_threshold', '0',  # Disable scene change detection for closed GOP
-                '-b:v', '5000k',  # 5Mbps (well under 25Mbps max)
-                '-maxrate', '25000k',  # 25Mbps maximum
-                '-bufsize', '50000k',  # Buffer size for VBR
+                '-b:v', '3000k',  # lighter bitrate to speed up processing
+                '-maxrate', '8000k',  # lower maxrate to reduce spikes
+                '-bufsize', '16000k',  # proportional buffer size
                 '-c:a', 'aac',
                 '-ar', '48000',  # 48khz sample rate maximum
                 '-ac', '2',  # Stereo (2 channels)
@@ -140,11 +140,24 @@ async def process_video_for_reels(request: Request):
                 output_path
             ]
             
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=55)
+            except subprocess.TimeoutExpired as te:
+                logger.error(f"FFmpeg timeout: {te}")
+                return JSONResponse({
+                    "success": False,
+                    "error": "FFmpeg processing timed out",
+                    "details": str(te)
+                }, status_code=504)
             
             if result.returncode != 0:
                 logger.error(f"FFmpeg error: {result.stderr}")
-                raise HTTPException(status_code=500, detail="Video processing failed")
+                return JSONResponse({
+                    "success": False,
+                    "error": "Video processing failed",
+                    "ffmpeg_stderr": result.stderr,
+                    "ffmpeg_stdout": result.stdout
+                }, status_code=500)
             
             # Read processed video
             with open(output_path, 'rb') as f:
