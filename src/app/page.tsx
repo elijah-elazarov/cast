@@ -16,6 +16,7 @@ import InstagramTestPopup from './components/InstagramTestPopup';
 import FreshInstagramAuth from './components/FreshInstagramAuth';
 import EnhancedInstagramAuth from './components/EnhancedInstagramAuth';
 import InstagramReelsPoster from './components/InstagramReelsPoster';
+import InstagramReelsDebugger from './components/InstagramReelsDebugger';
 // import SimpleInstagramAuth from './components/SimpleInstagramAuth';
 import { Suspense } from 'react';
 
@@ -43,6 +44,7 @@ export default function Home() {
   const [showFreshInstagram, setShowFreshInstagram] = useState(false);
   const [showEnhancedInstagram, setShowEnhancedInstagram] = useState(false);
   const [showReelsPoster, setShowReelsPoster] = useState(false);
+  const [showReelsDebugger, setShowReelsDebugger] = useState(false);
   const TOTAL_COUNTDOWN = 3;
 
   // Check localStorage on mount to initialize connected state
@@ -328,6 +330,13 @@ export default function Home() {
               <TestTube className="w-4 h-4" />
               Instagram Reels Poster
             </button>
+            <button
+              onClick={() => setShowReelsDebugger(true)}
+              className="inline-flex items-center gap-2 bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors text-sm"
+            >
+              <TestTube className="w-4 h-4" />
+              🔍 Reels Debugger
+            </button>
           </div>
         </div>
 
@@ -489,6 +498,27 @@ export default function Home() {
               App-authenticated posting for Instagram Reels with complete 3-step flow.
             </p>
             <InstagramReelsPoster />
+          </div>
+        )}
+
+        {/* Instagram Reels Debugger */}
+        {showReelsDebugger && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                🔍 Instagram Reels Debugger
+              </h2>
+              <button
+                onClick={() => setShowReelsDebugger(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Debug component to test Instagram Reels Poster authentication and check account details.
+            </p>
+            <InstagramReelsDebugger />
           </div>
         )}
 
