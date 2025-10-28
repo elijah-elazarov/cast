@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 interface UserInfo {
   id: string;
@@ -241,7 +240,7 @@ export default function YouTubeShortsDebugger() {
       addLog('🔄 Step 3/3: Validating transformed video is accessible...');
       setProcessingProgress(80);
 
-      const [shortsOk, thumbOk] = await Promise.all([
+      const [shortsOk] = await Promise.all([
         validateVideoUrl(shortsTransformUrl, 'YouTube Shorts video'),
         validateVideoUrl(thumbnailUrl, 'Thumbnail')
       ]);
@@ -662,7 +661,7 @@ export default function YouTubeShortsDebugger() {
         <h3 className="text-lg font-semibold mb-3 text-gray-800">Debug Logs</h3>
         <div className="bg-black text-green-400 p-4 rounded-lg font-mono text-sm max-h-96 overflow-y-auto">
           {debugLogs.length === 0 ? (
-            <div className="text-gray-500">No logs yet. Click "Connect YouTube" to start debugging.</div>
+            <div className="text-gray-500">No logs yet. Click &quot;Connect YouTube&quot; to start debugging.</div>
           ) : (
             debugLogs.map((log, index) => (
               <div key={index} className="mb-1">{log}</div>
