@@ -453,7 +453,7 @@ export default function InstagramReelsDebugger() {
           if (page.access_token) {
             const pageUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${page.id}`;
             const pageParams = new URLSearchParams({
-              fields: 'instagram_business_account{id,username,name,account_type}',
+              fields: 'instagram_business_account{id,username,name,media_count,followers_count}',
               access_token: page.access_token
             });
             
@@ -462,9 +462,8 @@ export default function InstagramReelsDebugger() {
               
               if (pageResponse.ok) {
                 const pageData = await pageResponse.json();
-                if (pageData.instagram_business_account?.account_type) {
-                  accountType = pageData.instagram_business_account.account_type;
-                  addLog(`Real account type from API: ${accountType}`);
+                if (pageData.instagram_business_account) {
+                  addLog(`✅ Instagram Business Account connected to page: ${pageData.instagram_business_account.username}`);
                 }
               } else {
                 const errorData = await pageResponse.json().catch(() => ({}));
@@ -546,7 +545,6 @@ export default function InstagramReelsDebugger() {
       // Get Instagram account info
       const { userInfo, pageId } = await getInstagramAccount(longLivedToken);
       addLog(`Instagram account found: ${userInfo.username} (${userInfo.id})`);
-      addLog(`Account type: ${userInfo.account_type}`);
       addLog(`Instagram Page ID: ${pageId}`);
 
       setAuthState({
@@ -619,13 +617,25 @@ export default function InstagramReelsDebugger() {
         try {
           const pagesUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/accounts`;
           const pagesParams = new URLSearchParams({
-            fields: 'id,name,access_token,instagram_business_account{id,username,name,account_type,media_count,followers_count}',
+            fields: 'id,name,access_token,instagram_business_account{id,username,name,media_count,followers_count,follows_count,biography,website,profile_picture_url}',
             access_token: authState.longLivedToken
           });
           
           const pagesResponse = await fetch(`${pagesUrl}?${pagesParams}`);
           if (pagesResponse.ok) {
             const pagesData = await pagesResponse.json();
+            addLog(`📋 Connected Facebook Pages: ${pagesData.data.length}`);
+            
+            // Show all connected pages
+            pagesData.data.forEach((page: any, index: number) => {
+              addLog(`   Page ${index + 1}: ${page.name} (ID: ${page.id})`);
+              if (page.instagram_business_account) {
+                addLog(`     └─ Instagram: @${page.instagram_business_account.username} (ID: ${page.instagram_business_account.id})`);
+              } else {
+                addLog(`     └─ No Instagram Business Account connected`);
+              }
+            });
+            
             const instagramPage = pagesData.data.find((page: any) => 
               page.instagram_business_account && 
               page.instagram_business_account.id === authState.instagramPageId
@@ -633,12 +643,16 @@ export default function InstagramReelsDebugger() {
             
             if (instagramPage && instagramPage.instagram_business_account) {
               const igAccount = instagramPage.instagram_business_account;
-              addLog(`📊 Account Details:`);
+              addLog(`📊 Instagram Account Details:`);
+              addLog(`   ID: ${igAccount.id || 'Unknown'}`);
               addLog(`   Username: @${igAccount.username || 'Unknown'}`);
               addLog(`   Name: ${igAccount.name || 'Unknown'}`);
-              addLog(`   Account Type: ${igAccount.account_type || 'Not specified'}`);
               addLog(`   Media Count: ${igAccount.media_count?.toLocaleString() || 'Unknown'}`);
               addLog(`   Followers: ${igAccount.followers_count?.toLocaleString() || 'Unknown'}`);
+              addLog(`   Following: ${igAccount.follows_count?.toLocaleString() || 'Unknown'}`);
+              if (igAccount.biography) addLog(`   Bio: ${igAccount.biography}`);
+              if (igAccount.website) addLog(`   Website: ${igAccount.website}`);
+              if (igAccount.profile_picture_url) addLog(`   Profile Picture: ${igAccount.profile_picture_url}`);
             } else {
               addLog(`⚠️ Could not find Instagram Business Account details`);
             }
@@ -885,13 +899,25 @@ export default function InstagramReelsDebugger() {
         try {
           const pagesUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/accounts`;
           const pagesParams = new URLSearchParams({
-            fields: 'id,name,access_token,instagram_business_account{id,username,name,account_type,media_count,followers_count}',
+            fields: 'id,name,access_token,instagram_business_account{id,username,name,media_count,followers_count,follows_count,biography,website,profile_picture_url}',
             access_token: authState.longLivedToken
           });
           
           const pagesResponse = await fetch(`${pagesUrl}?${pagesParams}`);
           if (pagesResponse.ok) {
             const pagesData = await pagesResponse.json();
+            addLog(`📋 Connected Facebook Pages: ${pagesData.data.length}`);
+            
+            // Show all connected pages
+            pagesData.data.forEach((page: any, index: number) => {
+              addLog(`   Page ${index + 1}: ${page.name} (ID: ${page.id})`);
+              if (page.instagram_business_account) {
+                addLog(`     └─ Instagram: @${page.instagram_business_account.username} (ID: ${page.instagram_business_account.id})`);
+              } else {
+                addLog(`     └─ No Instagram Business Account connected`);
+              }
+            });
+            
             const instagramPage = pagesData.data.find((page: any) => 
               page.instagram_business_account && 
               page.instagram_business_account.id === authState.instagramPageId
@@ -899,12 +925,16 @@ export default function InstagramReelsDebugger() {
             
             if (instagramPage && instagramPage.instagram_business_account) {
               const igAccount = instagramPage.instagram_business_account;
-              addLog(`📊 Account Details:`);
+              addLog(`📊 Instagram Account Details:`);
+              addLog(`   ID: ${igAccount.id || 'Unknown'}`);
               addLog(`   Username: @${igAccount.username || 'Unknown'}`);
               addLog(`   Name: ${igAccount.name || 'Unknown'}`);
-              addLog(`   Account Type: ${igAccount.account_type || 'Not specified'}`);
               addLog(`   Media Count: ${igAccount.media_count?.toLocaleString() || 'Unknown'}`);
               addLog(`   Followers: ${igAccount.followers_count?.toLocaleString() || 'Unknown'}`);
+              addLog(`   Following: ${igAccount.follows_count?.toLocaleString() || 'Unknown'}`);
+              if (igAccount.biography) addLog(`   Bio: ${igAccount.biography}`);
+              if (igAccount.website) addLog(`   Website: ${igAccount.website}`);
+              if (igAccount.profile_picture_url) addLog(`   Profile Picture: ${igAccount.profile_picture_url}`);
             } else {
               addLog(`⚠️ Could not find Instagram Business Account details`);
             }
