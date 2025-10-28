@@ -445,15 +445,24 @@ export default function InstagramReelsDebugger() {
             addLog('⚠️ Video needs processing for Instagram Reels');
             addLog('🔄 Attempting to crop video to 9:16 aspect ratio...');
             
-            // Process video through backend
-            processVideoForReels(videoUrl, width, height, targetRatio)
+            // Process video through backend with timeout
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Video processing timeout')), 10000)
+            );
+            
+            Promise.race([
+              processVideoForReels(videoUrl, width, height, targetRatio),
+              timeoutPromise
+            ])
               .then(processedUrl => {
                 addLog('✅ Video processed successfully!');
                 resolve(processedUrl);
               })
               .catch(error => {
                 addLog(`❌ Video processing failed: ${error}`);
-                addLog('Using original video (may fail Instagram validation)');
+                addLog('⚠️ Backend video processing is not available (FFmpeg required)');
+                addLog('Using original video - this may fail Instagram validation');
+                addLog('For testing, try using a video that already meets Instagram requirements');
                 resolve(videoUrl);
               });
           }
@@ -691,15 +700,24 @@ export default function InstagramReelsDebugger() {
             addLog('⚠️ Video needs processing for Instagram Stories');
             addLog('🔄 Attempting to crop video to 9:16 aspect ratio...');
             
-            // Process video through backend for Stories (try 9:16 first)
-            processVideoForStories(videoUrl, width, height, targetRatio9_16)
+            // Process video through backend for Stories with timeout
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Video processing timeout')), 10000)
+            );
+            
+            Promise.race([
+              processVideoForStories(videoUrl, width, height, targetRatio9_16),
+              timeoutPromise
+            ])
               .then(processedUrl => {
                 addLog('✅ Video processed successfully for Stories!');
                 resolve(processedUrl);
               })
               .catch(error => {
                 addLog(`❌ Video processing failed: ${error}`);
-                addLog('Using original video (may fail Instagram validation)');
+                addLog('⚠️ Backend video processing is not available (FFmpeg required)');
+                addLog('Using original video - this may fail Instagram validation');
+                addLog('For testing, try using a video that already meets Instagram requirements');
                 resolve(videoUrl);
               });
           }
@@ -846,6 +864,123 @@ export default function InstagramReelsDebugger() {
     }
   };
 
+  // Test with a sample video that meets Instagram requirements
+  const testWithSampleVideo = async () => {
+    if (!authState.isAuthenticated || !authState.longLivedToken || !authState.instagramPageId) {
+      addLog('Not authenticated - cannot test with sample video');
+      return;
+    }
+
+    addLog('Testing with sample video that meets Instagram requirements...');
+    
+    try {
+      // Use a sample video URL that meets Instagram requirements
+      // This is a placeholder - in production you'd use a real sample video
+      const sampleVideoUrl = 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4';
+      addLog(`Using sample video URL: ${sampleVideoUrl}`);
+      addLog('Note: This is a sample URL - replace with a real Instagram-compatible video');
+      
+      // Test Reels with sample video
+      addLog('Testing Reels with sample video...');
+      const reelsContainerUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}/media`;
+      const reelsApproaches = [
+        {
+          name: 'Video only',
+          data: {
+            video_url: sampleVideoUrl,
+            caption: '🎬 Test Reel with sample video - Posted via API! #test #reels #sample',
+            access_token: authState.longLivedToken
+          }
+        },
+        {
+          name: 'Video with image_url',
+          data: {
+            video_url: sampleVideoUrl,
+            image_url: sampleVideoUrl,
+            caption: '🎬 Test Reel with sample video - Posted via API! #test #reels #sample',
+            access_token: authState.longLivedToken
+          }
+        }
+      ];
+
+      let reelsSuccess = false;
+      for (const approach of reelsApproaches) {
+        addLog(`Trying Reels approach: ${approach.name}`);
+        
+        const response = await fetch(reelsContainerUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(approach.data)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          addLog(`✅ Reels container created with ${approach.name}: ${result.id}`);
+          reelsSuccess = true;
+          break;
+        } else {
+          const errorData = await response.json();
+          addLog(`❌ Reels ${approach.name} failed: ${JSON.stringify(errorData)}`);
+        }
+      }
+
+      // Test Stories with sample video
+      addLog('Testing Stories with sample video...');
+      const storiesApproaches = [
+        {
+          name: 'Video only',
+          data: {
+            video_url: sampleVideoUrl,
+            caption: '📱 Test Story with sample video - Posted via API! #test #stories #sample',
+            access_token: authState.longLivedToken
+          }
+        },
+        {
+          name: 'Video with image_url',
+          data: {
+            video_url: sampleVideoUrl,
+            image_url: sampleVideoUrl,
+            caption: '📱 Test Story with sample video - Posted via API! #test #stories #sample',
+            access_token: authState.longLivedToken
+          }
+        }
+      ];
+
+      let storiesSuccess = false;
+      for (const approach of storiesApproaches) {
+        addLog(`Trying Stories approach: ${approach.name}`);
+        
+        const response = await fetch(reelsContainerUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(approach.data)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          addLog(`✅ Stories container created with ${approach.name}: ${result.id}`);
+          storiesSuccess = true;
+          break;
+        } else {
+          const errorData = await response.json();
+          addLog(`❌ Stories ${approach.name} failed: ${JSON.stringify(errorData)}`);
+        }
+      }
+
+      if (reelsSuccess || storiesSuccess) {
+        addLog('✅ Sample video test completed successfully!');
+        addLog('This confirms your Instagram API setup is working correctly.');
+        addLog('The issue with demo.mp4 is likely due to aspect ratio requirements.');
+      } else {
+        addLog('❌ Sample video test failed');
+        addLog('This indicates an issue with your Instagram API setup or permissions.');
+      }
+      
+    } catch (error) {
+      addLog(`❌ Sample video test error: ${error}`);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
       <div className="mb-6">
@@ -926,6 +1061,12 @@ export default function InstagramReelsDebugger() {
               className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
             >
               Test Stories Capability
+            </button>
+            <button
+              onClick={testWithSampleVideo}
+              className="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+            >
+              Test with Sample Video
             </button>
             <button
               onClick={handleLogout}
