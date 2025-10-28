@@ -100,11 +100,11 @@ export default function InstagramReelsDebugger() {
       // 2) Generate Instagram-compliant URLs using Cloudinary transformations
       addLog('🔄 Generating Instagram-compliant URLs via Cloudinary transformations...')
       
-      // For Reels: 9:16 aspect ratio, 720x1280, H.264, optimized for Instagram
-      const reelsTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
+      // For Reels: 9:16 aspect ratio, 720x1280, H.264, optimized for Instagram Reels
+      const reelsTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k,fl_progressive/${vJson.public_id}.mp4`
       
-      // For Stories: 9:16 aspect ratio, 720x1280, optimized for Stories
-      const storiesTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
+      // For Stories: 9:16 aspect ratio, 720x1280, optimized for Instagram Stories (slightly different encoding)
+      const storiesTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k,fl_fast_upload/${vJson.public_id}.mp4`
       
       // Generate thumbnail: extract frame at 1 second
       const thumbnailUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_720,h_1280,c_fill,g_auto,f_jpg,q_auto:best/${vJson.public_id}.jpg`
@@ -128,6 +128,25 @@ export default function InstagramReelsDebugger() {
     const timestamp = new Date().toLocaleTimeString();
     setDebugLogs(prev => [...prev, `[${timestamp}] ${message}`]);
     console.log(`[REELS DEBUG] ${message}`);
+  };
+
+  const showAvailableTransformedVideos = () => {
+    addLog('📋 Available transformed videos:');
+    if (processedVideoUrl) {
+      addLog(`  📹 Reels video: ${processedVideoUrl}`);
+      addLog('    → Optimized for Instagram Reels (progressive encoding)');
+    }
+    if (processedStoriesUrl) {
+      addLog(`  📱 Stories video: ${processedStoriesUrl}`);
+      addLog('    → Optimized for Instagram Stories (fast upload encoding)');
+    }
+    if (processedThumbUrl) {
+      addLog(`  🖼️  Thumbnail: ${processedThumbUrl}`);
+      addLog('    → Extracted frame for image_url parameter');
+    }
+    if (!processedVideoUrl && !processedStoriesUrl) {
+      addLog('  ❌ No transformed videos available. Please process a video first.');
+    }
   };
 
   // Load Facebook SDK
@@ -501,11 +520,15 @@ export default function InstagramReelsDebugger() {
       return;
     }
 
+    addLog('Testing Instagram Reels posting capability...');
+    showAvailableTransformedVideos();
+
     try {
       // Step 1: Use already processed video from Cloudinary
       addLog('Step 1: Using pre-processed video from Cloudinary...');
       
-      addLog(`Using processed video URL: ${processedVideoUrl}`);
+      addLog(`📹 Using Reels-optimized video URL: ${processedVideoUrl}`);
+      addLog('🎯 This video is specifically transformed for Instagram Reels posting');
       
       // No need to process again - use the Cloudinary URL directly
       const finalProcessedVideoUrl = processedVideoUrl;
@@ -668,12 +691,14 @@ export default function InstagramReelsDebugger() {
     }
 
     addLog('Testing Instagram Stories posting capability...');
+    showAvailableTransformedVideos();
     
     try {
       // Step 1: Use already processed video from Cloudinary
       addLog('Step 1: Using pre-processed video from Cloudinary...');
       
-      addLog(`Using processed Stories video URL: ${processedStoriesUrl}`);
+      addLog(`📱 Using Stories-optimized video URL: ${processedStoriesUrl}`);
+      addLog('🎯 This video is specifically transformed for Instagram Stories posting');
       
       // No need to process again - use the Cloudinary URL directly
       const finalProcessedVideoUrl = processedStoriesUrl;
@@ -896,6 +921,12 @@ export default function InstagramReelsDebugger() {
                 Post Processed Story
               </button>
             )}
+            <button
+              onClick={showAvailableTransformedVideos}
+              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+            >
+              Show Available Videos
+            </button>
             <button
               onClick={handleLogout}
               className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700"
