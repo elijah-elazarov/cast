@@ -655,6 +655,97 @@ export default function InstagramReelsDebugger() {
     }
   };
 
+  // Check and process video for Instagram Stories (9:16 or 1:1 aspect ratio)
+  const checkAndProcessVideoForStories = async (videoUrl: string): Promise<string> => {
+    try {
+      addLog('Analyzing video for Instagram Stories compatibility...');
+      
+      // Create a video element to check dimensions
+      const video = document.createElement('video');
+      video.crossOrigin = 'anonymous';
+      
+      return new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          const width = video.videoWidth;
+          const height = video.videoHeight;
+          const currentRatio = width / height;
+          const targetRatio9_16 = 9 / 16; // Instagram Stories preferred ratio
+          const targetRatio1_1 = 1 / 1;   // Instagram Stories alternative ratio
+          
+          addLog(`Video dimensions: ${width}x${height}`);
+          addLog(`Current aspect ratio: ${currentRatio.toFixed(3)}`);
+          addLog(`Target aspect ratios: ${targetRatio9_16.toFixed(3)} (9:16) or ${targetRatio1_1.toFixed(3)} (1:1)`);
+          
+          // Check if video meets Instagram Stories requirements
+          const ratioDifference9_16 = Math.abs(currentRatio - targetRatio9_16);
+          const ratioDifference1_1 = Math.abs(currentRatio - targetRatio1_1);
+          const isCompatible = (ratioDifference9_16 < 0.1 || ratioDifference1_1 < 0.1) && 
+                              ((width >= 720 && height >= 1280) || (width >= 1080 && height >= 1080));
+          
+          if (isCompatible) {
+            addLog('✅ Video is compatible with Instagram Stories!');
+            addLog('✅ Aspect ratio: Within acceptable range (9:16 or 1:1)');
+            addLog('✅ Resolution: Meets minimum requirements');
+            resolve(videoUrl);
+          } else {
+            addLog('⚠️ Video needs processing for Instagram Stories');
+            addLog('🔄 Attempting to crop video to 9:16 aspect ratio...');
+            
+            // Process video through backend for Stories (try 9:16 first)
+            processVideoForStories(videoUrl, width, height, targetRatio9_16)
+              .then(processedUrl => {
+                addLog('✅ Video processed successfully for Stories!');
+                resolve(processedUrl);
+              })
+              .catch(error => {
+                addLog(`❌ Video processing failed: ${error}`);
+                addLog('Using original video (may fail Instagram validation)');
+                resolve(videoUrl);
+              });
+          }
+        };
+        
+        video.onerror = () => {
+          addLog('❌ Could not analyze video dimensions');
+          addLog('Using original video URL');
+          resolve(videoUrl);
+        };
+        
+        video.src = videoUrl;
+      });
+    } catch (error) {
+      addLog(`❌ Video analysis error: ${error}`);
+      return videoUrl;
+    }
+  };
+
+  // Process video for Instagram Stories aspect ratio
+  const processVideoForStories = async (videoUrl: string, width: number, height: number, targetRatio: number): Promise<string> => {
+    try {
+      // Call backend to process video for Stories
+      const response = await fetch('/api/instagram/graph/process-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          video_url: videoUrl,
+          target_width: 720,
+          target_height: 1280,
+          target_ratio: targetRatio
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        return result.processed_video_url;
+      } else {
+        throw new Error('Backend video processing failed');
+      }
+    } catch (error) {
+      addLog(`Video processing error: ${error}`);
+      throw error;
+    }
+  };
+
   // Test Stories posting capability (less strict requirements)
   const testStoriesCapability = async () => {
     if (!authState.isAuthenticated || !authState.longLivedToken || !authState.instagramPageId) {
@@ -665,8 +756,14 @@ export default function InstagramReelsDebugger() {
     addLog('Testing Instagram Stories posting capability...');
     
     try {
+      // Step 1: Check video aspect ratio and process if needed for Stories
+      addLog('Step 1: Checking video aspect ratio for Stories...');
+      
       const demoVideoUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com'}/static/demo.mp4`;
       addLog(`Using demo video URL: ${demoVideoUrl}`);
+      
+      // Check if video needs processing for Stories (9:16 or 1:1 aspect ratio)
+      const processedVideoUrl = await checkAndProcessVideoForStories(demoVideoUrl);
       
       // Stories have more flexible requirements
       const containerUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}/media`;
@@ -682,7 +779,7 @@ export default function InstagramReelsDebugger() {
         {
           name: 'Video only',
           data: {
-            video_url: demoVideoUrl,
+            video_url: processedVideoUrl,
             caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
             access_token: authState.longLivedToken
           }
@@ -690,8 +787,8 @@ export default function InstagramReelsDebugger() {
         {
           name: 'Video with image_url',
           data: {
-            video_url: demoVideoUrl,
-            image_url: demoVideoUrl,
+            video_url: processedVideoUrl,
+            image_url: processedVideoUrl,
             caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
             access_token: authState.longLivedToken
           }
@@ -699,7 +796,7 @@ export default function InstagramReelsDebugger() {
         {
           name: 'Image only (fallback)',
           data: {
-            image_url: demoVideoUrl,
+            image_url: processedVideoUrl,
             caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
             access_token: authState.longLivedToken
           }
