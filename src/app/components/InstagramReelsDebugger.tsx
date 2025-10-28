@@ -1135,21 +1135,33 @@ export default function InstagramReelsDebugger() {
       </div>
 
       {/* Local file selection and processing */}
-      <div className="mb-6 p-4 rounded-lg border">
-        <h3 className="text-lg font-semibold mb-2">Select Video</h3>
+      <div className={`mb-6 p-4 rounded-lg border ${!authState.isAuthenticated ? 'opacity-50' : ''}`}>
+        <h3 className={`text-lg font-semibold mb-2 ${!authState.isAuthenticated ? 'text-gray-400' : 'text-gray-800'}`}>
+          Select Video {!authState.isAuthenticated && '(Sign in required)'}
+        </h3>
         <input
           type="file"
           accept="video/*"
           onChange={(e) => e.target.files && handleFileChange(e.target.files[0])}
-          className="block w-full text-sm"
+          disabled={!authState.isAuthenticated}
+          className={`block w-full text-sm ${!authState.isAuthenticated ? 'text-gray-400 cursor-not-allowed' : ''}`}
         />
         <div className="mt-3 flex items-center gap-3">
           <button
             onClick={processClientSide}
-            disabled={!selectedFile || processing}
-            className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+            disabled={!authState.isAuthenticated || !selectedFile || processing}
+            className={`px-4 py-2 rounded ${
+              !authState.isAuthenticated 
+                ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                : 'bg-blue-600 text-white disabled:opacity-50'
+            }`}
           >
-            {processing ? `Processing... ${processingProgress}%` : 'Process with FFmpeg (client)'}
+            {!authState.isAuthenticated 
+              ? 'Sign in to process video' 
+              : processing 
+                ? `Processing... ${processingProgress}%` 
+                : 'Process with FFmpeg (client)'
+            }
           </button>
           {processing && (
             <div className="w-48 bg-gray-200 rounded h-2">
@@ -1157,7 +1169,7 @@ export default function InstagramReelsDebugger() {
             </div>
           )}
         </div>
-        {processedVideoUrl && (
+        {processedVideoUrl && authState.isAuthenticated && (
           <div className="mt-3 text-sm text-gray-700">
             <div>Processed video: <a className="text-blue-600 underline" href={processedVideoUrl} target="_blank" rel="noreferrer">open</a></div>
             {processedThumbUrl && <div>Thumbnail: <a className="text-blue-600 underline" href={processedThumbUrl} target="_blank" rel="noreferrer">open</a></div>}
