@@ -731,27 +731,11 @@ export default function InstagramReelsDebugger() {
       // Try different approaches for Instagram Reels
       const approaches = [
         {
-          name: 'Video only',
+          name: 'Reels with video_url',
           data: {
             video_url: finalProcessedVideoUrl,
             caption: '🎬 Test Reel from Instagram Reels Debugger - Posted via API! #test #reels #api',
-            access_token: authState.longLivedToken
-          }
-        },
-        {
-          name: 'Video with image_url',
-          data: {
-            video_url: finalProcessedVideoUrl,
-            image_url: finalProcessedVideoUrl,
-            caption: '🎬 Test Reel from Instagram Reels Debugger - Posted via API! #test #reels #api',
-            access_token: authState.longLivedToken
-          }
-        },
-        {
-          name: 'Image only (fallback)',
-          data: {
-            image_url: finalProcessedVideoUrl,
-            caption: '🎬 Test Reel from Instagram Reels Debugger - Posted via API! #test #reels #api',
+            media_type: 'REELS',
             access_token: authState.longLivedToken
           }
         }
@@ -1009,30 +993,25 @@ export default function InstagramReelsDebugger() {
       // Stories have more flexible requirements
       const containerUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}/media`;
 
-      // Try different approaches for Instagram Stories
-      const storiesApproaches = [
+      // Determine file type and choose appropriate approach for Stories
+      const isVideoFile = selectedFile && selectedFile.type.startsWith('video/');
+      const storiesApproaches = isVideoFile ? [
         {
-          name: 'Video only',
+          name: 'Stories video',
           data: {
             video_url: finalProcessedVideoUrl,
             caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
+            media_type: 'STORIES',
             access_token: authState.longLivedToken
           }
-        },
+        }
+      ] : [
         {
-          name: 'Video with image_url',
-          data: {
-            video_url: finalProcessedVideoUrl || '',
-            image_url: processedThumbnailUrl || processedThumbUrl || finalProcessedVideoUrl || '',
-            caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
-            access_token: authState.longLivedToken
-          }
-        },
-        {
-          name: 'Image only (fallback)',
+          name: 'Stories image',
           data: {
             image_url: processedThumbnailUrl || processedThumbUrl || finalProcessedVideoUrl,
             caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
+            media_type: 'STORIES',
             access_token: authState.longLivedToken
           }
         }
