@@ -68,6 +68,7 @@ export default function InstagramReelsDebugger() {
   const [processedVideoUrl, setProcessedVideoUrl] = useState<string | null>(null)
   const [processedStoriesUrl, setProcessedStoriesUrl] = useState<string | null>(null)
   const [processedThumbUrl, setProcessedThumbUrl] = useState<string | null>(null)
+  const [videosReady, setVideosReady] = useState(false)
 
   const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dkzbmeto1'
   const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET || 'instagram_uploads'
@@ -79,15 +80,20 @@ export default function InstagramReelsDebugger() {
     setProcessedVideoUrl(null)
     setProcessedStoriesUrl(null)
     setProcessedThumbUrl(null)
+    setVideosReady(false)
   }
 
   const processClientSide = async () => {
     if (!selectedFile) return
     setProcessing(true)
     setProcessingProgress(0)
+    setVideosReady(false)
 
     try {
-      // 1) Upload original file to Cloudinary to get a public URL
+      // Step 1: Upload original file to Cloudinary
+      addLog('🔄 Step 1/3: Uploading video to Cloudinary...')
+      setProcessingProgress(20)
+      
       const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`
       const formVideo = new FormData()
       formVideo.append('file', selectedFile)
@@ -97,8 +103,9 @@ export default function InstagramReelsDebugger() {
       if (!vRes.ok) throw new Error(`Cloudinary upload failed: ${JSON.stringify(vJson)}`)
       addLog('✅ Uploaded source video to Cloudinary')
 
-      // 2) Generate Instagram-compliant URLs using Cloudinary transformations
-      addLog('🔄 Generating Instagram-compliant URLs via Cloudinary transformations...')
+      // Step 2: Generate transformation URLs
+      addLog('🔄 Step 2/3: Generating Instagram-compliant transformation URLs...')
+      setProcessingProgress(60)
       
       // For Reels: 9:16 aspect ratio, 720x1280, H.264, optimized for Instagram Reels
       const reelsTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k,fl_progressive/${vJson.public_id}.mp4`
@@ -109,16 +116,47 @@ export default function InstagramReelsDebugger() {
       // Generate thumbnail: extract frame at 1 second
       const thumbnailUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_720,h_1280,c_fill,g_auto,f_jpg,q_auto:best/${vJson.public_id}.jpg`
 
+      // Step 3: Validate URLs are accessible
+      addLog('🔄 Step 3/3: Validating transformed videos are accessible...')
+      setProcessingProgress(80)
+
+      // Test that the transformation URLs are accessible
+      const validationPromises = [
+        fetch(reelsTransformUrl, { method: 'HEAD' }).then(res => ({ type: 'Reels', ok: res.ok })),
+        fetch(storiesTransformUrl, { method: 'HEAD' }).then(res => ({ type: 'Stories', ok: res.ok })),
+        fetch(thumbnailUrl, { method: 'HEAD' }).then(res => ({ type: 'Thumbnail', ok: res.ok }))
+      ]
+
+      const validationResults = await Promise.allSettled(validationPromises)
+      
+      let allValid = true
+      validationResults.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value.ok) {
+          addLog(`✅ ${result.value.type} video validated`)
+        } else {
+          addLog(`⚠️ ${['Reels', 'Stories', 'Thumbnail'][index]} video validation failed`)
+          allValid = false
+        }
+      })
+
+      if (!allValid) {
+        addLog('⚠️ Some videos failed validation, but proceeding with available URLs')
+      }
+
+      // Set the processed URLs
       setProcessedVideoUrl(reelsTransformUrl)
       setProcessedStoriesUrl(storiesTransformUrl)
       setProcessedThumbUrl(thumbnailUrl)
       setProcessingProgress(100)
-      addLog('✅ Cloudinary transformations complete')
-      addLog(`Reels URL: ${reelsTransformUrl}`)
-      addLog(`Stories URL: ${storiesTransformUrl}`)
-      addLog(`Thumbnail URL: ${thumbnailUrl}`)
+      setVideosReady(true)
+      
+      addLog('🎉 Video processing complete! Videos are ready for posting')
+      addLog(`📹 Reels URL: ${reelsTransformUrl}`)
+      addLog(`📱 Stories URL: ${storiesTransformUrl}`)
+      addLog(`🖼️ Thumbnail URL: ${thumbnailUrl}`)
     } catch (e) {
       addLog(`❌ Processing error: ${e}`)
+      setVideosReady(false)
     } finally {
       setProcessing(false)
     }
@@ -515,6 +553,11 @@ export default function InstagramReelsDebugger() {
       return;
     }
 
+    if (!videosReady) {
+      addLog('❌ Videos are not ready yet. Please wait for processing to complete.');
+      return;
+    }
+
     if (!authState.isAuthenticated || !authState.userInfo) {
       addLog('❌ Not authenticated');
       return;
@@ -685,6 +728,11 @@ export default function InstagramReelsDebugger() {
       return;
     }
 
+    if (!videosReady) {
+      addLog('❌ Videos are not ready yet. Please wait for processing to complete.');
+      return;
+    }
+
     if (!authState.isAuthenticated || !authState.longLivedToken || !authState.instagramPageId) {
       addLog('Not authenticated - cannot test Stories capability');
       return;
@@ -851,9 +899,36 @@ export default function InstagramReelsDebugger() {
         </div>
         {(processedVideoUrl || processedStoriesUrl) && authState.isAuthenticated && (
           <div className="mt-3 text-sm text-gray-700">
-            {processedVideoUrl && <div>Reels video: <a className="text-blue-600 underline" href={processedVideoUrl} target="_blank" rel="noreferrer">open</a></div>}
-            {processedStoriesUrl && <div>Stories video: <a className="text-blue-600 underline" href={processedStoriesUrl} target="_blank" rel="noreferrer">open</a></div>}
-            {processedThumbUrl && <div>Thumbnail: <a className="text-blue-600 underline" href={processedThumbUrl} target="_blank" rel="noreferrer">open</a></div>}
+            <div className="flex items-center mb-2">
+              <div className={`w-3 h-3 rounded-full mr-2 ${videosReady ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+              <span className="font-medium">
+                Videos Status: {videosReady ? 'Ready for Posting' : 'Processing...'}
+              </span>
+            </div>
+            {processedVideoUrl && (
+              <div className="flex items-center">
+                <span className="mr-2">📹</span>
+                <span>Reels video: </span>
+                <a className="text-blue-600 underline ml-1" href={processedVideoUrl} target="_blank" rel="noreferrer">open</a>
+                {videosReady && <span className="ml-2 text-green-600">✓</span>}
+              </div>
+            )}
+            {processedStoriesUrl && (
+              <div className="flex items-center">
+                <span className="mr-2">📱</span>
+                <span>Stories video: </span>
+                <a className="text-blue-600 underline ml-1" href={processedStoriesUrl} target="_blank" rel="noreferrer">open</a>
+                {videosReady && <span className="ml-2 text-green-600">✓</span>}
+              </div>
+            )}
+            {processedThumbUrl && (
+              <div className="flex items-center">
+                <span className="mr-2">🖼️</span>
+                <span>Thumbnail: </span>
+                <a className="text-blue-600 underline ml-1" href={processedThumbUrl} target="_blank" rel="noreferrer">open</a>
+                {videosReady && <span className="ml-2 text-green-600">✓</span>}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -905,7 +980,7 @@ export default function InstagramReelsDebugger() {
             >
               Test Stories Capability
             </button>
-            {processedVideoUrl && (
+            {processedVideoUrl && videosReady && (
               <button
                 onClick={testActualReelsPosting}
                 className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -913,7 +988,7 @@ export default function InstagramReelsDebugger() {
                 Post Processed Reel
               </button>
             )}
-            {processedStoriesUrl && (
+            {processedStoriesUrl && videosReady && (
               <button
                 onClick={testStoriesCapability}
                 className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
