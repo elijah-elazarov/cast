@@ -204,7 +204,7 @@ const EnhancedInstagramAuth: React.FC = () => {
         const instagramId = page.instagram_business_account.id;
         const instagramUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${instagramId}`;
         const instagramParams = new URLSearchParams({
-          fields: 'id,username,account_type',
+          fields: 'id,username,name',
           access_token: accessToken
         });
 
@@ -212,7 +212,11 @@ const EnhancedInstagramAuth: React.FC = () => {
         if (instagramResponse.ok) {
           const instagramData = await instagramResponse.json();
           console.log('[ENHANCED AUTH] Found Instagram account via pages:', instagramData);
-          return instagramData;
+          return {
+            id: instagramData.id,
+            username: instagramData.username,
+            account_type: 'BUSINESS' // Default since we know it's a business account
+          };
         }
       }
     }
