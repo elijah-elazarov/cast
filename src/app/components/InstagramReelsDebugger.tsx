@@ -48,6 +48,12 @@ interface FacebookSDK {
   logout: (callback: () => void) => void;
 }
 
+// Window with Facebook SDK
+interface WindowWithFB extends Window {
+  FB: FacebookSDK;
+  fbAsyncInit: () => void;
+}
+
 export default function InstagramReelsDebugger() {
   const [sdkLoaded, setSdkLoaded] = useState(false);
   const [authState, setAuthState] = useState<AuthState>({
@@ -70,7 +76,7 @@ export default function InstagramReelsDebugger() {
   // Load Facebook SDK
   useEffect(() => {
     const loadFacebookSDK = () => {
-      if ((window as any).FB) {
+      if ((window as WindowWithFB).FB) {
         setSdkLoaded(true);
         addLog('Facebook SDK already loaded');
         return;
@@ -84,8 +90,8 @@ export default function InstagramReelsDebugger() {
       script.crossOrigin = 'anonymous';
       
       script.onload = () => {
-        (window as any).fbAsyncInit = () => {
-          (window as any).FB.init({
+        (window as WindowWithFB).fbAsyncInit = () => {
+          (window as WindowWithFB).FB.init({
             appId: INSTAGRAM_CONFIG.appId,
             cookie: true,
             xfbml: true,
@@ -106,13 +112,13 @@ export default function InstagramReelsDebugger() {
   // Check login status using Facebook SDK
   const checkLoginStatus = (): Promise<FacebookAuthResponse | null> => {
     return new Promise((resolve) => {
-      if (!(window as any).FB) {
+      if (!(window as WindowWithFB).FB) {
         addLog('Facebook SDK not loaded');
         resolve(null);
         return;
       }
 
-      (window as any).FB.getLoginStatus((response: FacebookLoginResponse) => {
+      (window as WindowWithFB).FB.getLoginStatus((response: FacebookLoginResponse) => {
         addLog(`Login status check: ${response.status}`);
         
         if (response.status === 'connected') {
@@ -129,13 +135,13 @@ export default function InstagramReelsDebugger() {
   // Login using Facebook SDK
   const loginWithFacebookSDK = (): Promise<FacebookAuthResponse> => {
     return new Promise((resolve, reject) => {
-      if (!(window as any).FB) {
+      if (!(window as WindowWithFB).FB) {
         reject(new Error('Facebook SDK not loaded'));
         return;
       }
 
       addLog('Starting Facebook SDK login...');
-      (window as any).FB.login((response: FacebookLoginResponse) => {
+      (window as WindowWithFB).FB.login((response: FacebookLoginResponse) => {
         addLog(`Facebook login response: ${response.status}`);
         
         if (response.authResponse) {
@@ -319,8 +325,8 @@ export default function InstagramReelsDebugger() {
 
   // Logout
   const handleLogout = () => {
-    if ((window as any).FB) {
-      (window as any).FB.logout(() => {
+    if ((window as WindowWithFB).FB) {
+      (window as WindowWithFB).FB.logout(() => {
         addLog('Logged out successfully');
         setAuthState({
           isAuthenticated: false,
