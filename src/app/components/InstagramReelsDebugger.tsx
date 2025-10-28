@@ -525,7 +525,7 @@ export default function InstagramReelsDebugger() {
   };
 
   // Check and process video for Instagram Reels (9:16 aspect ratio)
-  const checkAndProcessVideoForReels = async (videoUrl: string): Promise<string> => {
+  const checkAndProcessVideoForReels = async (_videoUrl: string): Promise<string> => {
     try {
       addLog('Analyzing video for Instagram Reels compatibility...');
       
@@ -552,7 +552,7 @@ export default function InstagramReelsDebugger() {
             addLog('✅ Video is compatible with Instagram Reels!');
             addLog('✅ Aspect ratio: Within acceptable range');
             addLog('✅ Resolution: Meets minimum requirements');
-            resolve(videoUrl);
+            resolve(_videoUrl);
           } else {
             addLog('⚠️ Video needs processing for Instagram Reels');
             addLog('🔄 Attempting to crop video to 9:16 aspect ratio...');
@@ -563,7 +563,7 @@ export default function InstagramReelsDebugger() {
             );
             
             Promise.race([
-              processVideoForReels(videoUrl, width, height, targetRatio),
+              processVideoForReels(_videoUrl, width, height, targetRatio),
               timeoutPromise
             ])
               .then((processedUrl) => {
@@ -575,7 +575,7 @@ export default function InstagramReelsDebugger() {
                 addLog('⚠️ Backend video processing is not available (FFmpeg required)');
                 addLog('Using original video - this may fail Instagram validation');
                 addLog('For testing, try using a video that already meets Instagram requirements');
-                resolve(videoUrl);
+                resolve(_videoUrl);
               });
           }
         };
@@ -583,14 +583,14 @@ export default function InstagramReelsDebugger() {
         video.onerror = () => {
           addLog('❌ Could not analyze video dimensions');
           addLog('Using original video URL');
-          resolve(videoUrl);
+                resolve(_videoUrl);
         };
         
-        video.src = videoUrl;
+        video.src = _videoUrl;
       });
     } catch (error) {
       addLog(`❌ Video analysis error: ${error}`);
-      return videoUrl;
+      return _videoUrl;
     }
   };
 
@@ -787,7 +787,7 @@ export default function InstagramReelsDebugger() {
   };
 
   // Check and process video for Instagram Stories (9:16 or 1:1 aspect ratio)
-  const checkAndProcessVideoForStories = async (videoUrl: string): Promise<string> => {
+  const checkAndProcessVideoForStories = async (_videoUrl: string): Promise<string> => {
     try {
       addLog('Analyzing video for Instagram Stories compatibility...');
       
@@ -817,7 +817,7 @@ export default function InstagramReelsDebugger() {
             addLog('✅ Video is compatible with Instagram Stories!');
             addLog('✅ Aspect ratio: Within acceptable range (9:16 or 1:1)');
             addLog('✅ Resolution: Meets minimum requirements');
-            resolve(videoUrl);
+            resolve(_videoUrl);
           } else {
             addLog('⚠️ Video needs processing for Instagram Stories');
             addLog('🔄 Attempting to crop video to 9:16 aspect ratio...');
@@ -828,7 +828,7 @@ export default function InstagramReelsDebugger() {
             );
             
             Promise.race([
-              processVideoForStories(videoUrl, width, height, targetRatio9_16),
+              processVideoForStories(_videoUrl, width, height, targetRatio9_16),
               timeoutPromise
             ])
               .then((processedUrl) => {
@@ -840,7 +840,7 @@ export default function InstagramReelsDebugger() {
                 addLog('⚠️ Backend video processing is not available (FFmpeg required)');
                 addLog('Using original video - this may fail Instagram validation');
                 addLog('For testing, try using a video that already meets Instagram requirements');
-                resolve(videoUrl);
+                resolve(_videoUrl);
               });
           }
         };
@@ -848,14 +848,14 @@ export default function InstagramReelsDebugger() {
         video.onerror = () => {
           addLog('❌ Could not analyze video dimensions');
           addLog('Using original video URL');
-          resolve(videoUrl);
+                resolve(_videoUrl);
         };
         
-        video.src = videoUrl;
+        video.src = _videoUrl;
       });
     } catch (error) {
       addLog(`❌ Video analysis error: ${error}`);
-      return videoUrl;
+      return _videoUrl;
     }
   };
 
@@ -909,7 +909,7 @@ export default function InstagramReelsDebugger() {
       
       // No need to process again - use the Cloudinary URL directly
       const finalProcessedVideoUrl = processedVideoUrl;
-      let processedThumbnailUrl: string | null = processedThumbUrl; // Use pre-generated thumbnail
+      const processedThumbnailUrl: string | null = processedThumbUrl; // Use pre-generated thumbnail
 
       // Stories have more flexible requirements
       const containerUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}/media`;
