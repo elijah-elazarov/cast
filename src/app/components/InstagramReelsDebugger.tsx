@@ -75,6 +75,33 @@ export default function InstagramReelsDebugger() {
 
   // Client-side ffmpeg removed; we will call backend to process
 
+  // Validate a Cloudinary video URL becoming available (transform may be async)
+  const validateVideoUrl = async (url: string, label: string, maxAttempts = 8): Promise<boolean> => {
+    let attempt = 0
+    while (attempt < maxAttempts) {
+      attempt += 1
+      try {
+        const res = await fetch(url, {
+          // Use a tiny ranged GET so we don't download the whole asset
+          method: 'GET',
+          headers: { Range: 'bytes=0-1' }
+        })
+        if (res.ok || res.status === 206) {
+          addLog(`✅ ${label} validated (status ${res.status})`)
+          return true
+        }
+        addLog(`⏳ ${label} not ready yet (status ${res.status}), retrying... [${attempt}/${maxAttempts}]`)
+      } catch (e) {
+        addLog(`⏳ ${label} validation error, retrying... [${attempt}/${maxAttempts}]`) 
+      }
+      // Exponential backoff: 500ms, 1s, 2s, 3s, ...
+      const delayMs = Math.min(3000, 500 * attempt)
+      await new Promise((r) => setTimeout(r, delayMs))
+    }
+    addLog(`⚠️ ${label} validation timed out`)
+    return false
+  }
+
   const handleFileChange = async (file: File) => {
     setSelectedFile(file)
     setProcessedVideoUrl(null)
@@ -116,31 +143,20 @@ export default function InstagramReelsDebugger() {
       // Generate thumbnail: extract frame at 1 second
       const thumbnailUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_720,h_1280,c_fill,g_auto,f_jpg,q_auto:best/${vJson.public_id}.jpg`
 
-      // Step 3: Validate URLs are accessible
+      // Step 3: Validate URLs are accessible (with retries because Cloudinary may 400/423 until ready)
       addLog('🔄 Step 3/3: Validating transformed videos are accessible...')
       setProcessingProgress(80)
 
-      // Test that the transformation URLs are accessible
-      const validationPromises = [
-        fetch(reelsTransformUrl, { method: 'HEAD' }).then(res => ({ type: 'Reels', ok: res.ok })),
-        fetch(storiesTransformUrl, { method: 'HEAD' }).then(res => ({ type: 'Stories', ok: res.ok })),
-        fetch(thumbnailUrl, { method: 'HEAD' }).then(res => ({ type: 'Thumbnail', ok: res.ok }))
-      ]
+      const [reelsOk, storiesOk, thumbOk] = await Promise.all([
+        validateVideoUrl(reelsTransformUrl, 'Reels video'),
+        validateVideoUrl(storiesTransformUrl, 'Stories video'),
+        validateVideoUrl(thumbnailUrl, 'Thumbnail')
+      ])
 
-      const validationResults = await Promise.allSettled(validationPromises)
-      
-      let allValid = true
-      validationResults.forEach((result, index) => {
-        if (result.status === 'fulfilled' && result.value.ok) {
-          addLog(`✅ ${result.value.type} video validated`)
-        } else {
-          addLog(`⚠️ ${['Reels', 'Stories', 'Thumbnail'][index]} video validation failed`)
-          allValid = false
-        }
-      })
+      const allValid = reelsOk && storiesOk && thumbOk
 
       if (!allValid) {
-        addLog('⚠️ Some videos failed validation, but proceeding with available URLs')
+        addLog('⚠️ Some videos failed validation, gating posting buttons until ready')
       }
 
       // Set the processed URLs
@@ -148,7 +164,7 @@ export default function InstagramReelsDebugger() {
       setProcessedStoriesUrl(storiesTransformUrl)
       setProcessedThumbUrl(thumbnailUrl)
       setProcessingProgress(100)
-      setVideosReady(true)
+      setVideosReady(allValid)
       
       addLog('🎉 Video processing complete! Videos are ready for posting')
       addLog(`📹 Reels URL: ${reelsTransformUrl}`)
