@@ -76,7 +76,7 @@ export default function InstagramReelsDebugger() {
   // Client-side ffmpeg removed; we will call backend to process
 
   // Validate a Cloudinary video URL becoming available (transform may be async)
-  const validateVideoUrl = async (url: string, label: string, maxAttempts = 6): Promise<boolean> => {
+  const validateVideoUrl = async (url: string, label: string, maxAttempts = 10): Promise<boolean> => {
     let attempt = 0
     while (attempt < maxAttempts) {
       attempt += 1
@@ -107,8 +107,8 @@ export default function InstagramReelsDebugger() {
         addLog(`⏳ ${label} validation error, retrying... [${attempt}/${maxAttempts}]`) 
       }
       
-      // Shorter delays for faster processing: 1s, 2s, 3s, 5s, 8s, 10s
-      const delayMs = attempt <= 3 ? 1000 * attempt : Math.min(10000, 2000 * (attempt - 2))
+      // Longer delays for g_auto processing: 2s, 4s, 6s, 8s, 10s, 12s, 15s, 18s, 20s, 25s
+      const delayMs = attempt <= 5 ? 2000 * attempt : Math.min(25000, 3000 * (attempt - 3))
       await new Promise((r) => setTimeout(r, delayMs))
     }
     addLog(`⚠️ ${label} validation timed out after ${maxAttempts} attempts`)
@@ -147,14 +147,14 @@ export default function InstagramReelsDebugger() {
       addLog('🔄 Step 2/3: Generating Instagram-compliant transformation URLs...')
       setProcessingProgress(60)
       
-      // Simplified transformations for faster processing
-      // Start with basic transformations that are more likely to be synchronous
-      const reelsTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best,vc_h264,fps_30,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
-      const storiesTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best,vc_h264,fps_30,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
+      // Use Cloudinary's reliable cropping parameters per their documentation
+      // c_fill with g_auto for smart cropping, but simpler encoding for faster processing
+      const reelsTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
+      const storiesTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
       
-      // Fallback to even simpler transformations if needed
-      const reelsFallbackUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best/${vJson.public_id}.mp4`
-      const storiesFallbackUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best/${vJson.public_id}.mp4`
+      // Fallback to center crop if g_auto is too slow
+      const reelsFallbackUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
+      const storiesFallbackUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
       
       // Generate thumbnail: extract frame at 1 second
       const thumbnailUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_720,h_1280,c_fill,g_auto,f_jpg,q_auto:best/${vJson.public_id}.jpg`
@@ -167,25 +167,26 @@ export default function InstagramReelsDebugger() {
       let finalReelsUrl = reelsTransformUrl
       let finalStoriesUrl = storiesTransformUrl
       
-      addLog('Trying simplified transformations...')
+      addLog('Trying smart cropping transformations (g_auto)...')
+      addLog('Note: g_auto may take 30-60 seconds for complex videos')
       const [reelsOk, storiesOk, thumbOk] = await Promise.all([
-        validateVideoUrl(reelsTransformUrl, 'Reels video'),
-        validateVideoUrl(storiesTransformUrl, 'Stories video'),
+        validateVideoUrl(reelsTransformUrl, 'Reels video (smart crop)'),
+        validateVideoUrl(storiesTransformUrl, 'Stories video (smart crop)'),
         validateVideoUrl(thumbnailUrl, 'Thumbnail')
       ])
 
-      // If simplified failed, try even simpler fallbacks
+      // If smart crop failed, try center crop fallbacks
       if (!reelsOk) {
-        addLog('Simplified Reels failed, trying basic fallback...')
-        const reelsFallbackOk = await validateVideoUrl(reelsFallbackUrl, 'Reels video (basic)')
+        addLog('Smart crop Reels failed, trying center crop fallback...')
+        const reelsFallbackOk = await validateVideoUrl(reelsFallbackUrl, 'Reels video (center crop)')
         if (reelsFallbackOk) {
           finalReelsUrl = reelsFallbackUrl
         }
       }
       
       if (!storiesOk) {
-        addLog('Simplified Stories failed, trying basic fallback...')
-        const storiesFallbackOk = await validateVideoUrl(storiesFallbackUrl, 'Stories video (basic)')
+        addLog('Smart crop Stories failed, trying center crop fallback...')
+        const storiesFallbackOk = await validateVideoUrl(storiesFallbackUrl, 'Stories video (center crop)')
         if (storiesFallbackOk) {
           finalStoriesUrl = storiesFallbackUrl
         }
