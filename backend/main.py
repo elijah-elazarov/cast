@@ -1669,6 +1669,52 @@ async def health_check():
     """
     return {"status": "healthy", "service": "Social Media API"}
 
+@app.get("/api/ffmpeg/status")
+async def check_ffmpeg_status():
+    """Check if FFmpeg is available on the system"""
+    try:
+        result = subprocess.run(['ffmpeg', '-version'], 
+                              capture_output=True, 
+                              text=True, 
+                              timeout=10)
+        
+        if result.returncode == 0:
+            version_line = result.stdout.split('\n')[0]
+            return JSONResponse({
+                "success": True,
+                "ffmpeg_available": True,
+                "version": version_line,
+                "message": "FFmpeg is installed and working"
+            })
+        else:
+            return JSONResponse({
+                "success": False,
+                "ffmpeg_available": False,
+                "error": result.stderr,
+                "message": "FFmpeg command failed"
+            })
+            
+    except subprocess.TimeoutExpired:
+        return JSONResponse({
+            "success": False,
+            "ffmpeg_available": False,
+            "error": "FFmpeg check timed out",
+            "message": "FFmpeg check timed out"
+        })
+    except FileNotFoundError:
+        return JSONResponse({
+            "success": False,
+            "ffmpeg_available": False,
+            "error": "FFmpeg not found in PATH",
+            "message": "FFmpeg not installed"
+        })
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "ffmpeg_available": False,
+            "error": str(e),
+            "message": f"Error checking FFmpeg: {e}"
+        })
 
 @app.get("/api/instagram/webhook")
 async def instagram_webhook_verify(request: Request):
