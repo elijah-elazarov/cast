@@ -2,8 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile } from '@ffmpeg/util';
+// Removed ffmpeg.wasm; using backend processing instead
 
 interface UserInfo {
   id: string;
@@ -72,19 +71,7 @@ export default function InstagramReelsDebugger() {
   const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dkzbmeto1'
   const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET || 'instagram_uploads'
 
-  const ffmpegRef = { current: null as any }
-
-  const ensureFfmpeg = async () => {
-    if (ffmpegRef.current) return ffmpegRef.current
-    const ffmpeg = new FFmpeg();
-    ffmpeg.on('progress', ({ progress }: { progress: number }) => setProcessingProgress(Math.min(99, Math.round(progress * 100))))
-    await ffmpeg.load({
-      coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
-      wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
-    })
-    ffmpegRef.current = ffmpeg
-    return ffmpeg
-  }
+  // Client-side ffmpeg removed; we will call backend to process
 
   const handleFileChange = async (file: File) => {
     setSelectedFile(file)
@@ -98,62 +85,36 @@ export default function InstagramReelsDebugger() {
     setProcessingProgress(0)
 
     try {
-      const ffmpeg = await ensureFfmpeg()
-
-      // Input/Output names
-      const inName = 'input.mp4'
-      const outName = 'output.mp4'
-      const jpgName = 'thumb.jpg'
-
-      ffmpeg.writeFile(inName, await fetchFile(selectedFile))
-
-      // Center crop 9:16 to 720x1280 and encode H.264 yuv420p
-      await ffmpeg.exec([
-        '-i', inName,
-        '-vf', 'scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280:(iw-720)/2:(ih-1280)/2',
-        '-c:v', 'libx264',
-        '-preset', 'veryfast',
-        '-pix_fmt', 'yuv420p',
-        '-profile:v', 'high',
-        '-level', '4.0',
-        '-b:v', '3000k',
-        '-maxrate', '8000k',
-        '-bufsize', '16000k',
-        '-movflags', '+faststart',
-        '-an', // no audio in wasm to simplify; IG accepts silent
-        outName
-      ])
-
-      // Extract thumbnail
-      await ffmpeg.exec(['-i', outName, '-ss', '00:00:01', '-frames:v', '1', '-q:v', '2', jpgName])
-
-      const outData = ffmpeg.readFile(outName)
-      const jpgData = ffmpeg.readFile(jpgName)
-
-      // Upload to Cloudinary unsigned
+      // 1) Upload original file to Cloudinary to get a public URL
       const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`
-
-      const uploadBlob = new Blob([outData.buffer], { type: 'video/mp4' })
-      const thumbBlob = new Blob([jpgData.buffer], { type: 'image/jpeg' })
-
       const formVideo = new FormData()
-      formVideo.append('file', uploadBlob)
+      formVideo.append('file', selectedFile)
       formVideo.append('upload_preset', UPLOAD_PRESET)
       const vRes = await fetch(uploadUrl, { method: 'POST', body: formVideo })
       const vJson = await vRes.json()
-      if (!vRes.ok) throw new Error(`Cloudinary video upload failed: ${JSON.stringify(vJson)}`)
+      if (!vRes.ok) throw new Error(`Cloudinary upload failed: ${JSON.stringify(vJson)}`)
+      addLog('✅ Uploaded source video to Cloudinary')
 
-      const formImg = new FormData()
-      formImg.append('file', thumbBlob)
-      formImg.append('upload_preset', UPLOAD_PRESET)
-      const iRes = await fetch(uploadUrl, { method: 'POST', body: formImg })
-      const iJson = await iRes.json()
-      if (!iRes.ok) throw new Error(`Cloudinary image upload failed: ${JSON.stringify(iJson)}`)
+      // 2) Ask backend to process to Instagram spec (smart center crop 9:16)
+      addLog('🔄 Processing video on backend for Instagram compliance...')
+      const procRes = await fetch('/api/instagram/graph/process-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          video_url: vJson.secure_url,
+          target_width: 720,
+          target_height: 1280,
+          target_ratio: 9/16,
+          center_crop: true
+        })
+      })
+      const procJson = await procRes.json()
+      if (!procRes.ok) throw new Error(`Backend processing failed: ${JSON.stringify(procJson)}`)
 
-      setProcessedVideoUrl(vJson.secure_url)
-      setProcessedThumbUrl(iJson.secure_url)
+      setProcessedVideoUrl(procJson.processed_video_url)
+      setProcessedThumbUrl(procJson.processed_thumbnail_url || null)
       setProcessingProgress(100)
-      addLog('✅ Client-side processing & Cloudinary upload complete')
+      addLog('✅ Server-side processing complete')
     } catch (e) {
       addLog(`❌ Client processing error: ${e}`)
     } finally {
