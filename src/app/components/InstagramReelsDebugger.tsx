@@ -672,34 +672,76 @@ export default function InstagramReelsDebugger() {
       const containerUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}/media`;
       const containerData = {
         video_url: demoVideoUrl,
+        image_url: demoVideoUrl, // Instagram sometimes requires both video_url and image_url
         caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
         access_token: authState.longLivedToken
       };
 
-      addLog('Creating Stories media container...');
-      const containerResponse = await fetch(containerUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(containerData)
-      });
+      // Try different approaches for Instagram Stories
+      const storiesApproaches = [
+        {
+          name: 'Video only',
+          data: {
+            video_url: demoVideoUrl,
+            caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
+            access_token: authState.longLivedToken
+          }
+        },
+        {
+          name: 'Video with image_url',
+          data: {
+            video_url: demoVideoUrl,
+            image_url: demoVideoUrl,
+            caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
+            access_token: authState.longLivedToken
+          }
+        },
+        {
+          name: 'Image only (fallback)',
+          data: {
+            image_url: demoVideoUrl,
+            caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
+            access_token: authState.longLivedToken
+          }
+        }
+      ];
 
-      if (containerResponse.ok) {
-        const containerResult = await containerResponse.json();
-        const containerId = containerResult.id;
-        addLog(`✅ Stories container created: ${containerId}`);
+      let storiesContainerCreated = false;
+      let storiesContainerId = null;
+
+      for (const approach of storiesApproaches) {
+        addLog(`Trying Stories approach: ${approach.name}`);
         
+        const containerResponse = await fetch(containerUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(approach.data)
+        });
+
+        if (containerResponse.ok) {
+          const containerResult = await containerResponse.json();
+          storiesContainerId = containerResult.id;
+          addLog(`✅ Stories container created with ${approach.name}: ${storiesContainerId}`);
+          storiesContainerCreated = true;
+          break;
+        } else {
+          const errorData = await containerResponse.json();
+          addLog(`❌ ${approach.name} failed: ${JSON.stringify(errorData)}`);
+        }
+      }
+
+      if (storiesContainerCreated && storiesContainerId) {
         // Check container status
         addLog('Checking Stories container status...');
-        await checkContainerStatus(containerId);
-        
+        await checkContainerStatus(storiesContainerId);
       } else {
-        const errorData = await containerResponse.json();
-        addLog(`❌ Stories container creation failed: ${JSON.stringify(errorData)}`);
+        addLog('❌ All Stories container creation approaches failed');
         addLog('Stories Requirements:');
         addLog('• Aspect ratio: 9:16 (preferred) or 1:1');
         addLog('• Resolution: 720x1280 or 1080x1080');
         addLog('• Duration: 1-15 seconds');
         addLog('• Format: MP4, MOV, or AVI');
+        addLog('The demo.mp4 file may not meet these requirements.');
       }
       
     } catch (error) {
