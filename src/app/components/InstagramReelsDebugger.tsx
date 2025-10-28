@@ -76,29 +76,42 @@ export default function InstagramReelsDebugger() {
   // Client-side ffmpeg removed; we will call backend to process
 
   // Validate a Cloudinary video URL becoming available (transform may be async)
-  const validateVideoUrl = async (url: string, label: string, maxAttempts = 8): Promise<boolean> => {
+  const validateVideoUrl = async (url: string, label: string, maxAttempts = 12): Promise<boolean> => {
     let attempt = 0
     while (attempt < maxAttempts) {
       attempt += 1
       try {
-        const res = await fetch(url, {
-          // Use a tiny ranged GET so we don't download the whole asset
-          method: 'GET',
-          headers: { Range: 'bytes=0-1' }
-        })
+        // Try HEAD first (faster), then GET with range if needed
+        let res = await fetch(url, { method: 'HEAD' })
+        
+        // If HEAD fails, try GET with range
+        if (!res.ok && (res.status === 400 || res.status === 423)) {
+          res = await fetch(url, {
+            method: 'GET',
+            headers: { Range: 'bytes=0-1' }
+          })
+        }
+        
         if (res.ok || res.status === 206) {
           addLog(`✅ ${label} validated (status ${res.status})`)
           return true
         }
-        addLog(`⏳ ${label} not ready yet (status ${res.status}), retrying... [${attempt}/${maxAttempts}]`)
+        
+        // Handle specific Cloudinary async transform statuses
+        if (res.status === 400 || res.status === 423) {
+          addLog(`⏳ ${label} transform in progress (${res.status}), retrying... [${attempt}/${maxAttempts}]`)
+        } else {
+          addLog(`⏳ ${label} not ready yet (status ${res.status}), retrying... [${attempt}/${maxAttempts}]`)
+        }
       } catch (e) {
         addLog(`⏳ ${label} validation error, retrying... [${attempt}/${maxAttempts}]`) 
       }
-      // Exponential backoff: 500ms, 1s, 2s, 3s, ...
-      const delayMs = Math.min(3000, 500 * attempt)
+      
+      // Longer delays for Cloudinary async transforms: 1s, 2s, 3s, 5s, 8s, 10s...
+      const delayMs = attempt <= 3 ? 1000 * attempt : Math.min(10000, 2000 * (attempt - 2))
       await new Promise((r) => setTimeout(r, delayMs))
     }
-    addLog(`⚠️ ${label} validation timed out`)
+    addLog(`⚠️ ${label} validation timed out after ${maxAttempts} attempts`)
     return false
   }
 
@@ -135,10 +148,13 @@ export default function InstagramReelsDebugger() {
       setProcessingProgress(60)
       
       // For Reels: 9:16 aspect ratio, 720x1280, H.264 High@4.0, 30fps, progressive
+      // Try with g_auto first (content-aware), fallback to center crop if async issues
       const reelsTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264:high:4.0,fps_30,ac_aac,ar_48000,ab_128k,fl_progressive/${vJson.public_id}.mp4`
+      const reelsFallbackUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best,vc_h264:high:4.0,fps_30,ac_aac,ar_48000,ab_128k,fl_progressive/${vJson.public_id}.mp4`
       
       // For Stories: 9:16 aspect ratio, 720x1280, H.264 High@4.0, 30fps, fast upload
       const storiesTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264:high:4.0,fps_30,ac_aac,ar_48000,ab_128k,fl_fast_upload/${vJson.public_id}.mp4`
+      const storiesFallbackUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best,vc_h264:high:4.0,fps_30,ac_aac,ar_48000,ab_128k,fl_fast_upload/${vJson.public_id}.mp4`
       
       // Generate thumbnail: extract frame at 1 second
       const thumbnailUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_720,h_1280,c_fill,g_auto,f_jpg,q_auto:best/${vJson.public_id}.jpg`
@@ -147,28 +163,54 @@ export default function InstagramReelsDebugger() {
       addLog('🔄 Step 3/3: Validating transformed videos are accessible...')
       setProcessingProgress(80)
 
+      // Try primary URLs first, then fallbacks if needed
+      let finalReelsUrl = reelsTransformUrl
+      let finalStoriesUrl = storiesTransformUrl
+      
+      addLog('Trying content-aware transformations (g_auto)...')
       const [reelsOk, storiesOk, thumbOk] = await Promise.all([
-        validateVideoUrl(reelsTransformUrl, 'Reels video'),
-        validateVideoUrl(storiesTransformUrl, 'Stories video'),
+        validateVideoUrl(reelsTransformUrl, 'Reels video (content-aware)'),
+        validateVideoUrl(storiesTransformUrl, 'Stories video (content-aware)'),
         validateVideoUrl(thumbnailUrl, 'Thumbnail')
       ])
 
-      const allValid = reelsOk && storiesOk && thumbOk
+      // If content-aware failed, try center crop fallbacks
+      if (!reelsOk) {
+        addLog('Content-aware Reels failed, trying center crop fallback...')
+        const reelsFallbackOk = await validateVideoUrl(reelsFallbackUrl, 'Reels video (center crop)')
+        if (reelsFallbackOk) {
+          finalReelsUrl = reelsFallbackUrl
+        }
+      }
+      
+      if (!storiesOk) {
+        addLog('Content-aware Stories failed, trying center crop fallback...')
+        const storiesFallbackOk = await validateVideoUrl(storiesFallbackUrl, 'Stories video (center crop)')
+        if (storiesFallbackOk) {
+          finalStoriesUrl = storiesFallbackUrl
+        }
+      }
+
+      const allValid = (reelsOk || finalReelsUrl === reelsFallbackUrl) && (storiesOk || finalStoriesUrl === storiesFallbackUrl) && thumbOk
 
       if (!allValid) {
         addLog('⚠️ Some videos failed validation, gating posting buttons until ready')
       }
 
-      // Set the processed URLs
-      setProcessedVideoUrl(reelsTransformUrl)
-      setProcessedStoriesUrl(storiesTransformUrl)
+      // Set the processed URLs (use validated URLs)
+      setProcessedVideoUrl(finalReelsUrl)
+      setProcessedStoriesUrl(finalStoriesUrl)
       setProcessedThumbUrl(thumbnailUrl)
       setProcessingProgress(100)
       setVideosReady(allValid)
       
-      addLog('🎉 Video processing complete! Videos are ready for posting')
-      addLog(`📹 Reels URL: ${reelsTransformUrl}`)
-      addLog(`📱 Stories URL: ${storiesTransformUrl}`)
+      if (allValid) {
+        addLog('🎉 Video processing complete! Videos are ready for posting')
+      } else {
+        addLog('⚠️ Video processing completed with some issues - check logs above')
+      }
+      addLog(`📹 Reels URL: ${finalReelsUrl}`)
+      addLog(`📱 Stories URL: ${finalStoriesUrl}`)
       addLog(`🖼️ Thumbnail URL: ${thumbnailUrl}`)
     } catch (e) {
       addLog(`❌ Processing error: ${e}`)
