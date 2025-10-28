@@ -617,7 +617,7 @@ export default function InstagramReelsDebugger() {
         try {
           const pagesUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/accounts`;
           const pagesParams = new URLSearchParams({
-            fields: 'id,name,access_token,instagram_business_account{id,username,name,media_count,followers_count,follows_count,website,profile_picture_url}',
+            fields: 'id,name,access_token,instagram_business_account{id,username,name,media_count,followers_count,follows_count,profile_picture_url}',
             access_token: authState.longLivedToken
           });
           
@@ -650,7 +650,6 @@ export default function InstagramReelsDebugger() {
               addLog(`   Media Count: ${igAccount.media_count?.toLocaleString() || 'Unknown'}`);
               addLog(`   Followers: ${igAccount.followers_count?.toLocaleString() || 'Unknown'}`);
               addLog(`   Following: ${igAccount.follows_count?.toLocaleString() || 'Unknown'}`);
-              if (igAccount.website) addLog(`   Website: ${igAccount.website}`);
               if (igAccount.profile_picture_url) addLog(`   Profile Picture: ${igAccount.profile_picture_url}`);
             } else {
               addLog(`⚠️ Could not find Instagram Business Account details`);
@@ -898,7 +897,7 @@ export default function InstagramReelsDebugger() {
         try {
           const pagesUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/accounts`;
           const pagesParams = new URLSearchParams({
-            fields: 'id,name,access_token,instagram_business_account{id,username,name,media_count,followers_count,follows_count,website,profile_picture_url}',
+            fields: 'id,name,access_token,instagram_business_account{id,username,name,media_count,followers_count,follows_count,profile_picture_url}',
             access_token: authState.longLivedToken
           });
           
@@ -931,7 +930,6 @@ export default function InstagramReelsDebugger() {
               addLog(`   Media Count: ${igAccount.media_count?.toLocaleString() || 'Unknown'}`);
               addLog(`   Followers: ${igAccount.followers_count?.toLocaleString() || 'Unknown'}`);
               addLog(`   Following: ${igAccount.follows_count?.toLocaleString() || 'Unknown'}`);
-              if (igAccount.website) addLog(`   Website: ${igAccount.website}`);
               if (igAccount.profile_picture_url) addLog(`   Profile Picture: ${igAccount.profile_picture_url}`);
             } else {
               addLog(`⚠️ Could not find Instagram Business Account details`);
