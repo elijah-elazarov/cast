@@ -95,28 +95,27 @@ export default function InstagramReelsDebugger() {
       if (!vRes.ok) throw new Error(`Cloudinary upload failed: ${JSON.stringify(vJson)}`)
       addLog('✅ Uploaded source video to Cloudinary')
 
-      // 2) Ask backend to process to Instagram spec (smart center crop 9:16)
-      addLog('🔄 Processing video on backend for Instagram compliance...')
-      const procRes = await fetch('/api/instagram/graph/process-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          video_url: vJson.secure_url,
-          target_width: 720,
-          target_height: 1280,
-          target_ratio: 9/16,
-          center_crop: true
-        })
-      })
-      const procJson = await procRes.json()
-      if (!procRes.ok) throw new Error(`Backend processing failed: ${JSON.stringify(procJson)}`)
+      // 2) Generate Instagram-compliant URLs using Cloudinary transformations
+      addLog('🔄 Generating Instagram-compliant URLs via Cloudinary transformations...')
+      
+      // For Reels: 9:16 aspect ratio, 720x1280, H.264, optimized for Instagram
+      const reelsTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
+      
+      // For Stories: 9:16 aspect ratio, 720x1280, optimized for Stories
+      const storiesTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
+      
+      // Generate thumbnail: extract frame at 1 second
+      const thumbnailUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_720,h_1280,c_fill,g_auto,f_jpg,q_auto:best/${vJson.public_id}.jpg`
 
-      setProcessedVideoUrl(procJson.processed_video_url)
-      setProcessedThumbUrl(procJson.processed_thumbnail_url || null)
+      setProcessedVideoUrl(reelsTransformUrl)
+      setProcessedThumbUrl(thumbnailUrl)
       setProcessingProgress(100)
-      addLog('✅ Server-side processing complete')
+      addLog('✅ Cloudinary transformations complete')
+      addLog(`Reels URL: ${reelsTransformUrl}`)
+      addLog(`Stories URL: ${storiesTransformUrl}`)
+      addLog(`Thumbnail URL: ${thumbnailUrl}`)
     } catch (e) {
-      addLog(`❌ Client processing error: ${e}`)
+      addLog(`❌ Processing error: ${e}`)
     } finally {
       setProcessing(false)
     }
@@ -813,7 +812,7 @@ export default function InstagramReelsDebugger() {
               ? 'Sign in to process video' 
               : processing 
                 ? `Processing... ${processingProgress}%` 
-                : 'Process with FFmpeg (client)'
+                : 'Process with Cloudinary'
             }
           </button>
           {processing && (

@@ -96,7 +96,7 @@ async def process_video_for_reels(request: Request):
         logger.info(f"Processing video for Instagram Reels: {video_url}")
         
         # Download video
-        response = requests.get(video_url)
+        response = requests.get(video_url, timeout=30)
         if response.status_code != 200:
             raise HTTPException(status_code=400, detail="Could not download video")
         
@@ -141,7 +141,7 @@ async def process_video_for_reels(request: Request):
             ]
             
             try:
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=55)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
             except subprocess.TimeoutExpired as te:
                 logger.error(f"FFmpeg timeout: {te}")
                 return JSONResponse({
@@ -184,7 +184,7 @@ async def process_video_for_reels(request: Request):
                     '-q:v', '2',
                     '-y', thumbnail_path
                 ]
-                thumb_result = subprocess.run(thumb_cmd, capture_output=True, text=True)
+                thumb_result = subprocess.run(thumb_cmd, capture_output=True, text=True, timeout=60)
                 if thumb_result.returncode != 0:
                     logger.warning(f"FFmpeg thumbnail error: {thumb_result.stderr}")
                     thumbnail_url = None
