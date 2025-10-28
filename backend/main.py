@@ -159,12 +159,34 @@ async def process_video_for_reels(request: Request):
             
             # Return URL to processed video
             processed_url = f"https://backrooms-e8nm.onrender.com/static/{processed_filename}"
-            
-            logger.info(f"Video processed successfully: {processed_url}")
-            
+
+            # Generate a JPEG thumbnail (cover) from the processed video (at 1s)
+            thumbnail_filename = f"processed_reels_{int(time.time())}.jpg"
+            thumbnail_path = f"static/{thumbnail_filename}"
+            try:
+                thumb_cmd = [
+                    'ffmpeg', '-ss', '00:00:01', '-i', output_path,
+                    '-frames:v', '1',
+                    '-vf', f'scale={target_width}:-2',
+                    '-q:v', '2',
+                    '-y', thumbnail_path
+                ]
+                thumb_result = subprocess.run(thumb_cmd, capture_output=True, text=True)
+                if thumb_result.returncode != 0:
+                    logger.warning(f"FFmpeg thumbnail error: {thumb_result.stderr}")
+                    thumbnail_url = None
+                else:
+                    thumbnail_url = f"https://backrooms-e8nm.onrender.com/static/{thumbnail_filename}"
+            except Exception as thumb_err:
+                logger.warning(f"Thumbnail generation failed: {thumb_err}")
+                thumbnail_url = None
+
+            logger.info(f"Video processed successfully: {processed_url}; thumbnail: {thumbnail_url}")
+
             return JSONResponse({
                         "success": True,
                         "processed_video_url": processed_url,
+                        "processed_thumbnail_url": thumbnail_url,
                         "original_dimensions": "analyzed",
                         "processed_dimensions": f"{target_width}x{target_height}",
                         "aspect_ratio": f"{target_ratio:.3f}",

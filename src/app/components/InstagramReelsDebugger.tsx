@@ -784,7 +784,32 @@ export default function InstagramReelsDebugger() {
       
       // Check if video needs processing for Stories (9:16 or 1:1 aspect ratio)
       const processedVideoUrl = await checkAndProcessVideoForStories(demoVideoUrl);
-      
+      let processedThumbnailUrl: string | null = null;
+
+      // Try to request processing explicitly to capture thumbnail URL
+      try {
+        const resp = await fetch('/api/instagram/graph/process-video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            video_url: demoVideoUrl,
+            target_width: 720,
+            target_height: 1280,
+            target_ratio: 9/16,
+            center_crop: true
+          })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.processed_thumbnail_url) {
+            processedThumbnailUrl = data.processed_thumbnail_url;
+            addLog(`✅ Generated thumbnail: ${processedThumbnailUrl}`);
+          }
+        }
+      } catch (e) {
+        // Ignore, fallback to processedVideoUrl
+      }
+
       // Stories have more flexible requirements
       const containerUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}/media`;
 
@@ -802,7 +827,7 @@ export default function InstagramReelsDebugger() {
           name: 'Video with image_url',
           data: {
             video_url: processedVideoUrl,
-            image_url: processedVideoUrl,
+            image_url: processedThumbnailUrl || processedVideoUrl,
             caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
             access_token: authState.longLivedToken
           }
@@ -810,7 +835,7 @@ export default function InstagramReelsDebugger() {
         {
           name: 'Image only (fallback)',
           data: {
-            image_url: processedVideoUrl,
+            image_url: processedThumbnailUrl || processedVideoUrl,
             caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
             access_token: authState.longLivedToken
           }
