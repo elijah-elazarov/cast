@@ -108,7 +108,7 @@ export default function InstagramReelsDebugger() {
       ffmpeg.writeFile(inName, await fetchFile(selectedFile))
 
       // Center crop 9:16 to 720x1280 and encode H.264 yuv420p
-      await ffmpeg.run(
+      await ffmpeg.exec([
         '-i', inName,
         '-vf', 'scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280:(iw-720)/2:(ih-1280)/2',
         '-c:v', 'libx264',
@@ -122,10 +122,10 @@ export default function InstagramReelsDebugger() {
         '-movflags', '+faststart',
         '-an', // no audio in wasm to simplify; IG accepts silent
         outName
-      )
+      ])
 
       // Extract thumbnail
-      await ffmpeg.run('-i', outName, '-ss', '00:00:01', '-frames:v', '1', '-q:v', '2', jpgName)
+      await ffmpeg.exec(['-i', outName, '-ss', '00:00:01', '-frames:v', '1', '-q:v', '2', jpgName])
 
       const outData = ffmpeg.readFile(outName)
       const jpgData = ffmpeg.readFile(jpgName)
