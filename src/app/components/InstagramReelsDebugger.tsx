@@ -629,10 +629,7 @@ export default function InstagramReelsDebugger() {
             addLog('✅ Instagram content publish permission granted');
             addLog('✅ Reels posting capability confirmed!');
             addLog('Your account can post Reels!');
-            
-            // Test 3: Try actual Reels posting with demo video
-            addLog('Testing actual Reels posting with demo video...');
-            await testActualReelsPosting();
+            addLog('✅ Reels capability test complete - your account is ready for posting');
           } else {
             addLog('❌ Instagram content publish permission not granted');
           }
@@ -825,8 +822,65 @@ export default function InstagramReelsDebugger() {
 
 
 
-  // Test Stories posting capability with processed video
+  // Test Stories posting capability (permissions only)
   const testStoriesCapability = async () => {
+    if (!authState.isAuthenticated || !authState.longLivedToken || !authState.instagramPageId) {
+      addLog('Not authenticated - cannot test Stories capability');
+      return;
+    }
+
+    addLog('Testing Instagram Stories posting capability...');
+    
+    try {
+      // Test 1: Check if we can access the Instagram account with publishing permissions
+      const accountUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}`;
+      const accountParams = new URLSearchParams({
+        fields: 'id,username,account_type,media_count,followers_count',
+        access_token: authState.longLivedToken
+      });
+
+      addLog('Testing Instagram account access...');
+      const accountResponse = await fetch(`${accountUrl}?${accountParams}`);
+      
+      if (accountResponse.ok) {
+        const accountData = await accountResponse.json();
+        addLog(`✅ Instagram account accessible: ${accountData.username}`);
+        
+        // Test 2: Check if we have the required permissions
+        const permissionsUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/permissions`;
+        const permissionsParams = new URLSearchParams({
+          access_token: authState.longLivedToken
+        });
+        
+        const permissionsResponse = await fetch(`${permissionsUrl}?${permissionsParams}`);
+        if (permissionsResponse.ok) {
+          const permissionsData = await permissionsResponse.json();
+          const hasPublishPermission = permissionsData.data.some((perm: any) => 
+            perm.permission === 'instagram_content_publish' && perm.status === 'granted'
+          );
+          
+          if (hasPublishPermission) {
+            addLog('✅ Instagram content publish permission granted');
+            addLog('✅ Stories posting capability confirmed!');
+            addLog('Your account can post Stories!');
+            addLog('✅ Stories capability test complete - your account is ready for posting');
+          } else {
+            addLog('❌ Instagram content publish permission not granted');
+          }
+        } else {
+          addLog('❌ Could not check permissions');
+        }
+      } else {
+        const errorData = await accountResponse.json();
+        addLog(`❌ Instagram account access failed: ${JSON.stringify(errorData)}`);
+      }
+    } catch (error) {
+      addLog(`❌ Stories capability test failed: ${error}`);
+    }
+  };
+
+  // Post Stories with processed video
+  const postStoriesWithProcessedVideo = async () => {
     if (!processedStoriesUrl) {
       addLog('❌ No processed Stories video available. Please process a video first.');
       return;
@@ -838,11 +892,11 @@ export default function InstagramReelsDebugger() {
     }
 
     if (!authState.isAuthenticated || !authState.longLivedToken || !authState.instagramPageId) {
-      addLog('Not authenticated - cannot test Stories capability');
+      addLog('Not authenticated - cannot post Stories');
       return;
     }
 
-    addLog('Testing Instagram Stories posting capability...');
+    addLog('Posting Instagram Stories with processed video...');
     showAvailableTransformedVideos();
     
     try {
@@ -1114,7 +1168,7 @@ export default function InstagramReelsDebugger() {
             )}
             {processedStoriesUrl && videosReady && (
               <button
-                onClick={testStoriesCapability}
+                onClick={postStoriesWithProcessedVideo}
                 className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
               >
                 Post Processed Story
