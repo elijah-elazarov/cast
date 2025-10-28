@@ -365,28 +365,43 @@ export default function InstagramReelsDebugger() {
     addLog('Testing Reels posting capability...');
     
     try {
-      // Test creating a media container (without actually posting)
-      const testUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}/media`;
-      const testData = {
-        video_url: 'https://example.com/test-video.mp4', // Dummy URL for testing
-        caption: 'Test caption for Reels capability',
+      // Test 1: Check if we can access the Instagram account with publishing permissions
+      const accountUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}`;
+      const accountParams = new URLSearchParams({
+        fields: 'id,username,name',
         access_token: authState.longLivedToken
-      };
-
-      addLog('Testing media container creation...');
-      const response = await fetch(testUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(testData)
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        addLog(`✅ Reels posting capability confirmed! Container ID: ${data.id}`);
-        addLog('Your account can post Reels!');
+      addLog('Testing Instagram account access...');
+      const accountResponse = await fetch(`${accountUrl}?${accountParams.toString()}`);
+      
+      if (accountResponse.ok) {
+        const accountData = await accountResponse.json();
+        addLog(`✅ Instagram account accessible: ${accountData.username}`);
+        
+        // Test 2: Check if we have the required permissions by testing a simple API call
+        const permissionsUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/permissions`;
+        const permissionsResponse = await fetch(`${permissionsUrl}?access_token=${authState.longLivedToken}`);
+        
+        if (permissionsResponse.ok) {
+          const permissionsData = await permissionsResponse.json();
+          const hasPublishPermission = permissionsData.data.some((perm: any) => 
+            perm.permission === 'instagram_content_publish' && perm.status === 'granted'
+          );
+          
+          if (hasPublishPermission) {
+            addLog('✅ Instagram content publish permission granted');
+            addLog('✅ Reels posting capability confirmed!');
+            addLog('Your account can post Reels!');
+          } else {
+            addLog('❌ Instagram content publish permission not granted');
+          }
+        } else {
+          addLog('❌ Could not check permissions');
+        }
       } else {
-        const errorData = await response.json();
-        addLog(`❌ Reels posting test failed: ${JSON.stringify(errorData)}`);
+        const errorData = await accountResponse.json();
+        addLog(`❌ Instagram account access failed: ${JSON.stringify(errorData)}`);
       }
     } catch (error) {
       addLog(`Reels capability test error: ${error}`);
