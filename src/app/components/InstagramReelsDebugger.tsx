@@ -40,17 +40,22 @@ const INSTAGRAM_CONFIG = {
   apiVersion: 'v21.0'
 };
 
-// Facebook SDK interfaces
-interface FacebookSDK {
+// Facebook SDK interfaces for this component
+interface DebugFacebookSDK {
   init: (config: { appId: string; cookie: boolean; xfbml: boolean; version: string }) => void;
-  getLoginStatus: (callback: (response: FacebookLoginResponse) => void) => void;
-  login: (callback: (response: FacebookLoginResponse) => void, options: { scope: string; return_scopes: boolean }) => void;
+  getLoginStatus: (callback: (response: DebugFacebookLoginResponse) => void) => void;
+  login: (callback: (response: DebugFacebookLoginResponse) => void, options: { scope: string; return_scopes: boolean }) => void;
   logout: (callback: () => void) => void;
+}
+
+interface DebugFacebookLoginResponse {
+  authResponse: FacebookAuthResponse | null;
+  status: string;
 }
 
 // Window with Facebook SDK
 interface WindowWithFB extends Window {
-  FB: FacebookSDK;
+  FB: DebugFacebookSDK;
   fbAsyncInit: () => void;
 }
 
@@ -118,7 +123,7 @@ export default function InstagramReelsDebugger() {
         return;
       }
 
-      (window as WindowWithFB).FB.getLoginStatus((response: FacebookLoginResponse) => {
+      (window as WindowWithFB).FB.getLoginStatus((response: DebugFacebookLoginResponse) => {
         addLog(`Login status check: ${response.status}`);
         
         if (response.status === 'connected') {
@@ -141,7 +146,7 @@ export default function InstagramReelsDebugger() {
       }
 
       addLog('Starting Facebook SDK login...');
-      (window as WindowWithFB).FB.login((response: FacebookLoginResponse) => {
+      (window as WindowWithFB).FB.login((response: DebugFacebookLoginResponse) => {
         addLog(`Facebook login response: ${response.status}`);
         
         if (response.authResponse) {
