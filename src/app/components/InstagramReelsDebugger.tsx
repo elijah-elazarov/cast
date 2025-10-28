@@ -147,17 +147,17 @@ export default function InstagramReelsDebugger() {
       addLog('🔄 Step 2/3: Generating Instagram-compliant transformation URLs...')
       setProcessingProgress(60)
       
-      // Exact same cropping logic as FFmpeg: scale up then center crop
-      // This matches: scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280:(iw-720)/2:(ih-1280)/2
-      const reelsTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_scale,w_720,h_1280,c_crop,w_720,h_1280,g_center,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
-      const storiesTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_scale,w_720,h_1280,c_crop,w_720,h_1280,g_center,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
+      // Simple, fast cropping - no content awareness, no complex parameters
+      // Just basic center crop like FFmpeg but without the complexity
+      const reelsTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best/${vJson.public_id}.mp4`
+      const storiesTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best/${vJson.public_id}.mp4`
       
-      // Fallback to simple c_fill if the two-step crop doesn't work
-      const reelsFallbackUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
-      const storiesFallbackUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
+      // Same fallback (shouldn't be needed)
+      const reelsFallbackUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best/${vJson.public_id}.mp4`
+      const storiesFallbackUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best/${vJson.public_id}.mp4`
       
-      // Generate thumbnail: extract frame at 1 second
-      const thumbnailUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_720,h_1280,c_fill,g_auto,f_jpg,q_auto:best/${vJson.public_id}.jpg`
+      // Generate thumbnail: extract frame at 1 second (no content awareness)
+      const thumbnailUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_720,h_1280,c_fill,f_jpg,q_auto:best/${vJson.public_id}.jpg`
 
       // Step 3: Validate URLs are accessible (with retries because Cloudinary may 400/423 until ready)
       addLog('🔄 Step 3/3: Validating transformed videos are accessible...')
@@ -167,26 +167,26 @@ export default function InstagramReelsDebugger() {
       let finalReelsUrl = reelsTransformUrl
       let finalStoriesUrl = storiesTransformUrl
       
-      addLog('Trying FFmpeg-style scale-then-crop transformations...')
-      addLog('This matches your FFmpeg: scale up to fill 720x1280, then center crop')
+      addLog('Trying simple center crop transformations (no content awareness)...')
+      addLog('Using basic c_fill for fast, reliable cropping')
       const [reelsOk, storiesOk, thumbOk] = await Promise.all([
-        validateVideoUrl(reelsTransformUrl, 'Reels video (scale + crop)'),
-        validateVideoUrl(storiesTransformUrl, 'Stories video (scale + crop)'),
+        validateVideoUrl(reelsTransformUrl, 'Reels video (simple crop)'),
+        validateVideoUrl(storiesTransformUrl, 'Stories video (simple crop)'),
         validateVideoUrl(thumbnailUrl, 'Thumbnail')
       ])
 
-      // If scale+crop failed, try simple c_fill fallbacks
+      // If simple crop failed, try fallback (shouldn't happen since they're the same)
       if (!reelsOk) {
-        addLog('Scale+crop Reels failed, trying simple c_fill fallback...')
-        const reelsFallbackOk = await validateVideoUrl(reelsFallbackUrl, 'Reels video (c_fill)')
+        addLog('Simple crop Reels failed, trying fallback...')
+        const reelsFallbackOk = await validateVideoUrl(reelsFallbackUrl, 'Reels video (fallback)')
         if (reelsFallbackOk) {
           finalReelsUrl = reelsFallbackUrl
         }
       }
       
       if (!storiesOk) {
-        addLog('Scale+crop Stories failed, trying simple c_fill fallback...')
-        const storiesFallbackOk = await validateVideoUrl(storiesFallbackUrl, 'Stories video (c_fill)')
+        addLog('Simple crop Stories failed, trying fallback...')
+        const storiesFallbackOk = await validateVideoUrl(storiesFallbackUrl, 'Stories video (fallback)')
         if (storiesFallbackOk) {
           finalStoriesUrl = storiesFallbackUrl
         }
