@@ -223,11 +223,29 @@ export default function InstagramReelsDebugger() {
           const instagramData = await instagramResponse.json();
           addLog(`Instagram account details: ${JSON.stringify(instagramData)}`);
           
+          // Get real account type from Facebook Page Instagram connection
+          const pageUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${page.id}`;
+          const pageParams = new URLSearchParams({
+            fields: 'instagram_business_account{account_type}',
+            access_token: page.access_token
+          });
+          
+          const pageResponse = await fetch(`${pageUrl}?${pageParams.toString()}`);
+          let accountType = 'BUSINESS'; // Default fallback
+          
+          if (pageResponse.ok) {
+            const pageData = await pageResponse.json();
+            if (pageData.instagram_business_account?.account_type) {
+              accountType = pageData.instagram_business_account.account_type;
+              addLog(`Real account type from API: ${accountType}`);
+            }
+          }
+          
           return { 
             userInfo: {
               id: instagramData.id,
               username: instagramData.username,
-              account_type: 'BUSINESS' // Default since we know it's a business account
+              account_type: accountType
             }, 
             pageId: instagramId 
           };
