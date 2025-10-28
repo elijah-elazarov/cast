@@ -622,17 +622,26 @@ export default function InstagramReelsDebugger() {
     }
   };
 
-  // Test actual Reels posting with demo video
+  // Test actual Reels posting with processed video
   const testActualReelsPosting = async () => {
+    if (!processedVideoUrl) {
+      addLog('❌ No processed video available. Please process a video first.');
+      return;
+    }
+
+    if (!authState.isAuthenticated || !authState.userInfo) {
+      addLog('❌ Not authenticated');
+      return;
+    }
+
     try {
       // Step 1: Check video aspect ratio and auto-crop if needed
       addLog('Step 1: Checking video aspect ratio...');
       
-      const demoVideoUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com'}/static/demo.mp4`;
-      addLog(`Using demo video URL: ${demoVideoUrl}`);
+      addLog(`Using processed video URL: ${processedVideoUrl}`);
       
       // Check if video needs cropping for Reels (9:16 aspect ratio)
-      const processedVideoUrl = await checkAndProcessVideoForReels(demoVideoUrl);
+      const finalProcessedVideoUrl = await checkAndProcessVideoForReels(processedVideoUrl);
       
       // Step 2: Create media container
       addLog('Step 2: Creating media container...');
@@ -643,7 +652,7 @@ export default function InstagramReelsDebugger() {
         {
           name: 'Video only',
           data: {
-            video_url: processedVideoUrl,
+            video_url: finalProcessedVideoUrl,
             caption: '🎬 Test Reel from Instagram Reels Debugger - Posted via API! #test #reels #api',
             access_token: authState.longLivedToken
           }
@@ -651,8 +660,8 @@ export default function InstagramReelsDebugger() {
         {
           name: 'Video with image_url',
           data: {
-            video_url: processedVideoUrl,
-            image_url: processedVideoUrl,
+            video_url: finalProcessedVideoUrl,
+            image_url: finalProcessedVideoUrl,
             caption: '🎬 Test Reel from Instagram Reels Debugger - Posted via API! #test #reels #api',
             access_token: authState.longLivedToken
           }
@@ -660,7 +669,7 @@ export default function InstagramReelsDebugger() {
         {
           name: 'Image only (fallback)',
           data: {
-            image_url: processedVideoUrl,
+            image_url: finalProcessedVideoUrl,
             caption: '🎬 Test Reel from Instagram Reels Debugger - Posted via API! #test #reels #api',
             access_token: authState.longLivedToken
           }
@@ -704,7 +713,7 @@ export default function InstagramReelsDebugger() {
         addLog('• Duration: 3-90 seconds');
         addLog('• File size: Max 100MB');
         addLog('');
-        addLog('The demo.mp4 file may not meet these requirements.');
+        addLog('The video file may not meet these requirements.');
         addLog('For testing, you can:');
         addLog('1. Use a properly formatted Reels video');
         addLog('2. Test with Instagram Stories instead');
@@ -878,8 +887,13 @@ export default function InstagramReelsDebugger() {
     }
   };
 
-  // Test Stories posting capability (less strict requirements)
+  // Test Stories posting capability with processed video
   const testStoriesCapability = async () => {
+    if (!processedVideoUrl) {
+      addLog('❌ No processed video available. Please process a video first.');
+      return;
+    }
+
     if (!authState.isAuthenticated || !authState.longLivedToken || !authState.instagramPageId) {
       addLog('Not authenticated - cannot test Stories capability');
       return;
@@ -891,11 +905,10 @@ export default function InstagramReelsDebugger() {
       // Step 1: Check video aspect ratio and process if needed for Stories
       addLog('Step 1: Checking video aspect ratio for Stories...');
       
-      const demoVideoUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com'}/static/demo.mp4`;
-      addLog(`Using demo video URL: ${demoVideoUrl}`);
+      addLog(`Using processed video URL: ${processedVideoUrl}`);
       
       // Check if video needs processing for Stories (9:16 or 1:1 aspect ratio)
-      const processedVideoUrl = await checkAndProcessVideoForStories(demoVideoUrl);
+      const finalProcessedVideoUrl = await checkAndProcessVideoForStories(processedVideoUrl);
       let processedThumbnailUrl: string | null = null;
 
       // Try to request processing explicitly to capture thumbnail URL
@@ -904,7 +917,7 @@ export default function InstagramReelsDebugger() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            video_url: demoVideoUrl,
+            video_url: processedVideoUrl,
             target_width: 720,
             target_height: 1280,
             target_ratio: 9/16,
@@ -930,7 +943,7 @@ export default function InstagramReelsDebugger() {
         {
           name: 'Video only',
           data: {
-            video_url: processedVideoUrl,
+            video_url: finalProcessedVideoUrl,
             caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
             access_token: authState.longLivedToken
           }
@@ -938,8 +951,8 @@ export default function InstagramReelsDebugger() {
         {
           name: 'Video with image_url',
           data: {
-            video_url: processedVideoUrl || '',
-            image_url: processedThumbnailUrl || processedVideoUrl || '',
+            video_url: finalProcessedVideoUrl || '',
+            image_url: processedThumbnailUrl || processedThumbUrl || finalProcessedVideoUrl || '',
             caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
             access_token: authState.longLivedToken
           }
@@ -947,7 +960,7 @@ export default function InstagramReelsDebugger() {
         {
           name: 'Image only (fallback)',
           data: {
-            image_url: processedThumbnailUrl || processedVideoUrl,
+            image_url: processedThumbnailUrl || processedThumbUrl || finalProcessedVideoUrl,
             caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
             access_token: authState.longLivedToken
           }
@@ -989,7 +1002,7 @@ export default function InstagramReelsDebugger() {
         addLog('• Resolution: 720x1280 or 1080x1080');
         addLog('• Duration: 1-15 seconds');
         addLog('• Format: MP4, MOV, or AVI');
-        addLog('The demo.mp4 file may not meet these requirements.');
+        addLog('The video file may not meet these requirements.');
       }
       
     } catch (error) {
@@ -997,10 +1010,7 @@ export default function InstagramReelsDebugger() {
     }
   };
 
-  // Test with a sample video that meets Instagram requirements
-  const testWithSampleVideo = async () => {
-    if (!authState.isAuthenticated || !authState.longLivedToken || !authState.instagramPageId) {
-      addLog('Not authenticated - cannot test with sample video');
+  return (
       return;
     }
 
@@ -1103,7 +1113,7 @@ export default function InstagramReelsDebugger() {
       if (reelsSuccess || storiesSuccess) {
         addLog('✅ Sample video test completed successfully!');
         addLog('This confirms your Instagram API setup is working correctly.');
-        addLog('The issue with demo.mp4 is likely due to aspect ratio requirements.');
+        addLog('The issue with the video is likely due to aspect ratio requirements.');
       } else {
         addLog('❌ Sample video test failed');
         addLog('This indicates an issue with your Instagram API setup or permissions.');
@@ -1226,12 +1236,22 @@ export default function InstagramReelsDebugger() {
             >
               Test Stories Capability
             </button>
-            <button
-              onClick={testWithSampleVideo}
-              className="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
-            >
-              Test with Sample Video
-            </button>
+            {processedVideoUrl && (
+              <button
+                onClick={testActualReelsPosting}
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                Post Processed Reel
+              </button>
+            )}
+            {processedVideoUrl && (
+              <button
+                onClick={testStoriesCapability}
+                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                Post Processed Story
+              </button>
+            )}
             <button
               onClick={handleLogout}
               className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700"
