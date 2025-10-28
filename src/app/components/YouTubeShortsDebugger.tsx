@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface UserInfo {
   id: string;
@@ -65,6 +65,49 @@ export default function YouTubeShortsDebugger() {
 
   const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dkzbmeto1';
   const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_YOUTUBE || 'youtube_uploads';
+
+  // Check for OAuth callback success/error from query params (same as original YouTubeConnection)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const youtubeConnected = urlParams.get('youtube_connected');
+    const youtubeError = urlParams.get('youtube_error');
+
+    if (youtubeConnected === 'true') {
+      addLog('YouTube authentication successful!');
+      // Get user info from localStorage (set by backend callback)
+      const userId = localStorage.getItem('youtube_user_id');
+      const channelTitle = localStorage.getItem('youtube_channel_title');
+      
+      if (userId && channelTitle) {
+        setAuthState({
+          isAuthenticated: true,
+          isLoading: false,
+          error: null,
+          userInfo: {
+            id: userId,
+            username: channelTitle,
+            channelTitle: channelTitle,
+            channelId: userId
+          },
+          accessToken: localStorage.getItem('youtube_access_token') || null,
+          refreshToken: localStorage.getItem('youtube_refresh_token') || null
+        });
+        addLog(`Connected as: ${channelTitle}`);
+      }
+      
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (youtubeError) {
+      addLog(`YouTube authentication failed: ${youtubeError}`);
+      setAuthState(prev => ({ 
+        ...prev, 
+        isLoading: false, 
+        error: `YouTube authorization failed: ${youtubeError}` 
+      }));
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   // Validate a Cloudinary video URL becoming available
   const validateVideoUrl = async (url: string, label: string, maxAttempts = 6): Promise<boolean> => {
@@ -276,7 +319,7 @@ export default function YouTubeShortsDebugger() {
     console.log(`[YOUTUBE SHORTS DEBUG] ${message}`);
   };
 
-  // YouTube OAuth flow
+  // YouTube OAuth flow - use same approach as original YouTubeConnection
   const handleAuth = async () => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     setDebugLogs([]);
@@ -292,51 +335,10 @@ export default function YouTubeShortsDebugger() {
         throw new Error(data.error || 'Failed to get auth URL');
       }
       
-      addLog('Opening YouTube authentication window...');
+      addLog('Redirecting to YouTube authentication...');
       
-      // Open mini window for OAuth
-      const authWindow = window.open(
-        data.authUrl,
-        'youtube-auth',
-        'width=500,height=600,scrollbars=yes,resizable=yes'
-      );
-      
-      if (!authWindow) {
-        throw new Error('Popup blocked. Please allow popups for this site.');
-      }
-      
-      // Listen for auth completion
-      const checkClosed = setInterval(() => {
-        if (authWindow.closed) {
-          clearInterval(checkClosed);
-          addLog('Authentication window closed');
-          setAuthState(prev => ({ ...prev, isLoading: false }));
-        }
-      }, 1000);
-      
-      // Listen for auth success message
-      const handleMessage = (event: MessageEvent) => {
-        if (event.origin !== window.location.origin) return;
-        
-        if (event.data.type === 'YOUTUBE_AUTH_SUCCESS') {
-          clearInterval(checkClosed);
-          authWindow.close();
-          window.removeEventListener('message', handleMessage);
-          handleAuthSuccess(event.data.authData);
-        } else if (event.data.type === 'YOUTUBE_AUTH_ERROR') {
-          clearInterval(checkClosed);
-          authWindow.close();
-          window.removeEventListener('message', handleMessage);
-          addLog(`Authentication error: ${event.data.error}`);
-          setAuthState(prev => ({ 
-            ...prev, 
-            isLoading: false, 
-            error: event.data.error 
-          }));
-        }
-      };
-      
-      window.addEventListener('message', handleMessage);
+      // Redirect directly to Google OAuth (same as original YouTubeConnection)
+      window.location.href = data.data.auth_url;
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
