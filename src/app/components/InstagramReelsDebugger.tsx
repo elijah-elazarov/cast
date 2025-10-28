@@ -78,7 +78,10 @@ export default function InstagramReelsDebugger() {
     if (ffmpegRef.current) return ffmpegRef.current
     const ffmpeg = new FFmpeg();
     ffmpeg.on('progress', ({ progress }: { progress: number }) => setProcessingProgress(Math.min(99, Math.round(progress * 100))))
-    await ffmpeg.load()
+    await ffmpeg.load({
+      coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+      wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
+    })
     ffmpegRef.current = ffmpeg
     return ffmpeg
   }
@@ -102,7 +105,7 @@ export default function InstagramReelsDebugger() {
       const outName = 'output.mp4'
       const jpgName = 'thumb.jpg'
 
-      ffmpeg.FS('writeFile', inName, await fetchFile(selectedFile))
+      ffmpeg.writeFile(inName, await fetchFile(selectedFile))
 
       // Center crop 9:16 to 720x1280 and encode H.264 yuv420p
       await ffmpeg.run(
@@ -124,8 +127,8 @@ export default function InstagramReelsDebugger() {
       // Extract thumbnail
       await ffmpeg.run('-i', outName, '-ss', '00:00:01', '-frames:v', '1', '-q:v', '2', jpgName)
 
-      const outData = ffmpeg.FS('readFile', outName)
-      const jpgData = ffmpeg.FS('readFile', jpgName)
+      const outData = ffmpeg.readFile(outName)
+      const jpgData = ffmpeg.readFile(jpgName)
 
       // Upload to Cloudinary unsigned
       const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`
