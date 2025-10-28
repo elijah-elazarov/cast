@@ -2,11 +2,13 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { X, AlertTriangle } from 'lucide-react';
 
 function YouTubeCallbackContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Processing authentication...');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleAuth = async () => {
@@ -16,13 +18,15 @@ function YouTubeCallbackContent() {
 
         if (error) {
           setStatus('error');
-          setMessage(`Authentication failed: ${error}`);
+          setMessage('Authentication failed');
+          setError(error);
           return;
         }
 
         if (!code) {
           setStatus('error');
-          setMessage('No authorization code received');
+          setMessage('Authentication failed');
+          setError('No authorization code received');
           return;
         }
 
@@ -48,7 +52,8 @@ function YouTubeCallbackContent() {
           }
         } else {
           setStatus('error');
-          setMessage(`Authentication failed: ${data.error}`);
+          setMessage('Authentication failed');
+          setError(data.error);
           
           // Send error message to parent window
           if (window.opener) {
@@ -60,7 +65,8 @@ function YouTubeCallbackContent() {
         }
       } catch (error) {
         setStatus('error');
-        setMessage(`Authentication error: ${error}`);
+        setMessage('Authentication failed');
+        setError(error instanceof Error ? error.message : 'Unknown error');
         
         // Send error message to parent window
         if (window.opener) {
@@ -78,42 +84,50 @@ function YouTubeCallbackContent() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
-        <div className="text-center">
-          <div className="mb-4">
-            {status === 'loading' && (
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-            )}
-            {status === 'success' && (
-              <div className="text-green-600 text-4xl">✓</div>
-            )}
-            {status === 'error' && (
-              <div className="text-red-600 text-4xl">✗</div>
-            )}
+        {status === 'loading' && (
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">Authenticating...</h2>
+            <p className="text-gray-600">{message}</p>
           </div>
-          
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">
-            {status === 'loading' && 'Authenticating...'}
-            {status === 'success' && 'Success!'}
-            {status === 'error' && 'Error'}
-          </h2>
-          
-          <p className="text-gray-600 mb-4">{message}</p>
-          
-          {status === 'success' && (
+        )}
+
+        {status === 'success' && (
+          <div className="text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="text-green-600 text-2xl">✓</div>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Success!</h2>
+            <p className="text-gray-600 mb-4">{message}</p>
             <p className="text-sm text-gray-500">
               You can close this window and return to the main application.
             </p>
-          )}
-          
-          {status === 'error' && (
+          </div>
+        )}
+
+        {status === 'error' && (
+          <div className="space-y-4">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+              <X className="h-8 w-8 text-red-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">Authentication Failed</h2>
+            <p className="text-gray-600">{message}</p>
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <div className="flex items-center">
+                  <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />
+                  <span className="text-sm text-red-800">Failed to connect to YouTube</span>
+                </div>
+              </div>
+            )}
             <button
               onClick={() => window.close()}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
             >
-              Close Window
+              Return to App
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
