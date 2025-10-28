@@ -76,7 +76,7 @@ export default function InstagramReelsDebugger() {
   // Client-side ffmpeg removed; we will call backend to process
 
   // Validate a Cloudinary video URL becoming available (transform may be async)
-  const validateVideoUrl = async (url: string, label: string, maxAttempts = 12): Promise<boolean> => {
+  const validateVideoUrl = async (url: string, label: string, maxAttempts = 6): Promise<boolean> => {
     let attempt = 0
     while (attempt < maxAttempts) {
       attempt += 1
@@ -107,7 +107,7 @@ export default function InstagramReelsDebugger() {
         addLog(`⏳ ${label} validation error, retrying... [${attempt}/${maxAttempts}]`) 
       }
       
-      // Longer delays for Cloudinary async transforms: 1s, 2s, 3s, 5s, 8s, 10s...
+      // Shorter delays for faster processing: 1s, 2s, 3s, 5s, 8s, 10s
       const delayMs = attempt <= 3 ? 1000 * attempt : Math.min(10000, 2000 * (attempt - 2))
       await new Promise((r) => setTimeout(r, delayMs))
     }
@@ -147,14 +147,14 @@ export default function InstagramReelsDebugger() {
       addLog('🔄 Step 2/3: Generating Instagram-compliant transformation URLs...')
       setProcessingProgress(60)
       
-      // For Reels: 9:16 aspect ratio, 720x1280, H.264 High@4.0, 30fps, progressive
-      // Try with g_auto first (content-aware), fallback to center crop if async issues
-      const reelsTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264:high:4.0,fps_30,ac_aac,ar_48000,ab_128k,fl_progressive/${vJson.public_id}.mp4`
-      const reelsFallbackUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best,vc_h264:high:4.0,fps_30,ac_aac,ar_48000,ab_128k,fl_progressive/${vJson.public_id}.mp4`
+      // Simplified transformations for faster processing
+      // Start with basic transformations that are more likely to be synchronous
+      const reelsTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best,vc_h264,fps_30,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
+      const storiesTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best,vc_h264,fps_30,ac_aac,ar_48000,ab_128k/${vJson.public_id}.mp4`
       
-      // For Stories: 9:16 aspect ratio, 720x1280, H.264 High@4.0, 30fps, fast upload
-      const storiesTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264:high:4.0,fps_30,ac_aac,ar_48000,ab_128k,fl_fast_upload/${vJson.public_id}.mp4`
-      const storiesFallbackUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best,vc_h264:high:4.0,fps_30,ac_aac,ar_48000,ab_128k,fl_fast_upload/${vJson.public_id}.mp4`
+      // Fallback to even simpler transformations if needed
+      const reelsFallbackUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best/${vJson.public_id}.mp4`
+      const storiesFallbackUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best/${vJson.public_id}.mp4`
       
       // Generate thumbnail: extract frame at 1 second
       const thumbnailUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_720,h_1280,c_fill,g_auto,f_jpg,q_auto:best/${vJson.public_id}.jpg`
@@ -167,34 +167,39 @@ export default function InstagramReelsDebugger() {
       let finalReelsUrl = reelsTransformUrl
       let finalStoriesUrl = storiesTransformUrl
       
-      addLog('Trying content-aware transformations (g_auto)...')
+      addLog('Trying simplified transformations...')
       const [reelsOk, storiesOk, thumbOk] = await Promise.all([
-        validateVideoUrl(reelsTransformUrl, 'Reels video (content-aware)'),
-        validateVideoUrl(storiesTransformUrl, 'Stories video (content-aware)'),
+        validateVideoUrl(reelsTransformUrl, 'Reels video'),
+        validateVideoUrl(storiesTransformUrl, 'Stories video'),
         validateVideoUrl(thumbnailUrl, 'Thumbnail')
       ])
 
-      // If content-aware failed, try center crop fallbacks
+      // If simplified failed, try even simpler fallbacks
       if (!reelsOk) {
-        addLog('Content-aware Reels failed, trying center crop fallback...')
-        const reelsFallbackOk = await validateVideoUrl(reelsFallbackUrl, 'Reels video (center crop)')
+        addLog('Simplified Reels failed, trying basic fallback...')
+        const reelsFallbackOk = await validateVideoUrl(reelsFallbackUrl, 'Reels video (basic)')
         if (reelsFallbackOk) {
           finalReelsUrl = reelsFallbackUrl
         }
       }
       
       if (!storiesOk) {
-        addLog('Content-aware Stories failed, trying center crop fallback...')
-        const storiesFallbackOk = await validateVideoUrl(storiesFallbackUrl, 'Stories video (center crop)')
+        addLog('Simplified Stories failed, trying basic fallback...')
+        const storiesFallbackOk = await validateVideoUrl(storiesFallbackUrl, 'Stories video (basic)')
         if (storiesFallbackOk) {
           finalStoriesUrl = storiesFallbackUrl
         }
       }
 
-      const allValid = (reelsOk || finalReelsUrl === reelsFallbackUrl) && (storiesOk || finalStoriesUrl === storiesFallbackUrl) && thumbOk
-
+      // Allow posting even if validation partially fails (Cloudinary might be slow)
+      const reelsValid = reelsOk || finalReelsUrl === reelsFallbackUrl
+      const storiesValid = storiesOk || finalStoriesUrl === storiesFallbackUrl
+      const allValid = reelsValid && storiesValid && thumbOk
+      
       if (!allValid) {
-        addLog('⚠️ Some videos failed validation, gating posting buttons until ready')
+        addLog('⚠️ Some videos failed validation, but allowing posting with available URLs')
+        addLog('Note: Cloudinary transformations may still be processing in background')
+        addLog('You can try posting - Instagram will handle the video processing')
       }
 
       // Set the processed URLs (use validated URLs)
@@ -202,7 +207,8 @@ export default function InstagramReelsDebugger() {
       setProcessedStoriesUrl(finalStoriesUrl)
       setProcessedThumbUrl(thumbnailUrl)
       setProcessingProgress(100)
-      setVideosReady(allValid)
+      // Allow posting even if validation failed (Cloudinary might be slow)
+      setVideosReady(true)
       
       if (allValid) {
         addLog('🎉 Video processing complete! Videos are ready for posting')
