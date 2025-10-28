@@ -85,10 +85,10 @@ async def process_video_for_reels(request: Request):
     try:
         request_data = await request.json()
         video_url = request_data.get("video_url")
-                target_width = request_data.get("target_width", 720)
-                target_height = request_data.get("target_height", 1280)
-                target_ratio = request_data.get("target_ratio", 9/16)
-                center_crop = request_data.get("center_crop", True)
+        target_width = request_data.get("target_width", 720)
+        target_height = request_data.get("target_height", 1280)
+        target_ratio = request_data.get("target_ratio", 9/16)
+        center_crop = request_data.get("center_crop", True)
         
         if not video_url:
             raise HTTPException(status_code=400, detail="Video URL is required")
