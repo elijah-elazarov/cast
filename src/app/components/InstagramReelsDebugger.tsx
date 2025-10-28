@@ -635,13 +635,13 @@ export default function InstagramReelsDebugger() {
     }
 
     try {
-      // Step 1: Check video aspect ratio and auto-crop if needed
-      addLog('Step 1: Checking video aspect ratio...');
+      // Step 1: Use already processed video from Cloudinary
+      addLog('Step 1: Using pre-processed video from Cloudinary...');
       
       addLog(`Using processed video URL: ${processedVideoUrl}`);
       
-      // Check if video needs cropping for Reels (9:16 aspect ratio)
-      const finalProcessedVideoUrl = await checkAndProcessVideoForReels(processedVideoUrl);
+      // No need to process again - use the Cloudinary URL directly
+      const finalProcessedVideoUrl = processedVideoUrl;
       
       // Step 2: Create media container
       addLog('Step 2: Creating media container...');
@@ -902,38 +902,14 @@ export default function InstagramReelsDebugger() {
     addLog('Testing Instagram Stories posting capability...');
     
     try {
-      // Step 1: Check video aspect ratio and process if needed for Stories
-      addLog('Step 1: Checking video aspect ratio for Stories...');
+      // Step 1: Use already processed video from Cloudinary
+      addLog('Step 1: Using pre-processed video from Cloudinary...');
       
       addLog(`Using processed video URL: ${processedVideoUrl}`);
       
-      // Check if video needs processing for Stories (9:16 or 1:1 aspect ratio)
-      const finalProcessedVideoUrl = await checkAndProcessVideoForStories(processedVideoUrl);
-      let processedThumbnailUrl: string | null = null;
-
-      // Try to request processing explicitly to capture thumbnail URL
-      try {
-        const resp = await fetch('/api/instagram/graph/process-video', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            video_url: processedVideoUrl,
-            target_width: 720,
-            target_height: 1280,
-            target_ratio: 9/16,
-            center_crop: true
-          })
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.processed_thumbnail_url) {
-            processedThumbnailUrl = data.processed_thumbnail_url;
-            addLog(`✅ Generated thumbnail: ${processedThumbnailUrl}`);
-          }
-        }
-      } catch (e) {
-        // Ignore, fallback to processedVideoUrl
-      }
+      // No need to process again - use the Cloudinary URL directly
+      const finalProcessedVideoUrl = processedVideoUrl;
+      let processedThumbnailUrl: string | null = processedThumbUrl; // Use pre-generated thumbnail
 
       // Stories have more flexible requirements
       const containerUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}/media`;
