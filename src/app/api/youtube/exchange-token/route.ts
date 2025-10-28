@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
 
     const clientId = process.env.YOUTUBE_CLIENT_ID;
     const clientSecret = process.env.YOUTUBE_CLIENT_SECRET;
-    const redirectUri = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com'}/auth/youtube/callback`;
+    const redirectUri = `${process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000'}/auth/youtube/callback`;
 
     if (!clientId || !clientSecret) {
       return NextResponse.json({

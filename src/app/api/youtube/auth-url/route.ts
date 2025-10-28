@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const clientId = process.env.YOUTUBE_CLIENT_ID;
+    const clientId = process.env.NEXT_PUBLIC_YOUTUBE_CLIENT_ID;
     const redirectUri = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com'}/auth/youtube/callback`;
     const scope = 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly';
     
