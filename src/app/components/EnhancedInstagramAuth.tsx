@@ -148,36 +148,34 @@ const EnhancedInstagramAuth: React.FC = () => {
     });
   };
 
-  // Get long-lived token using Facebook SDK approach
+  // Get long-lived token using our backend (secure approach)
   const getLongLivedToken = async (shortLivedToken: string): Promise<string> => {
-    const url = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/oauth/access_token`;
-    
-    const params = new URLSearchParams({
-      grant_type: 'fb_exchange_token',
-      client_id: INSTAGRAM_CONFIG.appId,
-      client_secret: process.env.NEXT_PUBLIC_INSTAGRAM_CLIENT_SECRET || '',
-      fb_exchange_token: shortLivedToken
-    });
-
     console.log('[ENHANCED AUTH] Getting long-lived token...');
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params.toString()
-    });
+    try {
+      const response = await fetch('/api/instagram/graph/long-lived-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          access_token: shortLivedToken
+        })
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('[ENHANCED AUTH] Long-lived token failed:', errorData);
-      throw new Error(`Long-lived token failed: ${errorData.error?.message || 'Unknown error'}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[ENHANCED AUTH] Long-lived token failed:', errorData);
+        throw new Error(`Long-lived token failed: ${errorData.error || 'Unknown error'}`);
+      }
+
+      const data = await response.json();
+      console.log('[ENHANCED AUTH] Long-lived token successful:', data);
+      return data.access_token;
+    } catch (error) {
+      console.error('[ENHANCED AUTH] Long-lived token error:', error);
+      throw error;
     }
-
-    const tokenData = await response.json();
-    console.log('[ENHANCED AUTH] Long-lived token successful:', tokenData);
-    return tokenData.access_token;
   };
 
   // Get user Instagram account info
