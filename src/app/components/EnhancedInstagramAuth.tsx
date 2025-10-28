@@ -180,47 +180,9 @@ const EnhancedInstagramAuth: React.FC = () => {
 
   // Get user Instagram account info
   const getUserInstagramAccount = async (accessToken: string): Promise<UserInfo> => {
-    // First try to get Instagram account directly from user
-    const userUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me`;
-    const userParams = new URLSearchParams({
-      fields: 'id,name,instagram_business_account',
-      access_token: accessToken
-    });
-
     console.log('[ENHANCED AUTH] Getting user Instagram account...');
 
-    const userResponse = await fetch(`${userUrl}?${userParams.toString()}`);
-    if (!userResponse.ok) {
-      const errorData = await userResponse.json();
-      console.error('[ENHANCED AUTH] User account fetch failed:', errorData);
-      throw new Error(`User account fetch failed: ${errorData.error?.message || 'Unknown error'}`);
-    }
-
-    const userData = await userResponse.json();
-    console.log('[ENHANCED AUTH] User data:', userData);
-
-    if (userData.instagram_business_account) {
-      // Get Instagram account details
-      const instagramId = userData.instagram_business_account.id;
-      const instagramUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${instagramId}`;
-      const instagramParams = new URLSearchParams({
-        fields: 'id,username,account_type',
-        access_token: accessToken
-      });
-
-      const instagramResponse = await fetch(`${instagramUrl}?${instagramParams.toString()}`);
-      if (!instagramResponse.ok) {
-        const errorData = await instagramResponse.json();
-        console.error('[ENHANCED AUTH] Instagram account fetch failed:', errorData);
-        throw new Error(`Instagram account fetch failed: ${errorData.error?.message || 'Unknown error'}`);
-      }
-
-      const instagramData = await instagramResponse.json();
-      console.log('[ENHANCED AUTH] Instagram account data:', instagramData);
-      return instagramData;
-    }
-
-    // Fallback: try to get from pages
+    // Get Instagram account from Facebook Pages (correct approach)
     const pagesUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/accounts`;
     const pagesParams = new URLSearchParams({
       fields: 'id,name,instagram_business_account',
