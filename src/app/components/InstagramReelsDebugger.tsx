@@ -428,30 +428,67 @@ export default function InstagramReelsDebugger() {
       // Step 2: Create media container
       addLog('Step 2: Creating media container...');
       const containerUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}/media`;
-      const containerData = {
-        video_url: demoVideoUrl,
-        caption: '🎬 Test Reel from Instagram Reels Debugger - Posted via API! #test #reels #api',
-        access_token: authState.longLivedToken
-      };
+      
+      // Try different approaches for Instagram Reels
+      const approaches = [
+        {
+          name: 'Video only',
+          data: {
+            video_url: demoVideoUrl,
+            caption: '🎬 Test Reel from Instagram Reels Debugger - Posted via API! #test #reels #api',
+            access_token: authState.longLivedToken
+          }
+        },
+        {
+          name: 'Video with image_url',
+          data: {
+            video_url: demoVideoUrl,
+            image_url: demoVideoUrl,
+            caption: '🎬 Test Reel from Instagram Reels Debugger - Posted via API! #test #reels #api',
+            access_token: authState.longLivedToken
+          }
+        },
+        {
+          name: 'Image only (fallback)',
+          data: {
+            image_url: demoVideoUrl,
+            caption: '🎬 Test Reel from Instagram Reels Debugger - Posted via API! #test #reels #api',
+            access_token: authState.longLivedToken
+          }
+        }
+      ];
 
-      const containerResponse = await fetch(containerUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(containerData)
-      });
+      let containerCreated = false;
+      let containerId = null;
 
-      if (containerResponse.ok) {
-        const containerResult = await containerResponse.json();
-        const containerId = containerResult.id;
-        addLog(`✅ Media container created: ${containerId}`);
+      for (const approach of approaches) {
+        addLog(`Trying approach: ${approach.name}`);
         
+        const containerResponse = await fetch(containerUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(approach.data)
+        });
+
+        if (containerResponse.ok) {
+          const containerResult = await containerResponse.json();
+          containerId = containerResult.id;
+          addLog(`✅ Media container created with ${approach.name}: ${containerId}`);
+          containerCreated = true;
+          break;
+        } else {
+          const errorData = await containerResponse.json();
+          addLog(`❌ ${approach.name} failed: ${JSON.stringify(errorData)}`);
+        }
+      }
+
+      if (containerCreated && containerId) {
         // Step 3: Check container status
         addLog('Step 3: Checking container status...');
         await checkContainerStatus(containerId);
-        
       } else {
-        const errorData = await containerResponse.json();
-        addLog(`❌ Container creation failed: ${JSON.stringify(errorData)}`);
+        addLog('❌ All container creation approaches failed');
+        addLog('This might be due to video format, URL accessibility, or API permissions');
       }
       
     } catch (error) {
