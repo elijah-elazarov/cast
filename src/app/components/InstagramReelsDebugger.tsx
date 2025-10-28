@@ -66,6 +66,7 @@ export default function InstagramReelsDebugger() {
   const [processing, setProcessing] = useState(false)
   const [processingProgress, setProcessingProgress] = useState(0)
   const [processedVideoUrl, setProcessedVideoUrl] = useState<string | null>(null)
+  const [processedStoriesUrl, setProcessedStoriesUrl] = useState<string | null>(null)
   const [processedThumbUrl, setProcessedThumbUrl] = useState<string | null>(null)
 
   const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dkzbmeto1'
@@ -76,6 +77,7 @@ export default function InstagramReelsDebugger() {
   const handleFileChange = async (file: File) => {
     setSelectedFile(file)
     setProcessedVideoUrl(null)
+    setProcessedStoriesUrl(null)
     setProcessedThumbUrl(null)
   }
 
@@ -108,6 +110,7 @@ export default function InstagramReelsDebugger() {
       const thumbnailUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_720,h_1280,c_fill,g_auto,f_jpg,q_auto:best/${vJson.public_id}.jpg`
 
       setProcessedVideoUrl(reelsTransformUrl)
+      setProcessedStoriesUrl(storiesTransformUrl)
       setProcessedThumbUrl(thumbnailUrl)
       setProcessingProgress(100)
       addLog('✅ Cloudinary transformations complete')
@@ -654,8 +657,8 @@ export default function InstagramReelsDebugger() {
 
   // Test Stories posting capability with processed video
   const testStoriesCapability = async () => {
-    if (!processedVideoUrl) {
-      addLog('❌ No processed video available. Please process a video first.');
+    if (!processedStoriesUrl) {
+      addLog('❌ No processed Stories video available. Please process a video first.');
       return;
     }
 
@@ -670,10 +673,10 @@ export default function InstagramReelsDebugger() {
       // Step 1: Use already processed video from Cloudinary
       addLog('Step 1: Using pre-processed video from Cloudinary...');
       
-      addLog(`Using processed video URL: ${processedVideoUrl}`);
+      addLog(`Using processed Stories video URL: ${processedStoriesUrl}`);
       
       // No need to process again - use the Cloudinary URL directly
-      const finalProcessedVideoUrl = processedVideoUrl;
+      const finalProcessedVideoUrl = processedStoriesUrl;
       const processedThumbnailUrl: string | null = processedThumbUrl; // Use pre-generated thumbnail
 
       // Stories have more flexible requirements
@@ -821,9 +824,10 @@ export default function InstagramReelsDebugger() {
             </div>
           )}
         </div>
-        {processedVideoUrl && authState.isAuthenticated && (
+        {(processedVideoUrl || processedStoriesUrl) && authState.isAuthenticated && (
           <div className="mt-3 text-sm text-gray-700">
-            <div>Processed video: <a className="text-blue-600 underline" href={processedVideoUrl} target="_blank" rel="noreferrer">open</a></div>
+            {processedVideoUrl && <div>Reels video: <a className="text-blue-600 underline" href={processedVideoUrl} target="_blank" rel="noreferrer">open</a></div>}
+            {processedStoriesUrl && <div>Stories video: <a className="text-blue-600 underline" href={processedStoriesUrl} target="_blank" rel="noreferrer">open</a></div>}
             {processedThumbUrl && <div>Thumbnail: <a className="text-blue-600 underline" href={processedThumbUrl} target="_blank" rel="noreferrer">open</a></div>}
           </div>
         )}
@@ -884,7 +888,7 @@ export default function InstagramReelsDebugger() {
                 Post Processed Reel
               </button>
             )}
-            {processedVideoUrl && (
+            {processedStoriesUrl && (
               <button
                 onClick={testStoriesCapability}
                 className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
