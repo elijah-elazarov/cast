@@ -835,7 +835,7 @@ export default function InstagramReelsDebugger() {
       // Test 1: Check if we can access the Instagram account with publishing permissions
       const accountUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}`;
       const accountParams = new URLSearchParams({
-        fields: 'id,username,account_type,media_count,followers_count',
+        fields: 'id,username,name',
         access_token: authState.longLivedToken
       });
 
