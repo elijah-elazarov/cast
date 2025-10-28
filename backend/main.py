@@ -162,7 +162,7 @@ async def process_video_for_reels(request: Request):
             
             logger.info(f"Video processed successfully: {processed_url}")
             
-                    return JSONResponse({
+            return JSONResponse({
                         "success": True,
                         "processed_video_url": processed_url,
                         "original_dimensions": "analyzed",
