@@ -453,7 +453,7 @@ export default function InstagramReelsDebugger() {
           if (page.access_token) {
             const pageUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${page.id}`;
             const pageParams = new URLSearchParams({
-              fields: 'instagram_business_account{account_type}',
+              fields: 'instagram_business_account{id,username,name,account_type}',
               access_token: page.access_token
             });
             
@@ -634,12 +634,17 @@ export default function InstagramReelsDebugger() {
             if (instagramPage && instagramPage.instagram_business_account) {
               const igAccount = instagramPage.instagram_business_account;
               addLog(`📊 Account Details:`);
-              addLog(`   Username: @${igAccount.username}`);
-              addLog(`   Name: ${igAccount.name}`);
+              addLog(`   Username: @${igAccount.username || 'Unknown'}`);
+              addLog(`   Name: ${igAccount.name || 'Unknown'}`);
               addLog(`   Account Type: ${igAccount.account_type || 'Not specified'}`);
               addLog(`   Media Count: ${igAccount.media_count?.toLocaleString() || 'Unknown'}`);
               addLog(`   Followers: ${igAccount.followers_count?.toLocaleString() || 'Unknown'}`);
+            } else {
+              addLog(`⚠️ Could not find Instagram Business Account details`);
             }
+          } else {
+            const errorData = await pagesResponse.json();
+            addLog(`⚠️ Could not fetch detailed account info: ${JSON.stringify(errorData)}`);
           }
         } catch (error) {
           addLog(`⚠️ Could not fetch detailed account info: ${error}`);
@@ -895,12 +900,17 @@ export default function InstagramReelsDebugger() {
             if (instagramPage && instagramPage.instagram_business_account) {
               const igAccount = instagramPage.instagram_business_account;
               addLog(`📊 Account Details:`);
-              addLog(`   Username: @${igAccount.username}`);
-              addLog(`   Name: ${igAccount.name}`);
+              addLog(`   Username: @${igAccount.username || 'Unknown'}`);
+              addLog(`   Name: ${igAccount.name || 'Unknown'}`);
               addLog(`   Account Type: ${igAccount.account_type || 'Not specified'}`);
               addLog(`   Media Count: ${igAccount.media_count?.toLocaleString() || 'Unknown'}`);
               addLog(`   Followers: ${igAccount.followers_count?.toLocaleString() || 'Unknown'}`);
+            } else {
+              addLog(`⚠️ Could not find Instagram Business Account details`);
             }
+          } else {
+            const errorData = await pagesResponse.json();
+            addLog(`⚠️ Could not fetch detailed account info: ${JSON.stringify(errorData)}`);
           }
         } catch (error) {
           addLog(`⚠️ Could not fetch detailed account info: ${error}`);
