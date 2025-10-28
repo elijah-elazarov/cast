@@ -1,32 +1,35 @@
 import { NextResponse } from 'next/server';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+    const clientId = process.env.YOUTUBE_CLIENT_ID;
+    const redirectUri = `${process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000'}/auth/youtube/callback`;
+    const scope = 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly';
     
-    // Set custom User-Agent for ngrok bypass and app identification
-    const headers: HeadersInit = {
-      'User-Agent': 'Cast-SocialMedia-App/1.0 (Social Media Content Publisher)',
-    };
-    
-    // Forward the ngrok-skip-browser-warning header to bypass ngrok interstitial
-    const ngrokHeader = request.headers.get('ngrok-skip-browser-warning');
-    if (ngrokHeader) {
-      headers['ngrok-skip-browser-warning'] = ngrokHeader;
+    if (!clientId) {
+      return NextResponse.json({
+        success: false,
+        error: 'YouTube client ID not configured'
+      }, { status: 500 });
     }
-    
-    const response = await fetch(`${backendUrl}/api/youtube/auth-url`, {
-      headers,
+
+    const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    authUrl.searchParams.set('client_id', clientId);
+    authUrl.searchParams.set('redirect_uri', redirectUri);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('scope', scope);
+    authUrl.searchParams.set('access_type', 'offline');
+    authUrl.searchParams.set('prompt', 'consent');
+
+    return NextResponse.json({
+      success: true,
+      authUrl: authUrl.toString()
     });
-    const data = await response.json();
-    
-    return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error('YouTube auth-url proxy error:', error);
-    return NextResponse.json(
-      { success: false, detail: 'Failed to connect to backend' },
-      { status: 500 }
-    );
+    console.error('YouTube auth URL error:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to generate auth URL'
+    }, { status: 500 });
   }
 }
-

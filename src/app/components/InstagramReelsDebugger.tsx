@@ -80,7 +80,7 @@ export default function InstagramReelsDebugger() {
   } | null>(null)
 
   const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dkzbmeto1'
-  const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET || 'instagram_uploads'
+  const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_INSTAGRAM || 'instagram_uploads'
 
   // Client-side ffmpeg removed; we will call backend to process
 

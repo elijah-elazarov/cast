@@ -2,38 +2,53 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const { authData } = await request.json();
     
-    // Proxy request to backend
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
-    
-    // Set custom User-Agent for ngrok bypass and app identification
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      'User-Agent': 'Cast-SocialMedia-App/1.0 (Social Media Content Publisher)',
-    };
-    
-    // Forward the ngrok-skip-browser-warning header to bypass ngrok interstitial
-    const ngrokHeader = request.headers.get('ngrok-skip-browser-warning');
-    if (ngrokHeader) {
-      headers['ngrok-skip-browser-warning'] = ngrokHeader;
+    if (!authData || !authData.access_token) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid authentication data'
+      }, { status: 400 });
     }
-    
-    const response = await fetch(`${backendUrl}/api/youtube/login`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
+
+    // Get user info from YouTube API
+    const userResponse = await fetch('https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true', {
+      headers: {
+        'Authorization': `Bearer ${authData.access_token}`,
+        'Accept': 'application/json'
+      }
     });
-    
-    const data = await response.json();
-    
-    return NextResponse.json(data, { status: response.status });
+
+    if (!userResponse.ok) {
+      throw new Error('Failed to fetch user info from YouTube');
+    }
+
+    const userData = await userResponse.json();
+    const channel = userData.items?.[0];
+
+    if (!channel) {
+      throw new Error('No YouTube channel found');
+    }
+
+    const userInfo = {
+      id: channel.id,
+      username: channel.snippet?.title || 'Unknown',
+      email: '', // YouTube API doesn't provide email in this scope
+      channelTitle: channel.snippet?.title || 'Unknown Channel',
+      channelId: channel.id
+    };
+
+    return NextResponse.json({
+      success: true,
+      userInfo,
+      accessToken: authData.access_token,
+      refreshToken: authData.refresh_token
+    });
   } catch (error) {
-    console.error('YouTube login proxy error:', error);
-    return NextResponse.json(
-      { success: false, detail: 'Failed to connect to backend' },
-      { status: 500 }
-    );
+    console.error('YouTube login error:', error);
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to login with YouTube'
+    }, { status: 500 });
   }
 }
-
