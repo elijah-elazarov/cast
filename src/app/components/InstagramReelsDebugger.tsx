@@ -107,11 +107,11 @@ export default function InstagramReelsDebugger() {
       addLog('🔄 Step 2/3: Generating Instagram-compliant transformation URLs...')
       setProcessingProgress(60)
       
-      // For Reels: 9:16 aspect ratio, 720x1280, H.264, optimized for Instagram Reels
-      const reelsTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k,fl_progressive/${vJson.public_id}.mp4`
+      // For Reels: 9:16 aspect ratio, 720x1280, H.264 High@4.0, 30fps, progressive
+      const reelsTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264:high:4.0,fps_30,ac_aac,ar_48000,ab_128k,fl_progressive/${vJson.public_id}.mp4`
       
-      // For Stories: 9:16 aspect ratio, 720x1280, optimized for Instagram Stories (slightly different encoding)
-      const storiesTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264,ac_aac,ar_48000,ab_128k,fl_fast_upload/${vJson.public_id}.mp4`
+      // For Stories: 9:16 aspect ratio, 720x1280, H.264 High@4.0, 30fps, fast upload
+      const storiesTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,g_auto,f_mp4,q_auto:best,vc_h264:high:4.0,fps_30,ac_aac,ar_48000,ab_128k,fl_fast_upload/${vJson.public_id}.mp4`
       
       // Generate thumbnail: extract frame at 1 second
       const thumbnailUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_720,h_1280,c_fill,g_auto,f_jpg,q_auto:best/${vJson.public_id}.jpg`
