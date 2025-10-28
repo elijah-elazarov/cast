@@ -20,8 +20,9 @@ if [ ! -f "backend/demo.mp4" ]; then
     exit 1
 fi
 
-# Create processed video with Meta-compatible encoding
-echo "🔄 Processing video with Meta-compatible encoding..."
+# Create processed video with Instagram-compatible encoding
+# Based on: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media#creating
+echo "🔄 Processing video with Instagram-compatible encoding..."
 ffmpeg -i backend/demo.mp4 \
     -vf "scale=720:1280:force_original_aspect_ratio=decrease,crop=720:1280" \
     -c:v libx264 \
@@ -29,9 +30,16 @@ ffmpeg -i backend/demo.mp4 \
     -profile:v high \
     -level 4.0 \
     -pix_fmt yuv420p \
+    -g 30 \
+    -keyint_min 30 \
+    -sc_threshold 0 \
     -b:v 5000k \
+    -maxrate 25000k \
+    -bufsize 50000k \
     -c:a aac \
-    -b:a 192k \
+    -ar 48000 \
+    -ac 2 \
+    -b:a 128k \
     -movflags +faststart \
     -y \
     backend/demo_instagram_reels.mp4

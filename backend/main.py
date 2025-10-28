@@ -108,7 +108,8 @@ async def process_video_for_reels(request: Request):
             output_path = output_file.name
         
         try:
-            # Use ffmpeg to crop video to 9:16 aspect ratio with Meta-compatible encoding
+            # Use ffmpeg to crop video to 9:16 aspect ratio with Instagram-compatible encoding
+            # Based on: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media#creating
             cmd = [
                 'ffmpeg', '-i', input_path,
                 '-vf', f'scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,crop={target_width}:{target_height}',
@@ -117,9 +118,16 @@ async def process_video_for_reels(request: Request):
                 '-profile:v', 'high',
                 '-level', '4.0',
                 '-pix_fmt', 'yuv420p',
-                '-b:v', '5000k',
+                '-g', '30',  # GOP size for closed GOP
+                '-keyint_min', '30',  # Minimum keyframe interval
+                '-sc_threshold', '0',  # Disable scene change detection for closed GOP
+                '-b:v', '5000k',  # 5Mbps (well under 25Mbps max)
+                '-maxrate', '25000k',  # 25Mbps maximum
+                '-bufsize', '50000k',  # Buffer size for VBR
                 '-c:a', 'aac',
-                '-b:a', '192k',
+                '-ar', '48000',  # 48khz sample rate maximum
+                '-ac', '2',  # Stereo (2 channels)
+                '-b:a', '128k',  # 128kbps audio bitrate
                 '-movflags', '+faststart',
                 '-y',  # Overwrite output file
                 output_path
