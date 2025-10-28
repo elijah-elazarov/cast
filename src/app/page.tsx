@@ -507,7 +507,7 @@ export default function Home() {
               </button>
             </div>
             <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Brand new Instagram authentication component built from scratch using Facebook's manual OAuth flow.
+              Brand new Instagram authentication component built from scratch using Facebook&apos;s manual OAuth flow.
             </p>
             <FreshInstagramAuth />
           </div>

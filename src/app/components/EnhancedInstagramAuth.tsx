@@ -3,18 +3,41 @@
 import React, { useState, useEffect } from 'react';
 
 // Facebook SDK types
+interface FacebookAuthResponse {
+  accessToken: string;
+  userID: string;
+  expiresIn: number;
+  signedRequest: string;
+}
+
+interface FacebookLoginResponse {
+  authResponse: FacebookAuthResponse;
+  status: string;
+}
+
 declare global {
   interface Window {
-    FB: any;
+    FB: {
+      init: (config: { appId: string; cookie: boolean; xfbml: boolean; version: string }) => void;
+      getLoginStatus: (callback: (response: FacebookLoginResponse) => void) => void;
+      login: (callback: (response: FacebookLoginResponse) => void, options: { scope: string; return_scopes: boolean }) => void;
+      logout: (callback: () => void) => void;
+    };
     fbAsyncInit: () => void;
   }
+}
+
+interface UserInfo {
+  id: string;
+  username: string;
+  account_type: string;
 }
 
 interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  userInfo: any;
+  userInfo: UserInfo | null;
   accessToken: string | null;
   longLivedToken: string | null;
 }
@@ -36,7 +59,7 @@ const EnhancedInstagramAuth: React.FC = () => {
     longLivedToken: null
   });
 
-  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [debugInfo, setDebugInfo] = useState<Record<string, unknown> | null>(null);
   const [sdkLoaded, setSdkLoaded] = useState(false);
 
   // Instagram Graph API configuration
@@ -80,7 +103,7 @@ const EnhancedInstagramAuth: React.FC = () => {
     };
 
     loadFacebookSDK();
-  }, []);
+  }, [INSTAGRAM_CONFIG.apiVersion, INSTAGRAM_CONFIG.appId]);
 
   // Check login status using Facebook SDK
   const checkLoginStatus = (): Promise<FacebookAuthResponse | null> => {
@@ -90,7 +113,7 @@ const EnhancedInstagramAuth: React.FC = () => {
         return;
       }
 
-      window.FB.getLoginStatus((response: any) => {
+      window.FB.getLoginStatus((response: FacebookLoginResponse) => {
         console.log('[ENHANCED AUTH] Login status check:', response);
         
         if (response.status === 'connected') {
@@ -110,7 +133,7 @@ const EnhancedInstagramAuth: React.FC = () => {
         return;
       }
 
-      window.FB.login((response: any) => {
+      window.FB.login((response: FacebookLoginResponse) => {
         console.log('[ENHANCED AUTH] Facebook login response:', response);
         
         if (response.authResponse) {
@@ -158,7 +181,7 @@ const EnhancedInstagramAuth: React.FC = () => {
   };
 
   // Get user Instagram account info
-  const getUserInstagramAccount = async (accessToken: string): Promise<any> => {
+  const getUserInstagramAccount = async (accessToken: string): Promise<UserInfo> => {
     // First try to get Instagram account directly from user
     const userUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me`;
     const userParams = new URLSearchParams({
@@ -449,7 +472,7 @@ const EnhancedInstagramAuth: React.FC = () => {
             <div><strong>Username:</strong> {authState.userInfo.username}</div>
             <div><strong>Account Type:</strong> {authState.userInfo.account_type}</div>
             {authState.accessToken && (
-              <div><strong>Facebook User ID:</strong> {debugInfo?.facebook_user_id}</div>
+                <div><strong>Facebook User ID:</strong> {String(debugInfo?.facebook_user_id || '')}</div>
             )}
           </div>
         </div>

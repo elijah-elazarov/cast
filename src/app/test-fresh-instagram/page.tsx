@@ -43,7 +43,7 @@ const FreshInstagramTestPage: React.FC = () => {
                   Fresh Instagram Auth Component
                 </h2>
                 <p className="text-gray-600">
-                  This is the brand new component built from scratch using Facebook's manual OAuth flow
+                  This is the brand new component built from scratch using Facebook&apos;s manual OAuth flow
                 </p>
               </div>
               
@@ -53,10 +53,10 @@ const FreshInstagramTestPage: React.FC = () => {
             {/* Comparison Info */}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-yellow-800 mb-3">
-                What's Different About This Component?
+                What&apos;s Different About This Component?
               </h3>
               <div className="space-y-2 text-sm text-yellow-700">
-                <div>• Built from scratch using Facebook's official manual OAuth flow documentation</div>
+                <div>• Built from scratch using Facebook&apos;s official manual OAuth flow documentation</div>
                 <div>• Implements proper token exchange with <code>grant_type=authorization_code</code></div>
                 <div>• Includes long-lived token generation for 60-day expiration</div>
                 <div>• Direct Instagram Graph API calls without backend proxy</div>
@@ -101,7 +101,7 @@ const FreshInstagramTestPage: React.FC = () => {
                 Testing Instructions
               </h3>
               <div className="space-y-2 text-sm text-green-700">
-                <div>1. Click "Connect Instagram Account" to start the authentication flow</div>
+                <div>1. Click &quot;Connect Instagram Account&quot; to start the authentication flow</div>
                 <div>2. Complete the Instagram login in the popup window</div>
                 <div>3. Verify that session information is displayed correctly</div>
                 <div>4. Test the posting functionality to ensure full integration</div>

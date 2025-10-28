@@ -115,7 +115,7 @@ export default function TestInstagramPage() {
         <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
           <h3 className="font-semibold text-yellow-800 mb-2">How to Use</h3>
           <ol className="text-sm text-yellow-700 space-y-1">
-            <li>1. Click "Start Authentication Test" to open the popup</li>
+            <li>1. Click &quot;Start Authentication Test&quot; to open the popup</li>
             <li>2. Complete Instagram login in the popup window</li>
             <li>3. View session info and auth details in the popup</li>
             <li>4. Test upload functionality with the stored session</li>

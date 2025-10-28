@@ -1,12 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+
+interface UserInfo {
+  id: string;
+  username: string;
+  account_type: string;
+}
 
 interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  userInfo: any;
+  userInfo: UserInfo | null;
   accessToken: string | null;
 }
 
@@ -31,7 +37,7 @@ const FreshInstagramAuth: React.FC = () => {
     accessToken: null
   });
 
-  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [debugInfo, setDebugInfo] = useState<Record<string, unknown> | null>(null);
 
   // Instagram Graph API configuration
   const INSTAGRAM_CONFIG = {
@@ -384,7 +390,7 @@ const FreshInstagramAuth: React.FC = () => {
           Fresh Instagram Authentication
         </h2>
         <p className="text-gray-600">
-          Brand new Instagram component built from scratch using Facebook's manual OAuth flow
+            Brand new Instagram component built from scratch using Facebook&apos;s manual OAuth flow
         </p>
       </div>
 

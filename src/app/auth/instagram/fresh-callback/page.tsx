@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 interface AuthResult {
@@ -10,7 +10,7 @@ interface AuthResult {
   errorDescription?: string;
 }
 
-const FreshInstagramCallback: React.FC = () => {
+const FreshInstagramCallbackContent: React.FC = () => {
   const searchParams = useSearchParams();
   const [authResult, setAuthResult] = useState<AuthResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(true);
@@ -86,7 +86,7 @@ const FreshInstagramCallback: React.FC = () => {
     };
 
     processCallback();
-  }, [searchParams]);
+  }, [searchParams, authResult?.error, authResult?.errorDescription, authResult?.success]);
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -192,6 +192,23 @@ const FreshInstagramCallback: React.FC = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const FreshInstagramCallback: React.FC = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <FreshInstagramCallbackContent />
+    </Suspense>
   );
 };
 

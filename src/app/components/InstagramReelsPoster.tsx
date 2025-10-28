@@ -3,18 +3,41 @@
 import React, { useState, useEffect } from 'react';
 
 // Facebook SDK types
+interface FacebookAuthResponse {
+  accessToken: string;
+  userID: string;
+  expiresIn: number;
+  signedRequest: string;
+}
+
+interface FacebookLoginResponse {
+  authResponse: FacebookAuthResponse;
+  status: string;
+}
+
 declare global {
   interface Window {
-    FB: any;
+    FB: {
+      init: (config: { appId: string; cookie: boolean; xfbml: boolean; version: string }) => void;
+      getLoginStatus: (callback: (response: FacebookLoginResponse) => void) => void;
+      login: (callback: (response: FacebookLoginResponse) => void, options: { scope: string; return_scopes: boolean }) => void;
+      logout: (callback: () => void) => void;
+    };
     fbAsyncInit: () => void;
   }
+}
+
+interface UserInfo {
+  id: string;
+  username: string;
+  account_type: string;
 }
 
 interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  userInfo: any;
+  userInfo: UserInfo | null;
   accessToken: string | null;
   longLivedToken: string | null;
   instagramPageId: string | null;
@@ -59,7 +82,7 @@ const InstagramReelsPoster: React.FC = () => {
     thumbnailUrl: ''
   });
 
-  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [debugInfo, setDebugInfo] = useState<Record<string, unknown> | null>(null);
   const [sdkLoaded, setSdkLoaded] = useState(false);
 
   // Instagram Graph API configuration
@@ -101,17 +124,17 @@ const InstagramReelsPoster: React.FC = () => {
     };
 
     loadFacebookSDK();
-  }, []);
+  }, [INSTAGRAM_CONFIG.apiVersion, INSTAGRAM_CONFIG.appId]);
 
   // Check login status using Facebook SDK
-  const checkLoginStatus = (): Promise<any> => {
+  const checkLoginStatus = (): Promise<FacebookAuthResponse | null> => {
     return new Promise((resolve) => {
       if (!window.FB) {
         resolve(null);
         return;
       }
 
-      window.FB.getLoginStatus((response: any) => {
+      window.FB.getLoginStatus((response: FacebookLoginResponse) => {
         console.log('[REELS POSTER] Login status check:', response);
         
         if (response.status === 'connected') {
@@ -124,14 +147,14 @@ const InstagramReelsPoster: React.FC = () => {
   };
 
   // Login using Facebook SDK
-  const loginWithFacebookSDK = (): Promise<any> => {
+  const loginWithFacebookSDK = (): Promise<FacebookAuthResponse> => {
     return new Promise((resolve, reject) => {
       if (!window.FB) {
         reject(new Error('Facebook SDK not loaded'));
         return;
       }
 
-      window.FB.login((response: any) => {
+      window.FB.login((response: FacebookLoginResponse) => {
         console.log('[REELS POSTER] Facebook login response:', response);
         
         if (response.authResponse) {
@@ -179,7 +202,7 @@ const InstagramReelsPoster: React.FC = () => {
   };
 
   // Get Instagram Business Account and Page ID
-  const getInstagramAccount = async (accessToken: string): Promise<{userInfo: any, pageId: string}> => {
+  const getInstagramAccount = async (accessToken: string): Promise<{userInfo: UserInfo, pageId: string}> => {
     // First try to get Instagram account directly from user
     const userUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me`;
     const userParams = new URLSearchParams({
@@ -295,7 +318,7 @@ const InstagramReelsPoster: React.FC = () => {
   };
 
   // Handle successful authentication
-  const handleAuthSuccess = async (authResponse: any) => {
+  const handleAuthSuccess = async (authResponse: FacebookAuthResponse) => {
     try {
       console.log('[REELS POSTER] Processing auth response:', authResponse);
       
@@ -352,7 +375,7 @@ const InstagramReelsPoster: React.FC = () => {
 
     const url = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}/media`;
     
-    const requestData: any = {
+    const requestData: Record<string, string | number> = {
       video_url: reelData.videoUrl,
       caption: reelData.caption,
       access_token: authState.longLivedToken
@@ -417,7 +440,7 @@ const InstagramReelsPoster: React.FC = () => {
   };
 
   // Step 3: Publish Reel
-  const publishReel = async (containerId: string): Promise<any> => {
+  const publishReel = async (containerId: string): Promise<Record<string, unknown>> => {
     if (!authState.longLivedToken || !authState.instagramPageId) {
       throw new Error('Not authenticated or missing Instagram page ID');
     }
