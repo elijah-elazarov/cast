@@ -69,6 +69,15 @@ export default function InstagramReelsDebugger() {
   const [processedStoriesUrl, setProcessedStoriesUrl] = useState<string | null>(null)
   const [processedThumbUrl, setProcessedThumbUrl] = useState<string | null>(null)
   const [videosReady, setVideosReady] = useState(false)
+  const [fileDetails, setFileDetails] = useState<{
+    name: string;
+    sizeMB: number;
+    type: string;
+    width?: number;
+    height?: number;
+    duration?: number;
+    previewUrl?: string;
+  } | null>(null)
 
   const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dkzbmeto1'
   const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET || 'instagram_uploads'
@@ -121,6 +130,36 @@ export default function InstagramReelsDebugger() {
     setProcessedStoriesUrl(null)
     setProcessedThumbUrl(null)
     setVideosReady(false)
+
+    // Build initial details
+    const details = {
+      name: file.name,
+      sizeMB: +(file.size / (1024 * 1024)).toFixed(2),
+      type: file.type || 'video/mp4',
+    } as {
+      name: string; sizeMB: number; type: string; width?: number; height?: number; duration?: number; previewUrl?: string
+    }
+
+    // Create a preview URL and read metadata for resolution/duration
+    try {
+      const url = URL.createObjectURL(file)
+      details.previewUrl = url
+      const videoEl = document.createElement('video')
+      videoEl.preload = 'metadata'
+      videoEl.src = url
+      videoEl.onloadedmetadata = () => {
+        details.width = (videoEl.videoWidth || undefined)
+        details.height = (videoEl.videoHeight || undefined)
+        details.duration = +(videoEl.duration || 0).toFixed(2)
+        setFileDetails({ ...details })
+        // We keep the preview URL for inline preview; do not revoke yet
+      }
+      videoEl.onerror = () => {
+        setFileDetails({ ...details })
+      }
+    } catch (_) {
+      setFileDetails({ ...details })
+    }
   }
 
   const processClientSide = async () => {
@@ -929,25 +968,45 @@ export default function InstagramReelsDebugger() {
 
       {/* Local file selection and processing */}
       <div className={`mb-6 p-4 rounded-lg border ${!authState.isAuthenticated ? 'opacity-50' : ''}`}>
-        <h3 className={`text-lg font-semibold mb-2 ${!authState.isAuthenticated ? 'text-gray-400' : 'text-gray-800'}`}>
+        <h3 className={`text-lg font-semibold mb-2 ${!authState.isAuthenticated ? 'text-gray-500' : 'text-gray-900'}`}>
           Select Video {!authState.isAuthenticated && '(Sign in required)'}
         </h3>
-        <input
-          type="file"
-          accept="video/*"
-          onChange={(e) => e.target.files && handleFileChange(e.target.files[0])}
-          disabled={!authState.isAuthenticated}
-          className={`block w-full text-sm ${!authState.isAuthenticated ? 'text-gray-400 cursor-not-allowed' : ''}`}
-        />
+        <label className={`inline-flex items-center px-4 py-2 rounded cursor-pointer ${!authState.isAuthenticated ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-gray-900 text-white hover:bg-black'}`}>
+          <span className="font-medium">Choose file</span>
+          <input
+            type="file"
+            accept="video/*"
+            onChange={(e) => e.target.files && handleFileChange(e.target.files[0])}
+            disabled={!authState.isAuthenticated}
+            className="hidden"
+          />
+        </label>
+        {fileDetails && (
+          <div className="mt-3 text-sm text-gray-800">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <div className="font-medium">{fileDetails.name}</div>
+                <div className="text-gray-600">{fileDetails.type} • {fileDetails.sizeMB} MB{fileDetails.duration ? ` • ${fileDetails.duration}s` : ''}</div>
+                {(fileDetails.width && fileDetails.height) && (
+                  <div className="text-gray-600">Resolution: {fileDetails.width} × {fileDetails.height}</div>
+                )}
+              </div>
+              {fileDetails.previewUrl && (
+                <video
+                  src={fileDetails.previewUrl}
+                  className="w-28 h-48 object-cover rounded border"
+                  controls
+                  muted
+                />
+              )}
+            </div>
+          </div>
+        )}
         <div className="mt-3 flex items-center gap-3">
           <button
             onClick={processClientSide}
             disabled={!authState.isAuthenticated || !selectedFile || processing}
-            className={`px-4 py-2 rounded ${
-              !authState.isAuthenticated 
-                ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                : 'bg-blue-600 text-white disabled:opacity-50'
-            }`}
+            className={`px-4 py-2 rounded ${!authState.isAuthenticated ? 'bg-gray-400 text-gray-600 cursor-not-allowed' : 'bg-blue-700 text-white hover:bg-blue-800 disabled:opacity-50'}`}
           >
             {!authState.isAuthenticated 
               ? 'Sign in to process video' 
