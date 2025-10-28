@@ -2,6 +2,11 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+import subprocess
+import tempfile
+import os
+import time
+import requests
 from pydantic import BaseModel
 from instagrapi import Client
 from instagrapi.exceptions import LoginRequired, BadPassword
@@ -70,6 +75,96 @@ app.add_middleware(
 
 # Mount static files to serve demo.mp4
 app.mount("/static", StaticFiles(directory="."), name="static")
+
+# Video processing endpoint for Instagram Reels
+@app.post("/api/instagram/graph/process-video")
+async def process_video_for_reels(request: Request):
+    """
+    Process video to meet Instagram Reels requirements (9:16 aspect ratio)
+    """
+    try:
+        request_data = await request.json()
+        video_url = request_data.get("video_url")
+        target_width = request_data.get("target_width", 720)
+        target_height = request_data.get("target_height", 1280)
+        target_ratio = request_data.get("target_ratio", 9/16)
+        
+        if not video_url:
+            raise HTTPException(status_code=400, detail="Video URL is required")
+        
+        logger.info(f"Processing video for Instagram Reels: {video_url}")
+        
+        # Download video
+        response = requests.get(video_url)
+        if response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Could not download video")
+        
+        # Create temporary files
+        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as input_file:
+            input_file.write(response.content)
+            input_path = input_file.name
+        
+        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as output_file:
+            output_path = output_file.name
+        
+        try:
+            # Use ffmpeg to crop video to 9:16 aspect ratio
+            cmd = [
+                'ffmpeg', '-i', input_path,
+                '-vf', f'scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,crop={target_width}:{target_height}',
+                '-c:v', 'libx264',
+                '-preset', 'fast',
+                '-crf', '23',
+                '-c:a', 'aac',
+                '-b:a', '128k',
+                '-y',  # Overwrite output file
+                output_path
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode != 0:
+                logger.error(f"FFmpeg error: {result.stderr}")
+                raise HTTPException(status_code=500, detail="Video processing failed")
+            
+            # Read processed video
+            with open(output_path, 'rb') as f:
+                processed_video = f.read()
+            
+            # Save processed video to static directory
+            processed_filename = f"processed_reels_{int(time.time())}.mp4"
+            processed_path = f"static/{processed_filename}"
+            
+            with open(processed_path, 'wb') as f:
+                f.write(processed_video)
+            
+            # Return URL to processed video
+            processed_url = f"https://backrooms-e8nm.onrender.com/static/{processed_filename}"
+            
+            logger.info(f"Video processed successfully: {processed_url}")
+            
+            return JSONResponse({
+                "success": True,
+                "processed_video_url": processed_url,
+                "original_dimensions": "analyzed",
+                "processed_dimensions": f"{target_width}x{target_height}",
+                "aspect_ratio": f"{target_ratio:.3f}"
+            })
+            
+        finally:
+            # Clean up temporary files
+            try:
+                os.unlink(input_path)
+                os.unlink(output_path)
+            except:
+                pass
+                
+    except Exception as e:
+        logger.error(f"Video processing error: {str(e)}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
 
 # Store active sessions (in production, use Redis or database)
 active_sessions = {}  # Store Instagram (instagrapi) sessions
