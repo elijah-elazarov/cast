@@ -488,7 +488,18 @@ export default function InstagramReelsDebugger() {
         await checkContainerStatus(containerId);
       } else {
         addLog('❌ All container creation approaches failed');
-        addLog('This might be due to video format, URL accessibility, or API permissions');
+        addLog('Instagram Reels API Requirements:');
+        addLog('• Aspect ratio: 9:16 (vertical/portrait)');
+        addLog('• Resolution: 720x1280 to 1080x1920');
+        addLog('• Format: MP4, MOV, or AVI');
+        addLog('• Duration: 3-90 seconds');
+        addLog('• File size: Max 100MB');
+        addLog('');
+        addLog('The demo.mp4 file may not meet these requirements.');
+        addLog('For testing, you can:');
+        addLog('1. Use a properly formatted Reels video');
+        addLog('2. Test with Instagram Stories instead');
+        addLog('3. Verify your video meets Instagram requirements');
       }
       
     } catch (error) {
@@ -554,6 +565,58 @@ export default function InstagramReelsDebugger() {
       }
     } catch (error) {
       addLog(`❌ Publishing error: ${error}`);
+    }
+  };
+
+  // Test Stories posting capability (less strict requirements)
+  const testStoriesCapability = async () => {
+    if (!authState.isAuthenticated || !authState.longLivedToken || !authState.instagramPageId) {
+      addLog('Not authenticated - cannot test Stories capability');
+      return;
+    }
+
+    addLog('Testing Instagram Stories posting capability...');
+    
+    try {
+      const demoVideoUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com'}/static/demo.mp4`;
+      addLog(`Using demo video URL: ${demoVideoUrl}`);
+      
+      // Stories have more flexible requirements
+      const containerUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}/media`;
+      const containerData = {
+        video_url: demoVideoUrl,
+        caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
+        access_token: authState.longLivedToken
+      };
+
+      addLog('Creating Stories media container...');
+      const containerResponse = await fetch(containerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(containerData)
+      });
+
+      if (containerResponse.ok) {
+        const containerResult = await containerResponse.json();
+        const containerId = containerResult.id;
+        addLog(`✅ Stories container created: ${containerId}`);
+        
+        // Check container status
+        addLog('Checking Stories container status...');
+        await checkContainerStatus(containerId);
+        
+      } else {
+        const errorData = await containerResponse.json();
+        addLog(`❌ Stories container creation failed: ${JSON.stringify(errorData)}`);
+        addLog('Stories Requirements:');
+        addLog('• Aspect ratio: 9:16 (preferred) or 1:1');
+        addLog('• Resolution: 720x1280 or 1080x1080');
+        addLog('• Duration: 1-15 seconds');
+        addLog('• Format: MP4, MOV, or AVI');
+      }
+      
+    } catch (error) {
+      addLog(`❌ Stories capability test error: ${error}`);
     }
   };
 
@@ -631,6 +694,12 @@ export default function InstagramReelsDebugger() {
               className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
             >
               Test Reels Capability
+            </button>
+            <button
+              onClick={testStoriesCapability}
+              className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            >
+              Test Stories Capability
             </button>
             <button
               onClick={handleLogout}
