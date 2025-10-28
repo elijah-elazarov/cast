@@ -615,6 +615,36 @@ export default function InstagramReelsDebugger() {
         const accountData = await accountResponse.json();
         addLog(`✅ Instagram account accessible: ${accountData.username}`);
         
+        // Get detailed account info from Facebook Page
+        try {
+          const pagesUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/accounts`;
+          const pagesParams = new URLSearchParams({
+            fields: 'id,name,access_token,instagram_business_account{id,username,name,account_type,media_count,followers_count}',
+            access_token: authState.longLivedToken
+          });
+          
+          const pagesResponse = await fetch(`${pagesUrl}?${pagesParams}`);
+          if (pagesResponse.ok) {
+            const pagesData = await pagesResponse.json();
+            const instagramPage = pagesData.data.find((page: any) => 
+              page.instagram_business_account && 
+              page.instagram_business_account.id === authState.instagramPageId
+            );
+            
+            if (instagramPage && instagramPage.instagram_business_account) {
+              const igAccount = instagramPage.instagram_business_account;
+              addLog(`📊 Account Details:`);
+              addLog(`   Username: @${igAccount.username}`);
+              addLog(`   Name: ${igAccount.name}`);
+              addLog(`   Account Type: ${igAccount.account_type || 'Not specified'}`);
+              addLog(`   Media Count: ${igAccount.media_count?.toLocaleString() || 'Unknown'}`);
+              addLog(`   Followers: ${igAccount.followers_count?.toLocaleString() || 'Unknown'}`);
+            }
+          }
+        } catch (error) {
+          addLog(`⚠️ Could not fetch detailed account info: ${error}`);
+        }
+        
         // Test 2: Check if we have the required permissions by testing a simple API call
         const permissionsUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/permissions`;
         const permissionsResponse = await fetch(`${permissionsUrl}?access_token=${authState.longLivedToken}`);
@@ -845,6 +875,36 @@ export default function InstagramReelsDebugger() {
       if (accountResponse.ok) {
         const accountData = await accountResponse.json();
         addLog(`✅ Instagram account accessible: ${accountData.username}`);
+        
+        // Get detailed account info from Facebook Page
+        try {
+          const pagesUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/accounts`;
+          const pagesParams = new URLSearchParams({
+            fields: 'id,name,access_token,instagram_business_account{id,username,name,account_type,media_count,followers_count}',
+            access_token: authState.longLivedToken
+          });
+          
+          const pagesResponse = await fetch(`${pagesUrl}?${pagesParams}`);
+          if (pagesResponse.ok) {
+            const pagesData = await pagesResponse.json();
+            const instagramPage = pagesData.data.find((page: any) => 
+              page.instagram_business_account && 
+              page.instagram_business_account.id === authState.instagramPageId
+            );
+            
+            if (instagramPage && instagramPage.instagram_business_account) {
+              const igAccount = instagramPage.instagram_business_account;
+              addLog(`📊 Account Details:`);
+              addLog(`   Username: @${igAccount.username}`);
+              addLog(`   Name: ${igAccount.name}`);
+              addLog(`   Account Type: ${igAccount.account_type || 'Not specified'}`);
+              addLog(`   Media Count: ${igAccount.media_count?.toLocaleString() || 'Unknown'}`);
+              addLog(`   Followers: ${igAccount.followers_count?.toLocaleString() || 'Unknown'}`);
+            }
+          }
+        } catch (error) {
+          addLog(`⚠️ Could not fetch detailed account info: ${error}`);
+        }
         
         // Test 2: Check if we have the required permissions
         const permissionsUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/permissions`;
