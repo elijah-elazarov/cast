@@ -108,15 +108,19 @@ async def process_video_for_reels(request: Request):
             output_path = output_file.name
         
         try:
-            # Use ffmpeg to crop video to 9:16 aspect ratio
+            # Use ffmpeg to crop video to 9:16 aspect ratio with Meta-compatible encoding
             cmd = [
                 'ffmpeg', '-i', input_path,
                 '-vf', f'scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,crop={target_width}:{target_height}',
                 '-c:v', 'libx264',
-                '-preset', 'fast',
-                '-crf', '23',
+                '-preset', 'medium',
+                '-profile:v', 'high',
+                '-level', '4.0',
+                '-pix_fmt', 'yuv420p',
+                '-b:v', '5000k',
                 '-c:a', 'aac',
-                '-b:a', '128k',
+                '-b:a', '192k',
+                '-movflags', '+faststart',
                 '-y',  # Overwrite output file
                 output_path
             ]

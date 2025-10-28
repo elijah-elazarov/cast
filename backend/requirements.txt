@@ -8,6 +8,8 @@ google-auth-oauthlib==1.2.0
 google-auth-httplib2==0.2.0
 google-api-python-client==2.108.0
 packaging>=21.0
+# FFmpeg is required for video processing but installed at system level
+# Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)
 requests==2.32.4
 boto3==1.34.0
 botocore==1.34.0

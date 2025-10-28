@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Process demo.mp4 for Instagram Reels using Meta-compatible encoding
+# Based on: https://www.ayrshare.com/docs/help-center/technical-support/video_publishing_fails
+
+echo "Processing demo.mp4 for Instagram Reels..."
+
+# Check if FFmpeg is installed
+if ! command -v ffmpeg &> /dev/null; then
+    echo "❌ FFmpeg is not installed. Please install it first:"
+    echo "   macOS: brew install ffmpeg"
+    echo "   Linux: sudo apt install ffmpeg"
+    echo "   Windows: winget install ffmpeg"
+    exit 1
+fi
+
+# Check if demo.mp4 exists
+if [ ! -f "backend/demo.mp4" ]; then
+    echo "❌ demo.mp4 not found in backend/ directory"
+    exit 1
+fi
+
+# Create processed video with Meta-compatible encoding
+echo "🔄 Processing video with Meta-compatible encoding..."
+ffmpeg -i backend/demo.mp4 \
+    -vf "scale=720:1280:force_original_aspect_ratio=decrease,crop=720:1280" \
+    -c:v libx264 \
+    -preset medium \
+    -profile:v high \
+    -level 4.0 \
+    -pix_fmt yuv420p \
+    -b:v 5000k \
+    -c:a aac \
+    -b:a 192k \
+    -movflags +faststart \
+    -y \
+    backend/demo_instagram_reels.mp4
+
+if [ $? -eq 0 ]; then
+    echo "✅ Video processed successfully!"
+    echo "📁 Output: backend/demo_instagram_reels.mp4"
+    echo "🎬 This video should now work with Instagram Reels API"
+    
+    # Show video info
+    echo ""
+    echo "📊 Video information:"
+    ffprobe -v quiet -print_format json -show_format -show_streams backend/demo_instagram_reels.mp4 | jq '.streams[0] | {width, height, duration, codec_name, profile}'
+else
+    echo "❌ Video processing failed"
+    exit 1
+fi
