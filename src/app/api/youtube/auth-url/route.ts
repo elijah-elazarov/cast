@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   try {
     const clientId = process.env.YOUTUBE_CLIENT_ID;
-    const redirectUri = `${process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://cast-five.vercel.app'}/auth/youtube/callback`;
+    const redirectUri = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com'}/auth/youtube/callback`;
     const scope = 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly';
     
     if (!clientId) {
