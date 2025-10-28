@@ -629,8 +629,14 @@ export default function InstagramReelsDebugger() {
           </div>
           <div className="text-gray-700">
             <strong className="text-gray-800">Scopes:</strong>
-            <div className="mt-1 text-xs text-gray-600 break-words">
-              {INSTAGRAM_CONFIG.scope}
+            <div className="mt-1 text-xs text-gray-600 leading-relaxed">
+              {INSTAGRAM_CONFIG.scope.split(',').map((scope, index) => (
+                <div key={index} className="mb-1">
+                  <span className="inline-block bg-gray-100 px-2 py-1 rounded text-xs">
+                    {scope.trim()}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
