@@ -37,12 +37,12 @@ const INSTAGRAM_CONFIG = {
 };
 
 // Facebook SDK interfaces for this component
-interface DebugFacebookSDK {
-  init: (config: { appId: string; cookie: boolean; xfbml: boolean; version: string }) => void;
-  getLoginStatus: (callback: (response: DebugFacebookLoginResponse) => void) => void;
-  login: (callback: (response: DebugFacebookLoginResponse) => void, options: { scope: string; return_scopes: boolean }) => void;
-  logout: (callback: () => void) => void;
-}
+// interface DebugFacebookSDK {
+//   init: (config: { appId: string; cookie: boolean; xfbml: boolean; version: string }) => void;
+//   getLoginStatus: (callback: (response: DebugFacebookLoginResponse) => void) => void;
+//   login: (callback: (response: DebugFacebookLoginResponse) => void, options: { scope: string; return_scopes: boolean }) => void;
+//   logout: (callback: () => void) => void;
+// }
 
 interface DebugFacebookLoginResponse {
   authResponse: FacebookAuthResponse | null;
@@ -454,9 +454,9 @@ export default function InstagramReelsDebugger() {
               processVideoForReels(videoUrl, width, height, targetRatio),
               timeoutPromise
             ])
-              .then(processedUrl => {
+              .then((processedUrl) => {
                 addLog('✅ Video processed successfully!');
-                resolve(processedUrl);
+                resolve(processedUrl as string);
               })
               .catch(error => {
                 addLog(`❌ Video processing failed: ${error}`);
@@ -710,9 +710,9 @@ export default function InstagramReelsDebugger() {
               processVideoForStories(videoUrl, width, height, targetRatio9_16),
               timeoutPromise
             ])
-              .then(processedUrl => {
+              .then((processedUrl) => {
                 addLog('✅ Video processed successfully for Stories!');
-                resolve(processedUrl);
+                resolve(processedUrl as string);
               })
               .catch(error => {
                 addLog(`❌ Video processing failed: ${error}`);
@@ -787,12 +787,6 @@ export default function InstagramReelsDebugger() {
       
       // Stories have more flexible requirements
       const containerUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${authState.instagramPageId}/media`;
-      const containerData = {
-        video_url: demoVideoUrl,
-        image_url: demoVideoUrl, // Instagram sometimes requires both video_url and image_url
-        caption: '📱 Test Story from Instagram Reels Debugger - Posted via API! #test #stories #api',
-        access_token: authState.longLivedToken
-      };
 
       // Try different approaches for Instagram Stories
       const storiesApproaches = [
