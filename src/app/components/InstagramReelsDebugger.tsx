@@ -2,12 +2,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg'
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { fetchFile } from '@ffmpeg/util';
 
 interface UserInfo {
   id: string;
   username: string;
-  account_type: string;
+  account_type?: string;
 }
 
 interface AuthState {
@@ -75,8 +76,8 @@ export default function InstagramReelsDebugger() {
 
   const ensureFfmpeg = async () => {
     if (ffmpegRef.current) return ffmpegRef.current
-    const ffmpeg = createFFmpeg({ log: true, corePath: undefined })
-    ffmpeg.setProgress(({ ratio }) => setProcessingProgress(Math.min(99, Math.round(ratio * 100))))
+    const ffmpeg = new FFmpeg();
+    ffmpeg.on('progress', ({ progress }: { progress: number }) => setProcessingProgress(Math.min(99, Math.round(progress * 100))))
     await ffmpeg.load()
     ffmpegRef.current = ffmpeg
     return ffmpeg
@@ -286,7 +287,7 @@ export default function InstagramReelsDebugger() {
     // Get Instagram account from Facebook Pages (correct approach)
     const pagesUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/accounts`;
     const pagesParams = new URLSearchParams({
-      fields: 'id,name,instagram_business_account',
+      fields: 'id,name,access_token,instagram_business_account',
       access_token: accessToken
     });
 
@@ -306,6 +307,7 @@ export default function InstagramReelsDebugger() {
       if (page.instagram_business_account) {
         const instagramId = page.instagram_business_account.id;
         addLog(`Found Instagram Business Account: ${instagramId}`);
+        addLog(`Page ID: ${page.id}, Page Access Token: ${page.access_token ? 'Present' : 'Missing'}`);
         
         const instagramUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${instagramId}`;
         const instagramParams = new URLSearchParams({
@@ -318,22 +320,34 @@ export default function InstagramReelsDebugger() {
           const instagramData = await instagramResponse.json();
           addLog(`Instagram account details: ${JSON.stringify(instagramData)}`);
           
-          // Get real account type from Facebook Page Instagram connection
-          const pageUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${page.id}`;
-          const pageParams = new URLSearchParams({
-            fields: 'instagram_business_account{account_type}',
-            access_token: page.access_token
-          });
+        // Get real account type from Facebook Page Instagram connection
+        let accountType: string | undefined = undefined; // no default
           
-          const pageResponse = await fetch(`${pageUrl}?${pageParams.toString()}`);
-          let accountType = 'BUSINESS'; // Default fallback
-          
-          if (pageResponse.ok) {
-            const pageData = await pageResponse.json();
-            if (pageData.instagram_business_account?.account_type) {
-              accountType = pageData.instagram_business_account.account_type;
-              addLog(`Real account type from API: ${accountType}`);
+          if (page.access_token) {
+            const pageUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${page.id}`;
+            const pageParams = new URLSearchParams({
+              fields: 'instagram_business_account{account_type}',
+              access_token: page.access_token
+            });
+            
+            try {
+              const pageResponse = await fetch(`${pageUrl}?${pageParams.toString()}`);
+              
+              if (pageResponse.ok) {
+                const pageData = await pageResponse.json();
+                if (pageData.instagram_business_account?.account_type) {
+                  accountType = pageData.instagram_business_account.account_type;
+                  addLog(`Real account type from API: ${accountType}`);
+                }
+              } else {
+                const errorData = await pageResponse.json().catch(() => ({}));
+                addLog(`Page API call failed (${pageResponse.status}): ${JSON.stringify(errorData)}`);
+              }
+            } catch (error) {
+              addLog(`Page API call error: ${error}`);
             }
+          } else {
+            addLog('No page access token available; skipping account_type fetch');
           }
           
           return { 
