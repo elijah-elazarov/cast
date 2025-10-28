@@ -169,82 +169,39 @@ const InstagramReelsPoster: React.FC = () => {
     });
   };
 
-  // Get long-lived token
+  // Get long-lived token using our backend (secure approach)
   const getLongLivedToken = async (shortLivedToken: string): Promise<string> => {
-    const url = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/oauth/access_token`;
-    
-    const params = new URLSearchParams({
-      grant_type: 'fb_exchange_token',
-      client_id: INSTAGRAM_CONFIG.appId,
-      client_secret: process.env.NEXT_PUBLIC_INSTAGRAM_CLIENT_SECRET || '',
-      fb_exchange_token: shortLivedToken
-    });
-
     console.log('[REELS POSTER] Getting long-lived token...');
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params.toString()
-    });
+    try {
+      const response = await fetch('/api/instagram/graph/long-lived-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          access_token: shortLivedToken
+        })
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('[REELS POSTER] Long-lived token failed:', errorData);
-      throw new Error(`Long-lived token failed: ${errorData.error?.message || 'Unknown error'}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[REELS POSTER] Long-lived token failed:', errorData);
+        throw new Error(`Long-lived token failed: ${errorData.error || 'Unknown error'}`);
+      }
+
+      const data = await response.json();
+      console.log('[REELS POSTER] Long-lived token successful:', data);
+      return data.data.access_token;
+    } catch (error) {
+      console.error('[REELS POSTER] Long-lived token error:', error);
+      throw error;
     }
-
-    const tokenData = await response.json();
-    console.log('[REELS POSTER] Long-lived token successful:', tokenData);
-    return tokenData.access_token;
   };
 
   // Get Instagram Business Account and Page ID
   const getInstagramAccount = async (accessToken: string): Promise<{userInfo: UserInfo, pageId: string}> => {
-    // First try to get Instagram account directly from user
-    const userUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me`;
-    const userParams = new URLSearchParams({
-      fields: 'id,name,instagram_business_account',
-      access_token: accessToken
-    });
-
-    console.log('[REELS POSTER] Getting user Instagram account...');
-
-    const userResponse = await fetch(`${userUrl}?${userParams.toString()}`);
-    if (!userResponse.ok) {
-      const errorData = await userResponse.json();
-      console.error('[REELS POSTER] User account fetch failed:', errorData);
-      throw new Error(`User account fetch failed: ${errorData.error?.message || 'Unknown error'}`);
-    }
-
-    const userData = await userResponse.json();
-    console.log('[REELS POSTER] User data:', userData);
-
-    if (userData.instagram_business_account) {
-      // Get Instagram account details
-      const instagramId = userData.instagram_business_account.id;
-      const instagramUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${instagramId}`;
-      const instagramParams = new URLSearchParams({
-        fields: 'id,username,account_type',
-        access_token: accessToken
-      });
-
-      const instagramResponse = await fetch(`${instagramUrl}?${instagramParams.toString()}`);
-      if (!instagramResponse.ok) {
-        const errorData = await instagramResponse.json();
-        console.error('[REELS POSTER] Instagram account fetch failed:', errorData);
-        throw new Error(`Instagram account fetch failed: ${errorData.error?.message || 'Unknown error'}`);
-      }
-
-      const instagramData = await instagramResponse.json();
-      console.log('[REELS POSTER] Instagram account data:', instagramData);
-      
-      return { userInfo: instagramData, pageId: instagramId };
-    }
-
-    // Fallback: try to get from pages
+    // Get Instagram account from Facebook Pages (correct approach)
     const pagesUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/accounts`;
     const pagesParams = new URLSearchParams({
       fields: 'id,name,instagram_business_account',
@@ -266,7 +223,7 @@ const InstagramReelsPoster: React.FC = () => {
         const instagramId = page.instagram_business_account.id;
         const instagramUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${instagramId}`;
         const instagramParams = new URLSearchParams({
-          fields: 'id,username,account_type',
+          fields: 'id,username,name',
           access_token: accessToken
         });
 
@@ -274,7 +231,14 @@ const InstagramReelsPoster: React.FC = () => {
         if (instagramResponse.ok) {
           const instagramData = await instagramResponse.json();
           console.log('[REELS POSTER] Found Instagram account via pages:', instagramData);
-          return { userInfo: instagramData, pageId: instagramId };
+          return { 
+            userInfo: {
+              id: instagramData.id,
+              username: instagramData.username,
+              account_type: 'BUSINESS' // Default since we know it's a business account
+            }, 
+            pageId: instagramId 
+          };
         }
       }
     }
