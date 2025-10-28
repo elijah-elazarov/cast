@@ -112,7 +112,7 @@ export default function InstagramReelsDebugger() {
         } else {
           addLog(`⏳ ${label} not ready yet (status ${res.status}), retrying... [${attempt}/${maxAttempts}]`)
         }
-      } catch (e) {
+      } catch {
         addLog(`⏳ ${label} validation error, retrying... [${attempt}/${maxAttempts}]`) 
       }
       
@@ -157,7 +157,7 @@ export default function InstagramReelsDebugger() {
       videoEl.onerror = () => {
         setFileDetails({ ...details })
       }
-    } catch (_) {
+    } catch {
       setFileDetails({ ...details })
     }
   }
@@ -448,7 +448,7 @@ export default function InstagramReelsDebugger() {
           addLog(`Instagram account details: ${JSON.stringify(instagramData)}`);
           
         // Get real account type from Facebook Page Instagram connection
-        let accountType: string | undefined = undefined; // no default
+        const accountType: string | undefined = undefined; // no default
           
           if (page.access_token) {
             const pageUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${page.id}`;
