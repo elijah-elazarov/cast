@@ -115,10 +115,9 @@ export default function TikTokShortsDebugger() {
   const handleAuth = async () => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     
-    // Clear logs and immediately add initial log
-    const initialLog = `[${new Date().toLocaleTimeString()}] Initializing TikTok authentication...`;
-    setDebugLogs([initialLog]);
-    console.log(`[TIKTOK SHORTS DEBUG] Initializing TikTok authentication...`);
+    // Do NOT clear previous logs; add a clear session separator and start logs
+    addLog('— New TikTok authentication session —');
+    addLog('Initializing TikTok authentication...');
     
     // Start visible countdown (120s)
     setOauthCountdownSeconds(120);
