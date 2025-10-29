@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 // Removed ffmpeg.wasm; using backend processing instead
 
 interface UserInfo {
@@ -61,6 +61,8 @@ export default function InstagramReelsDebugger() {
     instagramPageId: null,
     facebookUserId: null
   });
+  const [oauthCountdownSeconds, setOauthCountdownSeconds] = useState<number | null>(null);
+  const oauthCountdownIntervalRef = useRef<number | null>(null);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [processing, setProcessing] = useState(false)
@@ -350,7 +352,7 @@ export default function InstagramReelsDebugger() {
     });
   };
 
-  // Login using Facebook SDK
+  // Login using Facebook SDK with watchdog timeout (2 minutes)
   const loginWithFacebookSDK = (): Promise<FacebookAuthResponse> => {
     return new Promise((resolve, reject) => {
       if (!(window as any).FB) {
@@ -359,9 +361,25 @@ export default function InstagramReelsDebugger() {
       }
 
       addLog('Starting Facebook SDK login...');
+      let settled = false;
+
+      // Start watchdog timer (120s)
+      const timeoutMs = 2 * 60 * 1000;
+      const timeoutId = window.setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          addLog('Facebook login timed out after 120s');
+          reject(new Error('Login timed out. Please try again.'));
+        }
+      }, timeoutMs);
+
       (window as any).FB.login((response: DebugFacebookLoginResponse) => {
         addLog(`Facebook login response: ${response.status}`);
         
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeoutId);
+
         if (response.authResponse) {
           addLog(`Login successful for user: ${response.authResponse.userID}`);
           resolve(response.authResponse);
@@ -500,6 +518,19 @@ export default function InstagramReelsDebugger() {
   const handleAuth = async () => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     setDebugLogs([]);
+    // Start visible countdown (120s)
+    setOauthCountdownSeconds(120);
+    if (oauthCountdownIntervalRef.current) window.clearInterval(oauthCountdownIntervalRef.current);
+    oauthCountdownIntervalRef.current = window.setInterval(() => {
+      setOauthCountdownSeconds(prev => {
+        if (prev === null) return prev;
+        if (prev <= 1) {
+          if (oauthCountdownIntervalRef.current) window.clearInterval(oauthCountdownIntervalRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
     
     try {
       if (!sdkLoaded) {
@@ -528,6 +559,11 @@ export default function InstagramReelsDebugger() {
         isLoading: false, 
         error: errorMessage 
       }));
+    } finally {
+      // Stop countdown
+      if (oauthCountdownIntervalRef.current) window.clearInterval(oauthCountdownIntervalRef.current);
+      oauthCountdownIntervalRef.current = null;
+      setOauthCountdownSeconds(null);
     }
   };
 
@@ -1093,6 +1129,11 @@ export default function InstagramReelsDebugger() {
             <span className="text-gray-700">Error: {authState.error ? 'Yes' : 'No'}</span>
           </div>
         </div>
+        {authState.isLoading && oauthCountdownSeconds !== null && (
+          <div className="mt-2 text-sm text-gray-600">
+            Login will timeout in {Math.floor(oauthCountdownSeconds / 60)}:{String(oauthCountdownSeconds % 60).padStart(2, '0')}
+          </div>
+        )}
       </div>
 
       {/* Local file selection and processing */}
