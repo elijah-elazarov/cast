@@ -320,7 +320,7 @@ export default function YouTubeShortsDebugger() {
   };
 
   // YouTube OAuth flow - use same approach as original YouTubeConnection
-  const handleAuth = async () => {
+  const handleAuth = async (event?: React.MouseEvent<HTMLButtonElement>) => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     setDebugLogs([]);
     
@@ -328,11 +328,18 @@ export default function YouTubeShortsDebugger() {
       addLog('Starting YouTube Shorts authentication...');
       
       // IMPORTANT: Open a blank popup immediately on user gesture to avoid blockers
-      const popup = window.open(
-        '',
-        'youtube-oauth',
-        'width=500,height=600,scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no'
-      );
+      // Calculate a position near the trigger button (fallback to centered)
+      let features = 'scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no';
+      try {
+        if (event && event.currentTarget) {
+          const rect = event.currentTarget.getBoundingClientRect();
+          const left = Math.max(0, Math.floor(window.screenX + rect.left));
+          const top = Math.max(0, Math.floor(window.screenY + rect.bottom + 8));
+          features = `left=${left},top=${top},` + features;
+        }
+      } catch {}
+
+      const popup = window.open('', 'youtube-oauth', features);
       if (!popup) {
         throw new Error('Popup blocked. Please allow popups for this site.');
       }
@@ -678,7 +685,7 @@ export default function YouTubeShortsDebugger() {
       {/* Action Buttons */}
       <div className="mb-6 flex gap-4">
         <button
-          onClick={handleAuth}
+          onClick={(e) => handleAuth(e)}
           disabled={authState.isLoading}
           className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
