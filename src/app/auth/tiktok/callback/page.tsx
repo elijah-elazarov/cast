@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Check, X } from 'lucide-react';
+import { Check, X, AlertTriangle } from 'lucide-react';
 
 function TikTokCallbackContent() {
   const searchParams = useSearchParams();
@@ -119,25 +119,27 @@ function TikTokCallbackContent() {
           )}
 
           {status === 'error' && (
-            <>
-              <div className="flex items-center justify-center mb-4">
-                <div className="bg-red-100 dark:bg-red-900/20 rounded-full p-3">
-                  <X className="w-8 h-8 text-red-500" />
-                </div>
+            <div className="space-y-4">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+                <X className="h-8 w-8 text-red-600" />
               </div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                Connection Failed
-              </h2>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">
-                {error || 'An error occurred during the connection process.'}
-              </p>
+              <h2 className="text-xl font-semibold text-gray-900">Authentication Failed</h2>
+              <p className="text-gray-600">Authentication failed</p>
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                  <div className="flex items-center">
+                    <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />
+                    <span className="text-sm text-red-800">Failed to connect to TikTok</span>
+                  </div>
+                </div>
+              )}
               <button
                 onClick={() => router.push('/')}
-                className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition-colors"
+                className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
               >
-                Return to Dashboard
+                Return to App
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>

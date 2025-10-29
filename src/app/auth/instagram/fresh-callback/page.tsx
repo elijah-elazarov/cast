@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 interface AuthResult {
   success: boolean;
@@ -12,6 +12,7 @@ interface AuthResult {
 
 const FreshInstagramCallbackContent: React.FC = () => {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [authResult, setAuthResult] = useState<AuthResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(true);
 
@@ -183,10 +184,10 @@ const FreshInstagramCallbackContent: React.FC = () => {
           {/* Manual Close Button */}
           <div className="mt-4">
             <button
-              onClick={() => window.close()}
-              className="px-4 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600 transition-colors duration-200"
+              onClick={() => router.push('/')}
+              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors duration-200"
             >
-              Close Window
+              Return to App
             </button>
           </div>
         </div>
