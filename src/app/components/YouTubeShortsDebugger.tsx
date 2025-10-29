@@ -328,16 +328,12 @@ export default function YouTubeShortsDebugger() {
       addLog('Starting YouTube Shorts authentication...');
       
       // IMPORTANT: Open a blank popup immediately on user gesture to avoid blockers
-      // Calculate a position near the trigger button (fallback to centered)
-      let features = 'width=2560,height=1440,scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no';
-      try {
-        if (event && event.currentTarget) {
-          const rect = event.currentTarget.getBoundingClientRect();
-          const left = Math.max(0, Math.floor(window.screenX + rect.left));
-          const top = Math.max(0, Math.floor(window.screenY + rect.bottom + 8));
-          features = `left=${left},top=${top},` + features;
-        }
-      } catch {}
+      // Center the popup on screen
+      const popupWidth = 640;
+      const popupHeight = 655;
+      const left = Math.max(0, Math.floor(window.screenX + (window.outerWidth - popupWidth) / 2));
+      const top = Math.max(0, Math.floor(window.screenY + (window.outerHeight - popupHeight) / 2));
+      let features = `width=${popupWidth},height=${popupHeight},left=${left},top=${top},scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no`;
 
       const popup = window.open('', 'youtube-oauth', features);
       if (!popup) {
@@ -361,17 +357,22 @@ export default function YouTubeShortsDebugger() {
       // Navigate the already opened popup to Google's OAuth page
       popup.location.href = data.data.auth_url;
 
+      // Track completion to distinguish cancellations
+      let completed = false;
+
       // Listen for messages from popup
       const messageHandler = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
 
         if (event.data.type === 'YOUTUBE_AUTH_SUCCESS') {
           // Success - process auth data
+          completed = true;
           handleAuthSuccess(event.data.authData);
           popup.close();
           window.removeEventListener('message', messageHandler);
         } else if (event.data.type === 'YOUTUBE_AUTH_ERROR') {
           // Error - update state
+          completed = true;
           addLog(`YouTube authentication failed: ${event.data.error}`);
           setAuthState(prev => ({
             ...prev,
@@ -385,14 +386,31 @@ export default function YouTubeShortsDebugger() {
 
       window.addEventListener('message', messageHandler);
 
-      // Monitor popup closure
+      // Monitor popup closure and treat early close as cancel
       const checkClosed = setInterval(() => {
         if (popup.closed) {
           clearInterval(checkClosed);
           window.removeEventListener('message', messageHandler);
-          setAuthState(prev => ({ ...prev, isLoading: false }));
+          setAuthState(prev => ({
+            ...prev,
+            isLoading: false,
+            error: completed ? prev.error : 'Login cancelled or window closed before completing authentication'
+          }));
         }
       }, 1000);
+
+      // Failsafe timeout in case popup stays open but no message is received
+      setTimeout(() => {
+        if (!completed && !popup.closed) {
+          try { popup.close(); } catch {}
+          window.removeEventListener('message', messageHandler);
+          setAuthState(prev => ({
+            ...prev,
+            isLoading: false,
+            error: 'Authentication timed out. Please try again.'
+          }));
+        }
+      }, 2 * 60 * 1000);
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
