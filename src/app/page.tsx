@@ -18,6 +18,7 @@ import EnhancedInstagramAuth from './components/EnhancedInstagramAuth';
 import InstagramReelsPoster from './components/InstagramReelsPoster';
 import InstagramReelsDebugger from './components/InstagramReelsDebugger';
 import YouTubeShortsDebugger from './components/YouTubeShortsDebugger';
+import TikTokShortsDebugger from './components/TikTokShortsDebugger';
 // import SimpleInstagramAuth from './components/SimpleInstagramAuth';
 import { Suspense } from 'react';
 
@@ -47,6 +48,7 @@ export default function Home() {
   const [showReelsPoster, setShowReelsPoster] = useState(false);
   const [showReelsDebugger, setShowReelsDebugger] = useState(false);
   const [showYouTubeShortsDebugger, setShowYouTubeShortsDebugger] = useState(false);
+  const [showTikTokShortsDebugger, setShowTikTokShortsDebugger] = useState(false);
   const TOTAL_COUNTDOWN = 3;
 
   // Check localStorage on mount to initialize connected state
@@ -346,6 +348,13 @@ export default function Home() {
               <Youtube className="w-4 h-4" />
               🎬 YouTube Shorts Debugger
             </button>
+            <button
+              onClick={() => setShowTikTokShortsDebugger(true)}
+              className="inline-flex items-center gap-2 bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors text-sm"
+            >
+              <Music className="w-4 h-4" />
+              🎵 TikTok Shorts Debugger
+            </button>
           </div>
         </div>
 
@@ -549,6 +558,27 @@ export default function Home() {
               Debug component to test YouTube Shorts upload authentication and video processing.
             </p>
             <YouTubeShortsDebugger />
+          </div>
+        )}
+
+        {/* TikTok Shorts Debugger */}
+        {showTikTokShortsDebugger && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                🎵 TikTok Shorts Debugger
+              </h2>
+              <button
+                onClick={() => setShowTikTokShortsDebugger(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Debug component to test TikTok Shorts upload authentication and video processing.
+            </p>
+            <TikTokShortsDebugger />
           </div>
         )}
 
