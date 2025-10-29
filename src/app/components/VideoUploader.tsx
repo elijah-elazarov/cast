@@ -172,7 +172,7 @@ export default function VideoUploader({ connectedAccounts }: VideoUploaderProps)
             let processedUrl: string | null = null;
             if (CLOUD_NAME && UPLOAD_PRESET) {
               // Upload original to Cloudinary
-              const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
+              const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`;
               const cloudForm = new FormData();
               cloudForm.append('file', selectedFile);
               cloudForm.append('upload_preset', UPLOAD_PRESET);
