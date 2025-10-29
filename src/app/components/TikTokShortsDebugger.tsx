@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 
 interface UserInfo {
@@ -85,11 +85,12 @@ export default function TikTokShortsDebugger() {
   const oauthCountdownIntervalRef = useRef<number | null>(null);
 
   // Add log function
-  const addLog = (message: string) => {
+  const addLog = useCallback((message: string) => {
     const timestamp = new Date().toLocaleTimeString();
-    setDebugLogs(prev => [...prev, `[${timestamp}] ${message}`]);
+    const logEntry = `[${timestamp}] ${message}`;
+    setDebugLogs(prev => [...prev, logEntry]);
     console.log(`[TIKTOK SHORTS DEBUG] ${message}`);
-  };
+  }, []);
 
   // Check if already authenticated (for silent refresh)
   const checkExistingAuth = (): boolean => {
@@ -113,7 +114,12 @@ export default function TikTokShortsDebugger() {
   // TikTok OAuth flow
   const handleAuth = async () => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
-    setDebugLogs([]);
+    
+    // Clear logs and immediately add initial log
+    const initialLog = `[${new Date().toLocaleTimeString()}] Initializing TikTok authentication...`;
+    setDebugLogs([initialLog]);
+    console.log(`[TIKTOK SHORTS DEBUG] Initializing TikTok authentication...`);
+    
     // Start visible countdown (120s)
     setOauthCountdownSeconds(120);
     if (oauthCountdownIntervalRef.current) window.clearInterval(oauthCountdownIntervalRef.current);
@@ -139,6 +145,8 @@ export default function TikTokShortsDebugger() {
         setOauthCountdownSeconds(null);
         return;
       }
+      
+      addLog('Creating authentication popup...');
       
       // IMPORTANT: Open a blank popup immediately on user gesture to avoid blockers
       const popupWidth = 640;
