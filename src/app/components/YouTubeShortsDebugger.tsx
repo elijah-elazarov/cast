@@ -327,26 +327,32 @@ export default function YouTubeShortsDebugger() {
     try {
       addLog('Starting YouTube Shorts authentication...');
       
+      // IMPORTANT: Open a blank popup immediately on user gesture to avoid blockers
+      const popup = window.open(
+        '',
+        'youtube-oauth',
+        'width=500,height=600,scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no'
+      );
+      if (!popup) {
+        throw new Error('Popup blocked. Please allow popups for this site.');
+      }
+      try {
+        popup.document.title = 'Connecting to YouTube…';
+      } catch {}
+
       // Get auth URL from backend
       const response = await fetch('/api/youtube/auth-url');
       const data = await response.json();
       
       if (!data.success) {
+        popup.close();
         throw new Error(data.error || 'Failed to get auth URL');
       }
       
       addLog('Opening YouTube authentication popup...');
       
-      // Open YouTube OAuth in a small popup window (like Instagram)
-      const popup = window.open(
-        data.data.auth_url,
-        'youtube-oauth',
-        'width=500,height=600,scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no'
-      );
-      
-      if (!popup) {
-        throw new Error('Popup blocked. Please allow popups for this site.');
-      }
+      // Navigate the already opened popup to Google's OAuth page
+      popup.location.href = data.data.auth_url;
 
       // Listen for messages from popup
       const messageHandler = (event: MessageEvent) => {
