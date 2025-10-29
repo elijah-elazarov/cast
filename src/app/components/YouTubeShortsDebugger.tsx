@@ -335,10 +335,51 @@ export default function YouTubeShortsDebugger() {
         throw new Error(data.error || 'Failed to get auth URL');
       }
       
-      addLog('Redirecting to YouTube authentication...');
+      addLog('Opening YouTube authentication popup...');
       
-      // Redirect directly to Google OAuth (same as original YouTubeConnection)
-      window.location.href = data.data.auth_url;
+      // Open YouTube OAuth in a small popup window (like Instagram)
+      const popup = window.open(
+        data.data.auth_url,
+        'youtube-oauth',
+        'width=500,height=600,scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no'
+      );
+      
+      if (!popup) {
+        throw new Error('Popup blocked. Please allow popups for this site.');
+      }
+
+      // Listen for messages from popup
+      const messageHandler = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+
+        if (event.data.type === 'YOUTUBE_AUTH_SUCCESS') {
+          // Success - process auth data
+          handleAuthSuccess(event.data.authData);
+          popup.close();
+          window.removeEventListener('message', messageHandler);
+        } else if (event.data.type === 'YOUTUBE_AUTH_ERROR') {
+          // Error - update state
+          addLog(`YouTube authentication failed: ${event.data.error}`);
+          setAuthState(prev => ({
+            ...prev,
+            isLoading: false,
+            error: `YouTube authorization failed: ${event.data.error}`
+          }));
+          popup.close();
+          window.removeEventListener('message', messageHandler);
+        }
+      };
+
+      window.addEventListener('message', messageHandler);
+
+      // Monitor popup closure
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed);
+          window.removeEventListener('message', messageHandler);
+          setAuthState(prev => ({ ...prev, isLoading: false }));
+        }
+      }, 1000);
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

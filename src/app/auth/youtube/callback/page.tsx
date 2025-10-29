@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { X, AlertTriangle } from 'lucide-react';
 
 function YouTubeCallbackContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Processing authentication...');
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +50,11 @@ function YouTubeCallbackContent() {
               type: 'YOUTUBE_AUTH_SUCCESS',
               authData: data.authData
             }, window.location.origin);
+            
+            // Close popup after short delay
+            setTimeout(() => {
+              window.close();
+            }, 1500);
           }
         } else {
           setStatus('error');
@@ -61,6 +67,11 @@ function YouTubeCallbackContent() {
               type: 'YOUTUBE_AUTH_ERROR',
               error: data.error
             }, window.location.origin);
+            
+            // Close popup after short delay
+            setTimeout(() => {
+              window.close();
+            }, 2000);
           }
         }
       } catch (error) {
@@ -74,6 +85,11 @@ function YouTubeCallbackContent() {
             type: 'YOUTUBE_AUTH_ERROR',
             error: error instanceof Error ? error.message : 'Unknown error'
           }, window.location.origin);
+          
+          // Close popup after short delay
+          setTimeout(() => {
+            window.close();
+          }, 2000);
         }
       }
     };
@@ -121,7 +137,7 @@ function YouTubeCallbackContent() {
               </div>
             )}
             <button
-              onClick={() => window.close()}
+              onClick={() => router.push('/')}
               className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
             >
               Return to App
