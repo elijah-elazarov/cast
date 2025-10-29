@@ -1716,18 +1716,15 @@ async def upload_tiktok_video(
         # Log TikTok upload start
         social_logger.info(f"TIKTOK_UPLOAD_START - User: {user_id} | File: {video.filename if video else 'from_url'} | Description: {description} | Size: {file_size} bytes")
         
-        # Step 1: Initialize upload
-        init_url = "https://open.tiktokapis.com/v2/post/publish/video/init/"
+        # Step 1: Initialize upload (correct endpoint for inbox upload)
+        init_url = "https://open.tiktokapis.com/v2/post/publish/inbox/video/init/"
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json"
         }
         
-        # Minimal payload - just what TikTok needs
+        # Correct payload structure for inbox upload (no post_info needed)
         init_data = {
-            "post_info": {
-                "caption": (description or "Posted via Cast")[:150]
-            },
             "source_info": {
                 "source": "FILE_UPLOAD",
                 "video_size": file_size,
