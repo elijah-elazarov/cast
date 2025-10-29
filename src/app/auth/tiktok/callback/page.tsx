@@ -89,7 +89,7 @@ function TikTokCallbackContent() {
                 follower_count: data.follower_count,
                 following_count: data.following_count,
                 video_count: data.video_count,
-                like_count: data.like_count,
+                like_count: data.likes_count || data.like_count,
                 is_verified: data.is_verified
               },
               message: 'Authentication successful'

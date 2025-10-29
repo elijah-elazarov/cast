@@ -44,7 +44,7 @@ interface TikTokBackendResponse {
 // TikTok API configuration
 const TIKTOK_CONFIG = {
   clientKey: process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY || 'your-client-key',
-  scope: 'user.info.basic,user.info.profile,video.upload,video.publish,video.list',
+  scope: 'user.info.basic,user.info.profile,user.info.stats,video.upload,video.publish,video.list',
   redirectUri: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/tiktok/callback`,
   apiVersion: 'v2'
 };

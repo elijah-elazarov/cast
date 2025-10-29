@@ -350,6 +350,7 @@ TIKTOK_REDIRECT_URI = 'https://cast-five.vercel.app/auth/tiktok/callback'
 TIKTOK_SCOPES = [
     'user.info.basic',      # Basic user info (avatar, display name)
     'user.info.profile',    # Extended profile information
+    'user.info.stats',      # User statistics (followers, following, likes, videos)
     'video.upload',         # Upload videos to TikTok
     'video.publish',        # Publish videos directly to TikTok
     'video.list',           # List user's public videos
@@ -1546,7 +1547,9 @@ async def tiktok_login(request: YouTubeAuthRequest):  # Reuse the same request m
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json"
         }
-        params = {"fields": "open_id,union_id,avatar_url,display_name"}
+        params = {
+            "fields": "open_id,union_id,avatar_url,display_name,follower_count,following_count,likes_count,video_count"
+        }
         
         user_response = requests.get(user_info_url, headers=headers, params=params)
         user_result = user_response.json()
@@ -1566,18 +1569,26 @@ async def tiktok_login(request: YouTubeAuthRequest):  # Reuse the same request m
             "access_token": access_token,
             "open_id": open_id,
             "display_name": user_data.get("display_name", "TikTok User"),
-            "avatar_url": user_data.get("avatar_url", "")
+            "avatar_url": user_data.get("avatar_url", ""),
+            "follower_count": str(user_data.get("follower_count", 0)),
+            "following_count": str(user_data.get("following_count", 0)),
+            "likes_count": str(user_data.get("likes_count", 0)),
+            "video_count": str(user_data.get("video_count", 0))
         }
         
         # Log TikTok connection event
-        social_logger.info(f"TIKTOK_CONNECTED - User: {user_data.get('display_name', 'TikTok User')} | ID: {open_id} | Avatar: {user_data.get('avatar_url', 'N/A')}")
+        social_logger.info(f"TIKTOK_CONNECTED - User: {user_data.get('display_name', 'TikTok User')} | ID: {open_id} | Avatar: {user_data.get('avatar_url', 'N/A')} | Followers: {user_data.get('follower_count', 0)}")
         logger.info(f"TikTok login successful for user: {open_id}")
         
         return JSONResponse({
             "success": True,
             "user_id": open_id,
             "display_name": user_data.get("display_name", "TikTok User"),
-            "avatar_url": user_data.get("avatar_url", "")
+            "avatar_url": user_data.get("avatar_url", ""),
+            "follower_count": str(user_data.get("follower_count", 0)),
+            "following_count": str(user_data.get("following_count", 0)),
+            "likes_count": str(user_data.get("likes_count", 0)),
+            "video_count": str(user_data.get("video_count", 0))
         })
         
     except HTTPException:
