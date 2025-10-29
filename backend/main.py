@@ -348,9 +348,11 @@ TIKTOK_CLIENT_SECRET = os.getenv('TIKTOK_CLIENT_SECRET', '')
 TIKTOK_REDIRECT_URI = 'https://cast-five.vercel.app/auth/tiktok/callback'
 # TikTok Content Posting API scopes
 TIKTOK_SCOPES = [
-    'user.info.basic',
-    'video.upload',
-    'video.publish',
+    'user.info.basic',      # Basic user info (avatar, display name)
+    'user.info.profile',    # Extended profile information
+    'video.upload',         # Upload videos to TikTok
+    'video.publish',        # Publish videos directly to TikTok
+    'video.list',           # List user's public videos
 ]
 
 # Instagram OAuth configuration
