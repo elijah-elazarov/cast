@@ -170,18 +170,21 @@ export default function TikTokShortsDebugger() {
       popup.location.href = data.auth_url;
 
       let completed = false;
+      let checkClosedInterval: NodeJS.Timeout | null = null;
 
       const messageHandler = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
 
         if (event.data.type === 'TIKTOK_AUTH_SUCCESS') {
           completed = true;
+          if (checkClosedInterval) clearInterval(checkClosedInterval);
           handleAuthSuccess(event.data.authData);
           popup.close();
           window.removeEventListener('message', messageHandler);
           stopCountdown();
         } else if (event.data.type === 'TIKTOK_AUTH_ERROR') {
           completed = true;
+          if (checkClosedInterval) clearInterval(checkClosedInterval);
           addLog(`TikTok authentication failed: ${event.data.error}`);
           setAuthState(prev => ({
             ...prev,
@@ -196,9 +199,9 @@ export default function TikTokShortsDebugger() {
 
       window.addEventListener('message', messageHandler);
 
-      const checkClosed = setInterval(() => {
+      checkClosedInterval = setInterval(() => {
         if (popup.closed) {
-          window.clearInterval(checkClosed);
+          if (checkClosedInterval) clearInterval(checkClosedInterval);
           window.removeEventListener('message', messageHandler);
           setAuthState(prev => ({
             ...prev,
@@ -212,6 +215,7 @@ export default function TikTokShortsDebugger() {
       // Failsafe timeout
       setTimeout(() => {
         if (!completed && !popup.closed) {
+          if (checkClosedInterval) clearInterval(checkClosedInterval);
           try { popup.close(); } catch {}
           window.removeEventListener('message', messageHandler);
           setAuthState(prev => ({

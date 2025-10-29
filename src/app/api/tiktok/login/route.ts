@@ -3,9 +3,10 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const backendUrl = 'http://localhost:8000/api/tiktok/login';
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com';
+    const fullUrl = `${backendUrl}/api/tiktok/login`;
     
-    const response = await fetch(backendUrl, {
+    const response = await fetch(fullUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -25,4 +26,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
