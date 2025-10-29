@@ -1247,16 +1247,18 @@ async def youtube_login(request: YouTubeAuthRequest):
         # Build YouTube service
         youtube = build('youtube', 'v3', credentials=credentials)
         
-        # Get channel info
-        channel_response = youtube.channels().list(part='snippet,statistics', mine=True).execute()
+        # Get channel info with comprehensive data
+        channel_response = youtube.channels().list(part='snippet,statistics,contentDetails', mine=True).execute()
         
         if not channel_response.get('items'):
             raise HTTPException(status_code=404, detail="No YouTube channel found")
         
         channel = channel_response['items'][0]
         user_id = channel['id']
+        snippet = channel['snippet']
+        statistics = channel['statistics']
         
-        # Store credentials
+        # Store credentials with comprehensive channel data
         youtube_sessions[user_id] = {
             'credentials': {
                 'token': credentials.token,
@@ -1268,8 +1270,16 @@ async def youtube_login(request: YouTubeAuthRequest):
             },
             'channel': {
                 'id': user_id,
-                'title': channel['snippet']['title'],
-                'subscriber_count': channel['statistics'].get('subscriberCount', 0)
+                'title': snippet['title'],
+                'description': snippet.get('description', ''),
+                'custom_url': snippet.get('customUrl', ''),
+                'published_at': snippet.get('publishedAt', ''),
+                'country': snippet.get('country', ''),
+                'thumbnail_url': snippet.get('thumbnails', {}).get('high', {}).get('url', ''),
+                'subscriber_count': statistics.get('subscriberCount', '0'),
+                'video_count': statistics.get('videoCount', '0'),
+                'view_count': statistics.get('viewCount', '0'),
+                'hidden_subscriber_count': statistics.get('hiddenSubscriberCount', False)
             }
         }
         
@@ -1281,8 +1291,16 @@ async def youtube_login(request: YouTubeAuthRequest):
             "success": True,
             "data": {
                 "user_id": user_id,
-                "channel_title": channel['snippet']['title'],
-                "subscriber_count": channel['statistics'].get('subscriberCount', 0)
+                "channel_title": snippet['title'],
+                "channel_description": snippet.get('description', ''),
+                "custom_url": snippet.get('customUrl', ''),
+                "published_at": snippet.get('publishedAt', ''),
+                "country": snippet.get('country', ''),
+                "thumbnail_url": snippet.get('thumbnails', {}).get('high', {}).get('url', ''),
+                "subscriber_count": statistics.get('subscriberCount', '0'),
+                "video_count": statistics.get('videoCount', '0'),
+                "view_count": statistics.get('viewCount', '0'),
+                "hidden_subscriber_count": statistics.get('hiddenSubscriberCount', False)
             },
             "message": "Successfully connected to YouTube"
         })

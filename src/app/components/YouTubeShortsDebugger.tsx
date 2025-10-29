@@ -10,6 +10,14 @@ interface UserInfo {
   channelId?: string;
   userId?: string;
   subscriberCount?: string;
+  channelDescription?: string;
+  customUrl?: string;
+  publishedAt?: string;
+  country?: string;
+  thumbnailUrl?: string;
+  videoCount?: string;
+  viewCount?: string;
+  hiddenSubscriberCount?: boolean;
 }
 
 interface AuthState {
@@ -26,7 +34,15 @@ interface YouTubeBackendResponse {
   data: {
     user_id: string;
     channel_title: string;
+    channel_description: string;
+    custom_url: string;
+    published_at: string;
+    country: string;
+    thumbnail_url: string;
     subscriber_count: string;
+    video_count: string;
+    view_count: string;
+    hidden_subscriber_count: boolean;
   };
   message: string;
 }
@@ -506,7 +522,15 @@ export default function YouTubeShortsDebugger() {
           channelTitle: userData.channel_title,
           channelId: userData.user_id,
           userId: userData.user_id,
-          subscriberCount: userData.subscriber_count
+          subscriberCount: userData.subscriber_count,
+          channelDescription: userData.channel_description,
+          customUrl: userData.custom_url,
+          publishedAt: userData.published_at,
+          country: userData.country,
+          thumbnailUrl: userData.thumbnail_url,
+          videoCount: userData.video_count,
+          viewCount: userData.view_count,
+          hiddenSubscriberCount: userData.hidden_subscriber_count
         },
         accessToken: 'stored_in_backend', // Tokens are stored in backend
         refreshToken: 'stored_in_backend'
@@ -608,12 +632,12 @@ export default function YouTubeShortsDebugger() {
 
       const data = await response.json();
 
-      if (data.success) {
-        addLog(`🎉 SUCCESS! YouTube Short uploaded with ID: ${data.video_id}`);
+      if (data.success && data.data) {
+        addLog(`🎉 SUCCESS! YouTube Short uploaded with ID: ${data.data.video_id}`);
         addLog('✅ Your YouTube Short has been uploaded successfully!');
-        addLog(`🔗 Video URL: https://www.youtube.com/watch?v=${data.video_id}`);
+        addLog(`🔗 Video URL: ${data.data.url || `https://www.youtube.com/watch?v=${data.data.video_id}`}`);
       } else {
-        addLog(`❌ Upload failed: ${data.detail || 'Unknown error'}`);
+        addLog(`❌ Upload failed: ${data.detail || data.message || 'Unknown error'}`);
       }
     } catch (error) {
       addLog(`❌ Upload error: ${error}`);
@@ -778,14 +802,57 @@ export default function YouTubeShortsDebugger() {
       {authState.isAuthenticated && authState.userInfo && (
         <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <h3 className="text-lg font-semibold mb-3 text-blue-800">Account Information</h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="text-gray-900"><strong className="text-gray-900">Channel ID:</strong> {authState.userInfo.channelId || 'N/A'}</div>
-            <div className="text-gray-900"><strong className="text-gray-900">Channel Title:</strong> {authState.userInfo.channelTitle || 'N/A'}</div>
-            <div className="text-gray-900"><strong className="text-gray-900">Subscribers:</strong> {authState.userInfo.subscriberCount || '0'}</div>
-            <div className="text-gray-900"><strong className="text-gray-900">User ID:</strong> {authState.userInfo.userId || 'N/A'}</div>
+          
+          {/* Channel Header with Thumbnail */}
+          <div className="flex items-start gap-4 mb-4">
+            {authState.userInfo.thumbnailUrl && (
+              <img 
+                src={authState.userInfo.thumbnailUrl} 
+                alt="Channel thumbnail" 
+                className="w-16 h-16 rounded-full object-cover"
+              />
+            )}
+            <div className="flex-1">
+              <h4 className="text-lg font-semibold text-gray-900">{authState.userInfo.channelTitle || 'N/A'}</h4>
+              {authState.userInfo.customUrl && (
+                <p className="text-sm text-blue-600">@{authState.userInfo.customUrl}</p>
+              )}
+              {authState.userInfo.channelDescription && (
+                <p className="text-sm text-gray-600 mt-1">{authState.userInfo.channelDescription}</p>
+              )}
+            </div>
           </div>
-          <div className="mt-2 text-xs text-gray-600">
-            Debug: {JSON.stringify(authState.userInfo)}
+
+          {/* Channel Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
+            <div className="text-center p-2 bg-white rounded border">
+              <div className="text-lg font-bold text-gray-900">{authState.userInfo.subscriberCount || '0'}</div>
+              <div className="text-xs text-gray-600">Subscribers</div>
+            </div>
+            <div className="text-center p-2 bg-white rounded border">
+              <div className="text-lg font-bold text-gray-900">{authState.userInfo.videoCount || '0'}</div>
+              <div className="text-xs text-gray-600">Videos</div>
+            </div>
+            <div className="text-center p-2 bg-white rounded border">
+              <div className="text-lg font-bold text-gray-900">{authState.userInfo.viewCount || '0'}</div>
+              <div className="text-xs text-gray-600">Views</div>
+            </div>
+            <div className="text-center p-2 bg-white rounded border">
+              <div className="text-lg font-bold text-gray-900">{authState.userInfo.country || 'N/A'}</div>
+              <div className="text-xs text-gray-600">Country</div>
+            </div>
+          </div>
+
+          {/* Technical Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="text-gray-900"><strong className="text-gray-900">Channel ID:</strong> {authState.userInfo.channelId || 'N/A'}</div>
+            <div className="text-gray-900"><strong className="text-gray-900">User ID:</strong> {authState.userInfo.userId || 'N/A'}</div>
+            {authState.userInfo.publishedAt && (
+              <div className="text-gray-900"><strong className="text-gray-900">Joined:</strong> {new Date(authState.userInfo.publishedAt).toLocaleDateString()}</div>
+            )}
+            {authState.userInfo.hiddenSubscriberCount && (
+              <div className="text-gray-900"><strong className="text-gray-900">Subscriber Count:</strong> Hidden</div>
+            )}
           </div>
         </div>
       )}
