@@ -3,11 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 
 interface UserInfo {
-  id: string;
-  username: string;
+  id?: string;
+  username?: string;
   email?: string;
   channelTitle?: string;
   channelId?: string;
+  userId?: string;
+  subscriberCount?: string;
 }
 
 interface AuthState {
@@ -20,11 +22,13 @@ interface AuthState {
 }
 
 interface YouTubeAuthResponse {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-  token_type: string;
-  scope: string;
+  success: boolean;
+  data: {
+    user_id: string;
+    channel_title: string;
+    subscriber_count: string;
+  };
+  message: string;
 }
 
 // YouTube API configuration
@@ -454,42 +458,42 @@ export default function YouTubeShortsDebugger() {
   };
 
   // Handle successful authentication
-  const handleAuthSuccess = async (authData: YouTubeAuthResponse) => {
+  const handleAuthSuccess = async (authData: any) => {
     try {
       addLog('Processing authentication data...');
       
-      // Get user info
-      const userResponse = await fetch('/api/youtube/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ authData })
-      });
-      
-      const userData = await userResponse.json();
-      
-      if (!userData.success) {
-        throw new Error(userData.error || 'Failed to get user info');
+      // The authData comes from the backend and contains user info directly
+      if (!authData || !authData.data) {
+        throw new Error('Invalid authentication data');
       }
+      
+      const userData = authData.data;
       
       setAuthState({
         isAuthenticated: true,
         isLoading: false,
         error: null,
-        userInfo: userData.userInfo,
-        accessToken: authData.access_token,
-        refreshToken: authData.refresh_token
+        userInfo: {
+          channelTitle: userData.channel_title,
+          userId: userData.user_id,
+          subscriberCount: userData.subscriber_count
+        },
+        accessToken: 'stored_in_backend', // Tokens are stored in backend
+        refreshToken: 'stored_in_backend'
       });
 
-      addLog(`✅ Authenticated as: ${userData.userInfo.channelTitle || userData.userInfo.username}`);
+      addLog(`✅ Authenticated as: ${userData.channel_title}`);
+      addLog(`📺 Channel ID: ${userData.user_id}`);
+      addLog(`👥 Subscribers: ${userData.subscriber_count}`);
       addLog('Authentication completed successfully!');
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      addLog(`Auth success processing error: ${errorMessage}`);
+      addLog(`❌ Auth success processing error: ${errorMessage}`);
       setAuthState(prev => ({ 
         ...prev, 
         isLoading: false, 
-        error: errorMessage 
+        error: `Authentication processing failed: ${errorMessage}`
       }));
     }
   };
