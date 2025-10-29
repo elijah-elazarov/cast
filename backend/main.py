@@ -1650,10 +1650,11 @@ async def tiktok_login(request: YouTubeAuthRequest):  # Reuse the same request m
 
 @app.post("/api/tiktok/upload-video")
 async def upload_tiktok_video(
-    video: UploadFile = File(...),
+    video: UploadFile | None = File(None),
     title: str = Form(""),
     description: str = Form(""),
-    user_id: str = Form("")
+    user_id: str = Form(""),
+    video_url: str | None = Form(None)
 ):
     """
     Upload video to TikTok
@@ -1672,10 +1673,23 @@ async def upload_tiktok_video(
         session = tiktok_sessions[user_id]
         access_token = session["access_token"]
         
-        # Save video temporarily
-        temp_path = f"/tmp/tiktok_upload_{user_id}_{video.filename}"
-        with open(temp_path, "wb") as f:
-            f.write(await video.read())
+        # Save video temporarily (from uploaded file or Cloudinary URL)
+        if video_url:
+            # Download from URL (e.g., Cloudinary processed)
+            temp_path = f"/tmp/tiktok_upload_{user_id}.mp4"
+            resp = requests.get(video_url, stream=True, timeout=60)
+            if resp.status_code != 200:
+                raise HTTPException(status_code=400, detail="Failed to download video from URL")
+            with open(temp_path, "wb") as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+        else:
+            if not video:
+                raise HTTPException(status_code=400, detail="No video provided")
+            temp_path = f"/tmp/tiktok_upload_{user_id}_{video.filename}"
+            with open(temp_path, "wb") as f:
+                f.write(await video.read())
         
         file_size = os.path.getsize(temp_path)
         

@@ -164,27 +164,71 @@ export default function VideoUploader({ connectedAccounts }: VideoUploaderProps)
         const tiktokUserId = localStorage.getItem('tiktok_user_id');
         console.log('TikTok upload - user_id from localStorage:', tiktokUserId);
         if (tiktokUserId) {
-          const formData = new FormData();
-          formData.append('video', selectedFile);
-          formData.append('title', caption || 'My TikTok Video');
-          formData.append('description', caption);
-          formData.append('user_id', tiktokUserId);
+          // Prefer Cloudinary processing like YouTube flow
+          try {
+            const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+            const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_TIKTOK;
 
-          uploadPromises.push(
-            fetch('/api/tiktok/upload-video', {
-              method: 'POST',
-              headers: {
-                'ngrok-skip-browser-warning': 'true',
-              },
-              body: formData,
-            }).then(async (res) => {
-              const data = await res.json();
-              return { platform: 'TikTok', success: data.success, data };
-            }).catch(async (err) => {
-              console.error('TikTok upload error:', err);
-              return { platform: 'TikTok', success: false, error: err.message };
-            })
-          );
+            let processedUrl: string | null = null;
+            if (CLOUD_NAME && UPLOAD_PRESET) {
+              // Upload original to Cloudinary
+              const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
+              const cloudForm = new FormData();
+              cloudForm.append('file', selectedFile);
+              cloudForm.append('upload_preset', UPLOAD_PRESET);
+              const vRes = await fetch(uploadUrl, { method: 'POST', body: cloudForm });
+              const vJson = await vRes.json();
+              if (!vRes.ok) throw new Error(`Cloudinary upload failed: ${JSON.stringify(vJson)}`);
+              // TikTok vertical transform (1080x1920)
+              processedUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_1080,h_1920,f_mp4,q_auto:best/${vJson.public_id}.mp4`;
+            }
+
+            const formData = new FormData();
+            if (processedUrl) {
+              formData.append('video_url', processedUrl);
+            } else {
+              formData.append('video', selectedFile);
+            }
+            formData.append('title', caption || 'My TikTok Video');
+            formData.append('description', caption);
+            formData.append('user_id', tiktokUserId);
+
+            uploadPromises.push(
+              fetch('/api/tiktok/upload-video', {
+                method: 'POST',
+                headers: {
+                  'ngrok-skip-browser-warning': 'true',
+                },
+                body: formData,
+              }).then(async (res) => {
+                const data = await res.json();
+                return { platform: 'TikTok', success: data.success, data };
+              }).catch(async (err) => {
+                console.error('TikTok upload error:', err);
+                return { platform: 'TikTok', success: false, error: err.message };
+              })
+            );
+          } catch (e) {
+            console.error('Cloudinary pre-processing for TikTok failed, falling back to raw upload:', e);
+            const formData = new FormData();
+            formData.append('video', selectedFile);
+            formData.append('title', caption || 'My TikTok Video');
+            formData.append('description', caption);
+            formData.append('user_id', tiktokUserId);
+            uploadPromises.push(
+              fetch('/api/tiktok/upload-video', {
+                method: 'POST',
+                headers: { 'ngrok-skip-browser-warning': 'true' },
+                body: formData,
+              }).then(async (res) => {
+                const data = await res.json();
+                return { platform: 'TikTok', success: data.success, data };
+              }).catch(async (err) => {
+                console.error('TikTok upload error:', err);
+                return { platform: 'TikTok', success: false, error: err.message };
+              })
+            );
+          }
         } else {
           console.error('TikTok user_id not found in localStorage');
         }
