@@ -1722,10 +1722,14 @@ async def upload_tiktok_video(
         }
         
         init_response = requests.post(init_url, headers=headers, json=init_data)
-        init_result = init_response.json()
+        try:
+            init_result = init_response.json()
+        except Exception:
+            init_result = {"raw": init_response.text}
         
         if init_response.status_code != 200:
-            raise HTTPException(status_code=400, detail=init_result.get("message", "Failed to initialize upload"))
+            logger.error(f"TikTok init failed: status={init_response.status_code} body={init_result}")
+            raise HTTPException(status_code=400, detail=init_result.get("message") or init_result.get("description") or str(init_result))
         
         upload_url = init_result.get("data", {}).get("upload_url")
         publish_id = init_result.get("data", {}).get("publish_id")

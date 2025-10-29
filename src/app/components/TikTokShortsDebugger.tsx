@@ -496,15 +496,21 @@ export default function TikTokShortsDebugger() {
       }
       
       addLog('📤 Uploading to TikTok via backend...');
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com';
-      const response = await fetch(`${backendUrl}/api/tiktok/upload-video`, {
+      const response = await fetch(`/api/tiktok/upload-video`, {
         method: 'POST',
         body: formData
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Backend upload failed: ${errorData.detail || 'Unknown error'}`);
+        let detail = 'Unknown error';
+        try {
+          const errorData = await response.json();
+          detail = errorData.detail || errorData.error || JSON.stringify(errorData);
+        } catch (e) {
+          const text = await response.text();
+          detail = text || detail;
+        }
+        throw new Error(`Backend upload failed: ${detail}`);
       }
 
       const data = await response.json();
