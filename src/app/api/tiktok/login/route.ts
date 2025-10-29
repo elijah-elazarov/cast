@@ -17,11 +17,32 @@ export async function POST(request: NextRequest) {
     });
 
     const data = await response.json();
+    
+    // Forward error details from backend
+    if (!response.ok) {
+      console.error('TikTok login backend error:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: data
+      });
+      
+      return NextResponse.json({
+        success: false,
+        error: data.detail || data.error || data.message || 'Failed to login to TikTok',
+        detail: data.detail,
+        message: data.message
+      }, { status: response.status });
+    }
+    
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error('TikTok login proxy error:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to login' },
+      { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to connect to backend',
+        detail: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

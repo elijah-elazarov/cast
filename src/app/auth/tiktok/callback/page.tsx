@@ -69,7 +69,9 @@ function TikTokCallbackContent() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Failed to complete TikTok authorization');
+          const errorDetail = data.error || data.detail || data.message || 'Failed to complete TikTok authorization';
+          console.error('TikTok login API error:', { status: response.status, data });
+          throw new Error(errorDetail);
         }
 
         setStatus('success');
@@ -107,6 +109,10 @@ function TikTokCallbackContent() {
         const errorMsg = err instanceof Error ? err.message : 'Failed to complete TikTok authorization.';
         setError(errorMsg);
         console.error('TikTok callback error:', err);
+        console.error('Full error details:', {
+          message: err instanceof Error ? err.message : String(err),
+          stack: err instanceof Error ? err.stack : undefined
+        });
         
         // Send error message to parent window
         if (window.opener) {

@@ -1533,7 +1533,9 @@ async def tiktok_login(request: YouTubeAuthRequest):  # Reuse the same request m
         token_result = token_response.json()
         
         if token_response.status_code != 200:
-            raise HTTPException(status_code=400, detail=token_result.get("message", "Failed to get access token"))
+            error_msg = token_result.get("message") or token_result.get("error_description") or str(token_result)
+            logger.error(f"TikTok token exchange failed: {error_msg} | Full response: {token_result}")
+            raise HTTPException(status_code=400, detail=error_msg or "Failed to get access token")
         
         access_token = token_result.get("access_token")
         open_id = token_result.get("open_id")
