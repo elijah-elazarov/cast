@@ -571,26 +571,49 @@ export default function YouTubeShortsDebugger() {
     addLog(`🏷️ Tags: ${videoTags || 'No tags'}`);
 
     try {
-      const response = await fetch('/api/youtube/upload-short', {
+      // Download video from Cloudinary first
+      addLog('📥 Downloading video from Cloudinary...');
+      const videoResponse = await fetch(processedVideoUrl);
+      if (!videoResponse.ok) {
+        throw new Error('Failed to download video from Cloudinary');
+      }
+      
+      const videoBlob = await videoResponse.blob();
+      addLog('✅ Video downloaded successfully');
+      
+      // Create form data for backend upload
+      const formData = new FormData();
+      formData.append('file', videoBlob, 'video.mp4');
+      formData.append('title', videoTitle);
+      formData.append('description', videoDescription || '');
+      formData.append('user_id', authState.userInfo?.userId || '');
+      
+      // Add tags if provided
+      if (videoTags) {
+        const tagsArray = videoTags.split(',').map(tag => tag.trim()).filter(tag => tag);
+        tagsArray.forEach(tag => formData.append('tags', tag));
+      }
+      
+      addLog('📤 Uploading to YouTube via backend...');
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com';
+      const response = await fetch(`${backendUrl}/api/youtube/upload-short`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          videoUrl: processedVideoUrl,
-          title: videoTitle,
-          description: videoDescription,
-          tags: videoTags.split(',').map(tag => tag.trim()).filter(tag => tag),
-          accessToken: authState.accessToken
-        })
+        body: formData
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Backend upload failed: ${errorData.detail || 'Unknown error'}`);
+      }
 
       const data = await response.json();
 
       if (data.success) {
-        addLog(`🎉 SUCCESS! YouTube Short uploaded with ID: ${data.videoId}`);
+        addLog(`🎉 SUCCESS! YouTube Short uploaded with ID: ${data.video_id}`);
         addLog('✅ Your YouTube Short has been uploaded successfully!');
-        addLog(`🔗 Video URL: https://www.youtube.com/watch?v=${data.videoId}`);
+        addLog(`🔗 Video URL: https://www.youtube.com/watch?v=${data.video_id}`);
       } else {
-        addLog(`❌ Upload failed: ${data.error || 'Unknown error'}`);
+        addLog(`❌ Upload failed: ${data.detail || 'Unknown error'}`);
       }
     } catch (error) {
       addLog(`❌ Upload error: ${error}`);
