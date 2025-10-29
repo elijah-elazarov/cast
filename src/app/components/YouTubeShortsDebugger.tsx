@@ -21,7 +21,7 @@ interface AuthState {
   refreshToken: string | null;
 }
 
-interface YouTubeAuthResponse {
+interface YouTubeBackendResponse {
   success: boolean;
   data: {
     user_id: string;
@@ -326,7 +326,7 @@ export default function YouTubeShortsDebugger() {
   };
 
   // YouTube OAuth flow - use same approach as original YouTubeConnection
-  const handleAuth = async (event?: React.MouseEvent<HTMLButtonElement>) => {
+  const handleAuth = async () => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     setDebugLogs([]);
     // Start visible countdown (120s)
@@ -351,7 +351,7 @@ export default function YouTubeShortsDebugger() {
       const popupWidth = 640;
       const popupHeight = 655;
       // Let browser handle positioning - just specify size
-      let features = `width=${popupWidth},height=${popupHeight},scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no`;
+      const features = `width=${popupWidth},height=${popupHeight},scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no`;
 
       const popup = window.open('', 'youtube-oauth', features);
       if (!popup) {
@@ -458,7 +458,7 @@ export default function YouTubeShortsDebugger() {
   };
 
   // Handle successful authentication
-  const handleAuthSuccess = async (authData: any) => {
+  const handleAuthSuccess = async (authData: YouTubeBackendResponse) => {
     try {
       addLog('Processing authentication data...');
       
@@ -742,7 +742,7 @@ export default function YouTubeShortsDebugger() {
       {/* Action Buttons */}
       <div className="mb-6 flex gap-4">
         <button
-          onClick={(e) => handleAuth(e)}
+          onClick={handleAuth}
           disabled={authState.isLoading}
           className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
