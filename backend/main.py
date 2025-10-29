@@ -1705,12 +1705,9 @@ async def upload_tiktok_video(
         
         init_data = {
             "post_info": {
-                "title": title or "Posted via Cast",
-                "description": description or "",
-                "privacy_level": "SELF_ONLY",  # Start with private
-                "disable_duet": False,
-                "disable_comment": False,
-                "disable_stitch": False,
+                # TikTok API expects caption text, not title/description
+                "caption": (description or title or "Posted via Cast")[:150],
+                "privacy_level": "SELF_ONLY",
                 "video_cover_timestamp_ms": 1000
             },
             "source_info": {
