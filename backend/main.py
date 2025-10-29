@@ -1529,19 +1529,47 @@ async def tiktok_login(request: YouTubeAuthRequest):  # Reuse the same request m
             "redirect_uri": TIKTOK_REDIRECT_URI
         }
         
+        # Log request details (without exposing secrets)
+        logger.info(f"TikTok token exchange request: client_key={TIKTOK_CLIENT_KEY[:8]}..., redirect_uri={TIKTOK_REDIRECT_URI}, code_length={len(request.code)}")
+        
         token_response = requests.post(token_url, json=token_data)
-        token_result = token_response.json()
+        
+        # Log the full response for debugging
+        logger.info(f"TikTok token exchange response status: {token_response.status_code}")
+        logger.info(f"TikTok token exchange response headers: {dict(token_response.headers)}")
+        
+        try:
+            token_result = token_response.json()
+        except Exception as e:
+            logger.error(f"Failed to parse TikTok token response as JSON: {e}")
+            logger.error(f"Raw response text: {token_response.text[:500]}")
+            raise HTTPException(status_code=400, detail=f"Invalid JSON response from TikTok: {str(e)}")
+        
+        logger.info(f"TikTok token exchange response body: {token_result}")
         
         if token_response.status_code != 200:
-            error_msg = token_result.get("message") or token_result.get("error_description") or str(token_result)
+            error_msg = token_result.get("message") or token_result.get("error_description") or token_result.get("error") or str(token_result)
             logger.error(f"TikTok token exchange failed: {error_msg} | Full response: {token_result}")
             raise HTTPException(status_code=400, detail=error_msg or "Failed to get access token")
         
-        access_token = token_result.get("access_token")
-        open_id = token_result.get("open_id")
+        # TikTok API might return data in a nested 'data' object or directly
+        # Handle both response formats
+        if isinstance(token_result, dict) and "data" in token_result:
+            token_data_response = token_result["data"]
+            access_token = token_data_response.get("access_token")
+            open_id = token_data_response.get("open_id")
+            refresh_token = token_data_response.get("refresh_token")
+        else:
+            access_token = token_result.get("access_token")
+            open_id = token_result.get("open_id")
+            refresh_token = token_result.get("refresh_token")
         
         if not access_token or not open_id:
-            raise HTTPException(status_code=400, detail="Invalid token response")
+            logger.error(f"Missing access_token or open_id in response. Full response: {token_result}")
+            logger.error(f"Response keys: {list(token_result.keys()) if isinstance(token_result, dict) else 'Not a dict'}")
+            if isinstance(token_result, dict) and "data" in token_result:
+                logger.error(f"Data object keys: {list(token_result['data'].keys()) if isinstance(token_result['data'], dict) else 'Not a dict'}")
+            raise HTTPException(status_code=400, detail=f"Invalid token response: Missing access_token or open_id. Response structure: {list(token_result.keys()) if isinstance(token_result, dict) else 'Not a dict'}")
         
         # Get user info
         user_info_url = "https://open.tiktokapis.com/v2/user/info/"
