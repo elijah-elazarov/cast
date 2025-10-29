@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const backendUrl = 'http://localhost:8000/api/tiktok/auth-url';
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com';
+    const fullUrl = `${backendUrl}/api/tiktok/auth-url`;
     
-    const response = await fetch(backendUrl, {
+    const response = await fetch(fullUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

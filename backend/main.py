@@ -345,7 +345,7 @@ YOUTUBE_SCOPES = [
 # TikTok OAuth configuration
 TIKTOK_CLIENT_KEY = os.getenv('TIKTOK_CLIENT_KEY', '')
 TIKTOK_CLIENT_SECRET = os.getenv('TIKTOK_CLIENT_SECRET', '')
-TIKTOK_REDIRECT_URI = f'{BASE_URL}/auth/tiktok/callback' if BASE_URL else None
+TIKTOK_REDIRECT_URI = 'https://cast-five.vercel.app/auth/tiktok/callback'
 # TikTok Content Posting API scopes
 TIKTOK_SCOPES = [
     'user.info.basic',
