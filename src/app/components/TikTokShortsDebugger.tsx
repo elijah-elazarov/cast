@@ -482,9 +482,9 @@ export default function TikTokShortsDebugger() {
       const videoBlob = await videoResponse.blob();
       addLog('✅ Video downloaded successfully');
       
-      // Create form data for backend upload
+      // Create form data for backend upload (backend expects 'video' field)
       const formData = new FormData();
-      formData.append('file', videoBlob, 'video.mp4');
+      formData.append('video', videoBlob, 'video.mp4');
       formData.append('title', videoTitle);
       formData.append('description', videoDescription || '');
       formData.append('user_id', authState.userInfo.userId);
