@@ -325,6 +325,25 @@ export default function YouTubeShortsDebugger() {
     console.log(`[YOUTUBE SHORTS DEBUG] ${message}`);
   };
 
+  // Check if already authenticated (for silent refresh)
+  const checkExistingAuth = (): boolean => {
+    if (!authState.isAuthenticated || !authState.userInfo) {
+      return false;
+    }
+    
+    // If already authenticated, just refresh the UI state silently
+    addLog('Already authenticated, refreshing auth data...');
+    addLog(`✅ Authenticated as: ${authState.userInfo.channelTitle || 'YouTube User'}`);
+    if (authState.userInfo.channelId) {
+      addLog(`📺 Channel ID: ${authState.userInfo.channelId}`);
+    }
+    if (authState.userInfo.subscriberCount) {
+      addLog(`👥 Subscribers: ${authState.userInfo.subscriberCount}`);
+    }
+    addLog('Authentication refreshed successfully!');
+    return true;
+  };
+
   // YouTube OAuth flow - use same approach as original YouTubeConnection
   const handleAuth = async () => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -345,6 +364,15 @@ export default function YouTubeShortsDebugger() {
     
     try {
       addLog('Starting YouTube Shorts authentication...');
+      
+      // First check if already authenticated
+      const isRefreshed = checkExistingAuth();
+      if (isRefreshed) {
+        setAuthState(prev => ({ ...prev, isLoading: false }));
+        if (oauthCountdownIntervalRef.current) window.clearInterval(oauthCountdownIntervalRef.current);
+        setOauthCountdownSeconds(null);
+        return;
+      }
       
       // IMPORTANT: Open a blank popup immediately on user gesture to avoid blockers
       // Center the popup on screen (robust across browsers/monitors)
