@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 
 interface UserInfo {
   id?: string;
@@ -806,9 +807,11 @@ export default function YouTubeShortsDebugger() {
           {/* Channel Header with Thumbnail */}
           <div className="flex items-start gap-4 mb-4">
             {authState.userInfo.thumbnailUrl && (
-              <img 
+              <Image 
                 src={authState.userInfo.thumbnailUrl} 
                 alt="Channel thumbnail" 
+                width={64}
+                height={64}
                 className="w-16 h-16 rounded-full object-cover"
               />
             )}

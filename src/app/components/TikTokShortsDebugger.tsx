@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 
 interface UserInfo {
   id?: string;
@@ -81,7 +82,7 @@ export default function TikTokShortsDebugger() {
 
   // OAuth countdown state
   const [oauthCountdownSeconds, setOauthCountdownSeconds] = useState<number | null>(null);
-  const oauthCountdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const oauthCountdownIntervalRef = useRef<number | null>(null);
 
   // Add log function
   const addLog = (message: string) => {
@@ -197,7 +198,7 @@ export default function TikTokShortsDebugger() {
 
       const checkClosed = setInterval(() => {
         if (popup.closed) {
-          clearInterval(checkClosed);
+          window.clearInterval(checkClosed);
           window.removeEventListener('message', messageHandler);
           setAuthState(prev => ({
             ...prev,
@@ -283,25 +284,9 @@ export default function TikTokShortsDebugger() {
   };
 
   // Countdown management
-  const startCountdown = () => {
-    setOauthCountdownSeconds(120);
-    if (oauthCountdownIntervalRef.current) {
-      clearInterval(oauthCountdownIntervalRef.current);
-    }
-    oauthCountdownIntervalRef.current = setInterval(() => {
-      setOauthCountdownSeconds(prev => {
-        if (prev === null || prev <= 1) {
-          clearInterval(oauthCountdownIntervalRef.current!);
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
   const stopCountdown = () => {
     if (oauthCountdownIntervalRef.current) {
-      clearInterval(oauthCountdownIntervalRef.current);
+      window.clearInterval(oauthCountdownIntervalRef.current);
       oauthCountdownIntervalRef.current = null;
     }
     setOauthCountdownSeconds(null);
@@ -695,9 +680,11 @@ export default function TikTokShortsDebugger() {
           {/* Channel Header with Avatar */}
           <div className="flex items-start gap-4 mb-4">
             {authState.userInfo.avatarUrl && (
-              <img 
+              <Image 
                 src={authState.userInfo.avatarUrl} 
                 alt="Profile avatar" 
+                width={64}
+                height={64}
                 className="w-16 h-16 rounded-full object-cover"
               />
             )}
