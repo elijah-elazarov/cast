@@ -343,11 +343,12 @@ export default function YouTubeShortsDebugger() {
       addLog('Starting YouTube Shorts authentication...');
       
       // IMPORTANT: Open a blank popup immediately on user gesture to avoid blockers
-      // Center the popup on screen
+      // Center the popup on screen (robust across browsers/monitors)
       const popupWidth = 640;
       const popupHeight = 655;
-      const left = Math.max(0, Math.floor(window.screenX + (window.outerWidth - popupWidth) / 2));
-      const top = Math.max(0, Math.floor(window.screenY + (window.outerHeight - popupHeight) / 2));
+      // Simple centering: just center in current viewport
+      const left = Math.floor((screen.width - popupWidth) / 2);
+      const top = Math.floor((screen.height - popupHeight) / 2);
       let features = `width=${popupWidth},height=${popupHeight},left=${left},top=${top},scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no`;
 
       const popup = window.open('', 'youtube-oauth', features);
@@ -357,6 +358,13 @@ export default function YouTubeShortsDebugger() {
       try {
         popup.document.title = 'Connecting to YouTube…';
       } catch {}
+
+      // Focus the popup
+      try {
+        popup.focus();
+      } catch {}
+      // Log detected metrics for troubleshooting
+      addLog(`Popup metrics -> left:${left}, top:${top}, width:${popupWidth}, height:${popupHeight}`);
 
       // Get auth URL from backend
       const response = await fetch('/api/youtube/auth-url');
