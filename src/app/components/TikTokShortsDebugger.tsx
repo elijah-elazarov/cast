@@ -522,6 +522,16 @@ export default function TikTokShortsDebugger() {
     }
   };
 
+  // Add initial welcome logs when component mounts
+  useEffect(() => {
+    addLog('🎵 TikTok Shorts Debugger initialized');
+    addLog('📋 Configuration loaded');
+    addLog(`🔑 Client Key: ${TIKTOK_CONFIG.clientKey.substring(0, 8)}...`);
+    addLog(`📦 Upload Preset: ${UPLOAD_PRESET}`);
+    addLog('✅ Ready to connect and upload videos to TikTok');
+    addLog('👆 Click "Connect TikTok" to begin authentication');
+  }, [addLog]);
+
   // Check for OAuth callback success/error from URL query parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
