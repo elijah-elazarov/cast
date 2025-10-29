@@ -468,6 +468,7 @@ export default function YouTubeShortsDebugger() {
       }
       
       const userData = authData.data;
+      addLog(`🔍 Debug - Received data: ${JSON.stringify(userData)}`);
       
       setAuthState({
         isAuthenticated: true,
@@ -475,6 +476,7 @@ export default function YouTubeShortsDebugger() {
         error: null,
         userInfo: {
           channelTitle: userData.channel_title,
+          channelId: userData.user_id,
           userId: userData.user_id,
           subscriberCount: userData.subscriber_count
         },
@@ -685,33 +687,36 @@ export default function YouTubeShortsDebugger() {
           <h3 className="text-lg font-semibold mb-3 text-blue-800">Video Details</h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+              <label className="block text-sm font-medium text-gray-900 mb-1">Title *</label>
               <input
                 type="text"
                 value={videoTitle}
                 onChange={(e) => setVideoTitle(e.target.value)}
                 placeholder="Enter video title (include #Shorts for better categorization)"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ color: '#374151' }}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <label className="block text-sm font-medium text-gray-900 mb-1">Description</label>
               <textarea
                 value={videoDescription}
                 onChange={(e) => setVideoDescription(e.target.value)}
                 placeholder="Enter video description"
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ color: '#374151' }}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tags (comma-separated)</label>
+              <label className="block text-sm font-medium text-gray-900 mb-1">Tags (comma-separated)</label>
               <input
                 type="text"
                 value={videoTags}
                 onChange={(e) => setVideoTags(e.target.value)}
                 placeholder="shorts, youtube, video, example"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ color: '#374151' }}
               />
             </div>
           </div>
@@ -723,10 +728,13 @@ export default function YouTubeShortsDebugger() {
         <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <h3 className="text-lg font-semibold mb-3 text-blue-800">Account Information</h3>
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="text-gray-700"><strong className="text-gray-800">Channel ID:</strong> {authState.userInfo.channelId}</div>
-            <div className="text-gray-700"><strong className="text-gray-800">Channel Title:</strong> {authState.userInfo.channelTitle}</div>
-            <div className="text-gray-700"><strong className="text-gray-800">Username:</strong> {authState.userInfo.username}</div>
-            <div className="text-gray-700"><strong className="text-gray-800">Email:</strong> {authState.userInfo.email}</div>
+            <div className="text-gray-900"><strong className="text-gray-900">Channel ID:</strong> {authState.userInfo.channelId || 'N/A'}</div>
+            <div className="text-gray-900"><strong className="text-gray-900">Channel Title:</strong> {authState.userInfo.channelTitle || 'N/A'}</div>
+            <div className="text-gray-900"><strong className="text-gray-900">Subscribers:</strong> {authState.userInfo.subscriberCount || '0'}</div>
+            <div className="text-gray-900"><strong className="text-gray-900">User ID:</strong> {authState.userInfo.userId || 'N/A'}</div>
+          </div>
+          <div className="mt-2 text-xs text-gray-600">
+            Debug: {JSON.stringify(authState.userInfo)}
           </div>
         </div>
       )}
