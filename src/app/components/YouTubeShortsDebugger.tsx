@@ -815,7 +815,11 @@ export default function YouTubeShortsDebugger() {
             <div className="flex-1">
               <h4 className="text-lg font-semibold text-gray-900">{authState.userInfo.channelTitle || 'N/A'}</h4>
               {authState.userInfo.customUrl && (
-                <p className="text-sm text-blue-600">@{authState.userInfo.customUrl}</p>
+                <p className="text-sm text-blue-600">
+                  {authState.userInfo.customUrl.startsWith('@') 
+                    ? authState.userInfo.customUrl 
+                    : `@${authState.userInfo.customUrl}`}
+                </p>
               )}
               {authState.userInfo.channelDescription && (
                 <p className="text-sm text-gray-600 mt-1">{authState.userInfo.channelDescription}</p>
@@ -825,33 +829,71 @@ export default function YouTubeShortsDebugger() {
 
           {/* Channel Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
-            <div className="text-center p-2 bg-white rounded border">
-              <div className="text-lg font-bold text-gray-900">{authState.userInfo.subscriberCount || '0'}</div>
+            <div className="text-center p-3 bg-white rounded-lg border shadow-sm">
+              <div className="text-xl font-bold text-gray-900">
+                {authState.userInfo.subscriberCount ? 
+                  parseInt(authState.userInfo.subscriberCount).toLocaleString() : '0'}
+              </div>
               <div className="text-xs text-gray-600">Subscribers</div>
             </div>
-            <div className="text-center p-2 bg-white rounded border">
-              <div className="text-lg font-bold text-gray-900">{authState.userInfo.videoCount || '0'}</div>
+            <div className="text-center p-3 bg-white rounded-lg border shadow-sm">
+              <div className="text-xl font-bold text-gray-900">
+                {authState.userInfo.videoCount ? 
+                  parseInt(authState.userInfo.videoCount).toLocaleString() : '0'}
+              </div>
               <div className="text-xs text-gray-600">Videos</div>
             </div>
-            <div className="text-center p-2 bg-white rounded border">
-              <div className="text-lg font-bold text-gray-900">{authState.userInfo.viewCount || '0'}</div>
+            <div className="text-center p-3 bg-white rounded-lg border shadow-sm">
+              <div className="text-xl font-bold text-gray-900">
+                {authState.userInfo.viewCount ? 
+                  parseInt(authState.userInfo.viewCount).toLocaleString() : '0'}
+              </div>
               <div className="text-xs text-gray-600">Views</div>
             </div>
-            <div className="text-center p-2 bg-white rounded border">
-              <div className="text-lg font-bold text-gray-900">{authState.userInfo.country || 'N/A'}</div>
+            <div className="text-center p-3 bg-white rounded-lg border shadow-sm">
+              <div className="text-xl font-bold text-gray-900">{authState.userInfo.country || 'N/A'}</div>
               <div className="text-xs text-gray-600">Country</div>
             </div>
           </div>
 
           {/* Technical Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div className="text-gray-900"><strong className="text-gray-900">Channel ID:</strong> {authState.userInfo.channelId || 'N/A'}</div>
-            <div className="text-gray-900"><strong className="text-gray-900">User ID:</strong> {authState.userInfo.userId || 'N/A'}</div>
+            <div className="text-gray-900">
+              <strong className="text-gray-900">Channel ID:</strong> 
+              <span className="ml-2 font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                {authState.userInfo.channelId || 'N/A'}
+              </span>
+            </div>
+            <div className="text-gray-900">
+              <strong className="text-gray-900">User ID:</strong> 
+              <span className="ml-2 font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                {authState.userInfo.userId || 'N/A'}
+              </span>
+            </div>
             {authState.userInfo.publishedAt && (
-              <div className="text-gray-900"><strong className="text-gray-900">Joined:</strong> {new Date(authState.userInfo.publishedAt).toLocaleDateString()}</div>
+              <div className="text-gray-900">
+                <strong className="text-gray-900">Joined:</strong> 
+                <span className="ml-2">{new Date(authState.userInfo.publishedAt).toLocaleDateString()}</span>
+              </div>
+            )}
+            {authState.userInfo.customUrl && (
+              <div className="text-gray-900">
+                <strong className="text-gray-900">Channel URL:</strong> 
+                <a 
+                  href={`https://www.youtube.com/${authState.userInfo.customUrl}`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="ml-2 text-blue-600 hover:text-blue-800 underline"
+                >
+                  View Channel
+                </a>
+              </div>
             )}
             {authState.userInfo.hiddenSubscriberCount && (
-              <div className="text-gray-900"><strong className="text-gray-900">Subscriber Count:</strong> Hidden</div>
+              <div className="text-gray-900">
+                <strong className="text-gray-900">Subscriber Count:</strong> 
+                <span className="ml-2 text-orange-600">Hidden</span>
+              </div>
             )}
           </div>
         </div>
