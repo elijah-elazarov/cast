@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface UserInfo {
   id: string;
@@ -50,6 +50,8 @@ export default function YouTubeShortsDebugger() {
   const [processingProgress, setProcessingProgress] = useState(0);
   const [processedVideoUrl, setProcessedVideoUrl] = useState<string | null>(null);
   const [videosReady, setVideosReady] = useState(false);
+  const [oauthCountdownSeconds, setOauthCountdownSeconds] = useState<number | null>(null);
+  const oauthCountdownIntervalRef = useRef<number | null>(null);
   const [fileDetails, setFileDetails] = useState<{
     name: string;
     sizeMB: number;
@@ -323,6 +325,19 @@ export default function YouTubeShortsDebugger() {
   const handleAuth = async (event?: React.MouseEvent<HTMLButtonElement>) => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     setDebugLogs([]);
+    // Start visible countdown (120s)
+    setOauthCountdownSeconds(120);
+    if (oauthCountdownIntervalRef.current) window.clearInterval(oauthCountdownIntervalRef.current);
+    oauthCountdownIntervalRef.current = window.setInterval(() => {
+      setOauthCountdownSeconds(prev => {
+        if (prev === null) return prev;
+        if (prev <= 1) {
+          if (oauthCountdownIntervalRef.current) window.clearInterval(oauthCountdownIntervalRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
     
     try {
       addLog('Starting YouTube Shorts authentication...');
@@ -396,6 +411,9 @@ export default function YouTubeShortsDebugger() {
             isLoading: false,
             error: completed ? prev.error : 'Login cancelled or window closed before completing authentication'
           }));
+          if (oauthCountdownIntervalRef.current) window.clearInterval(oauthCountdownIntervalRef.current);
+          oauthCountdownIntervalRef.current = null;
+          setOauthCountdownSeconds(null);
         }
       }, 1000);
 
@@ -409,6 +427,9 @@ export default function YouTubeShortsDebugger() {
             isLoading: false,
             error: 'Authentication timed out. Please try again.'
           }));
+          if (oauthCountdownIntervalRef.current) window.clearInterval(oauthCountdownIntervalRef.current);
+          oauthCountdownIntervalRef.current = null;
+          setOauthCountdownSeconds(null);
         }
       }, 2 * 60 * 1000);
       
@@ -420,6 +441,9 @@ export default function YouTubeShortsDebugger() {
         isLoading: false, 
         error: errorMessage 
       }));
+      if (oauthCountdownIntervalRef.current) window.clearInterval(oauthCountdownIntervalRef.current);
+      oauthCountdownIntervalRef.current = null;
+      setOauthCountdownSeconds(null);
     }
   };
 
@@ -565,6 +589,11 @@ export default function YouTubeShortsDebugger() {
             <span className="text-gray-700">Video Ready: {videosReady ? 'Yes' : 'No'}</span>
           </div>
         </div>
+        {authState.isLoading && oauthCountdownSeconds !== null && (
+          <div className="mt-2 text-sm text-gray-600">
+            Login will timeout in {Math.floor(oauthCountdownSeconds / 60)}:{String(oauthCountdownSeconds % 60).padStart(2, '0')}
+          </div>
+        )}
       </div>
 
       {/* File Selection and Processing */}
