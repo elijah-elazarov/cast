@@ -329,7 +329,7 @@ export default function YouTubeShortsDebugger() {
       
       // IMPORTANT: Open a blank popup immediately on user gesture to avoid blockers
       // Calculate a position near the trigger button (fallback to centered)
-      let features = 'scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no';
+      let features = 'width=2560,height=1440,scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no';
       try {
         if (event && event.currentTarget) {
           const rect = event.currentTarget.getBoundingClientRect();
