@@ -346,10 +346,8 @@ export default function YouTubeShortsDebugger() {
       // Center the popup on screen (robust across browsers/monitors)
       const popupWidth = 640;
       const popupHeight = 655;
-      // Simple centering: just center in current viewport
-      const left = Math.floor((screen.width - popupWidth) / 2);
-      const top = Math.floor((screen.height - popupHeight) / 2);
-      let features = `width=${popupWidth},height=${popupHeight},left=${left},top=${top},scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no`;
+      // Let browser handle positioning - just specify size
+      let features = `width=${popupWidth},height=${popupHeight},scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no`;
 
       const popup = window.open('', 'youtube-oauth', features);
       if (!popup) {
@@ -364,7 +362,7 @@ export default function YouTubeShortsDebugger() {
         popup.focus();
       } catch {}
       // Log detected metrics for troubleshooting
-      addLog(`Popup metrics -> left:${left}, top:${top}, width:${popupWidth}, height:${popupHeight}`);
+      addLog(`Popup metrics -> width:${popupWidth}, height:${popupHeight} (browser-positioned)`);
 
       // Get auth URL from backend
       const response = await fetch('/api/youtube/auth-url');
