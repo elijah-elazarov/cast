@@ -1532,7 +1532,8 @@ async def tiktok_login(request: YouTubeAuthRequest):  # Reuse the same request m
         # Log request details (without exposing secrets)
         logger.info(f"TikTok token exchange request: client_key={TIKTOK_CLIENT_KEY[:8]}..., redirect_uri={TIKTOK_REDIRECT_URI}, code_length={len(request.code)}")
         
-        token_response = requests.post(token_url, json=token_data)
+        # TikTok API requires application/x-www-form-urlencoded, not JSON
+        token_response = requests.post(token_url, data=token_data, headers={"Content-Type": "application/x-www-form-urlencoded"})
         
         # Log the full response for debugging
         logger.info(f"TikTok token exchange response status: {token_response.status_code}")
