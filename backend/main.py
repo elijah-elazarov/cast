@@ -1651,7 +1651,6 @@ async def tiktok_login(request: YouTubeAuthRequest):  # Reuse the same request m
 @app.post("/api/tiktok/upload-video")
 async def upload_tiktok_video(
     video: UploadFile | None = File(None),
-    title: str = Form(""),
     description: str = Form(""),
     user_id: str = Form(""),
     video_url: str | None = Form(None)
@@ -1672,6 +1671,27 @@ async def upload_tiktok_video(
         
         session = tiktok_sessions[user_id]
         access_token = session["access_token"]
+        
+        # Check token and log available scopes
+        logger.info(f"TikTok upload for user: {user_id}")
+        logger.info(f"Access token: {access_token[:20]}...")
+        
+        # Try to get token info to see what scopes we have
+        try:
+            token_info_url = "https://open.tiktokapis.com/v2/user/info/"
+            token_headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            }
+            token_response = requests.get(token_info_url, headers=token_headers)
+            logger.info(f"Token validation response: {token_response.status_code}")
+            if token_response.status_code == 200:
+                token_data = token_response.json()
+                logger.info(f"Token info: {token_data}")
+            else:
+                logger.warning(f"Token validation failed: {token_response.text}")
+        except Exception as e:
+            logger.warning(f"Could not validate token: {e}")
         
         # Save video temporarily (from uploaded file or Cloudinary URL)
         if video_url:
@@ -1694,7 +1714,7 @@ async def upload_tiktok_video(
         file_size = os.path.getsize(temp_path)
         
         # Log TikTok upload start
-        social_logger.info(f"TIKTOK_UPLOAD_START - User: {user_id} | File: {video.filename} | Title: {title} | Size: {file_size} bytes")
+        social_logger.info(f"TIKTOK_UPLOAD_START - User: {user_id} | File: {video.filename if video else 'from_url'} | Description: {description} | Size: {file_size} bytes")
         
         # Step 1: Initialize upload
         init_url = "https://open.tiktokapis.com/v2/post/publish/video/init/"
@@ -1703,12 +1723,10 @@ async def upload_tiktok_video(
             "Content-Type": "application/json"
         }
         
+        # Minimal payload - just what TikTok needs
         init_data = {
             "post_info": {
-                # TikTok API expects caption text, not title/description
-                "caption": (description or title or "Posted via Cast")[:150],
-                "privacy_level": "SELF_ONLY",
-                "video_cover_timestamp_ms": 1000
+                "caption": (description or "Posted via Cast")[:150]
             },
             "source_info": {
                 "source": "FILE_UPLOAD",
@@ -1725,8 +1743,8 @@ async def upload_tiktok_video(
             init_result = {"raw": init_response.text}
         
         if init_response.status_code != 200:
-            logger.error(f"TikTok init failed: status={init_response.status_code} body={init_result}")
-            raise HTTPException(status_code=400, detail=init_result.get("message") or init_result.get("description") or str(init_result))
+            logger.error(f"TikTok init failed: {init_response.status_code} - {init_result}")
+            raise HTTPException(status_code=400, detail=f"TikTok upload failed: {init_result}")
         
         upload_url = init_result.get("data", {}).get("upload_url")
         publish_id = init_result.get("data", {}).get("publish_id")
@@ -1751,7 +1769,7 @@ async def upload_tiktok_video(
             temp_path = None
         
         # Log successful upload
-        social_logger.info(f"TIKTOK_UPLOAD_SUCCESS - User: {user_id} | Publish ID: {publish_id} | Title: {title}")
+        social_logger.info(f"TIKTOK_UPLOAD_SUCCESS - User: {user_id} | Publish ID: {publish_id} | Description: {description}")
         logger.info(f"TikTok video uploaded successfully for user: {user_id}")
         
         return JSONResponse({
