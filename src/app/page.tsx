@@ -9,11 +9,7 @@ import YouTubeConnection from './components/YouTubeConnection';
 import TikTokConnection from './components/TikTokConnection';
 import VideoUploader from './components/VideoUploader';
 import ModernWelcomeFlow from './components/ModernWelcomeFlow';
-import RealOAuthTest from './components/RealOAuthTest';
-import RealInstagramTest from './components/RealInstagramTest';
-import InstagramTestComponent from './components/InstagramTestComponent';
-import InstagramTestPopup from './components/InstagramTestPopup';
-import FreshInstagramAuth from './components/FreshInstagramAuth';
+// Legacy test tools removed: RealOAuthTest, RealInstagramTest, InstagramTestComponent, InstagramTestPopup, FreshInstagramAuth
 import EnhancedInstagramAuth from './components/EnhancedInstagramAuth';
 import InstagramReelsPoster from './components/InstagramReelsPoster';
 import InstagramReelsDebugger from './components/InstagramReelsDebugger';
@@ -38,12 +34,6 @@ export default function Home() {
   const [isShowingComplete, setIsShowingComplete] = useState(false);
   const [isFadingToComplete, setIsFadingToComplete] = useState(false);
   const [showWelcomeFlow, setShowWelcomeFlow] = useState(false);
-  const [showInstagramTest, setShowInstagramTest] = useState(false);
-  const [showInstagramDebug, setShowInstagramDebug] = useState(false);
-  const [showInstagramStepByStep, setShowInstagramStepByStep] = useState(false);
-  const [showDebugConsole, setShowDebugConsole] = useState(false);
-  const [showInstagramPopup, setShowInstagramPopup] = useState(false);
-  const [showFreshInstagram, setShowFreshInstagram] = useState(false);
   const [showEnhancedInstagram, setShowEnhancedInstagram] = useState(false);
   const [showReelsPoster, setShowReelsPoster] = useState(false);
   const [showReelsDebugger, setShowReelsDebugger] = useState(false);
@@ -60,10 +50,6 @@ export default function Home() {
     
     // Check for Instagram OAuth errors in URL
     const urlParams = new URLSearchParams(window.location.search);
-    const instagramError = urlParams.get('instagram_error');
-    if (instagramError) {
-      setShowInstagramTest(true);
-    }
     
     const initialConnectedAccounts = {
       instagram: !!instagramUsername,
@@ -279,48 +265,6 @@ export default function Home() {
           </p>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setShowInstagramTest(!showInstagramTest)}
-              className="inline-flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm"
-            >
-              <TestTube className="w-4 h-4" />
-              Quick Test
-            </button>
-            <button
-              onClick={() => setShowInstagramDebug(!showInstagramDebug)}
-              className="inline-flex items-center gap-2 bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors text-sm"
-            >
-              <TestTube className="w-4 h-4" />
-              Real OAuth
-            </button>
-            <button
-              onClick={() => setShowInstagramStepByStep(!showInstagramStepByStep)}
-              className="inline-flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors text-sm"
-            >
-              <TestTube className="w-4 h-4" />
-              Step-by-Step
-            </button>
-            <button
-              onClick={() => setShowDebugConsole(!showDebugConsole)}
-              className="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors text-sm"
-            >
-              <TestTube className="w-4 h-4" />
-              Debug Console
-            </button>
-            <button
-              onClick={() => setShowInstagramPopup(true)}
-              className="inline-flex items-center gap-2 bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors text-sm"
-            >
-              <TestTube className="w-4 h-4" />
-              Instagram Popup Test
-            </button>
-            <button
-              onClick={() => setShowFreshInstagram(true)}
-              className="inline-flex items-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors text-sm"
-            >
-              <TestTube className="w-4 h-4" />
-              Fresh Instagram Component
-            </button>
-            <button
               onClick={() => setShowEnhancedInstagram(true)}
               className="inline-flex items-center gap-2 bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 transition-colors text-sm"
             >
@@ -410,72 +354,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Instagram Test Components */}
-        {showInstagramTest && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                ⚡ Quick Instagram Test
-              </h2>
-              <button
-                onClick={() => setShowInstagramTest(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                ✕
-              </button>
-            </div>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Quick automated test of Instagram Graph API connectivity and backend health.
-            </p>
-            <RealInstagramTest />
-          </div>
-        )}
-
-        {showInstagramDebug && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                🎯 Real Instagram OAuth Flow
-              </h2>
-              <button
-                onClick={() => setShowInstagramDebug(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                ✕
-              </button>
-            </div>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Complete real OAuth flow to get actual access tokens for posting to Instagram.
-            </p>
-            <Suspense fallback={<div>Loading OAuth test...</div>}>
-              <RealOAuthTest />
-            </Suspense>
-          </div>
-        )}
-
-        {showInstagramStepByStep && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                🔧 Step-by-Step Instagram Test
-              </h2>
-              <button
-                onClick={() => setShowInstagramStepByStep(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                ✕
-              </button>
-            </div>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Manual step-by-step testing of Instagram Graph API components.
-            </p>
-            <InstagramTestComponent />
-          </div>
-        )}
-
-        {showDebugConsole && (
-          <DebugConsole onClose={() => setShowDebugConsole(false)} />
-        )}
+        {/* Legacy Instagram test components removed */}
 
         {/* Enhanced Instagram Component */}
         {showEnhancedInstagram && (
@@ -582,26 +461,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Fresh Instagram Component */}
-        {showFreshInstagram && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                🚀 Fresh Instagram Component
-              </h2>
-              <button
-                onClick={() => setShowFreshInstagram(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                ✕
-              </button>
-            </div>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Brand new Instagram authentication component built from scratch using Facebook&apos;s manual OAuth flow.
-            </p>
-            <FreshInstagramAuth />
-          </div>
-        )}
+        {/* Fresh Instagram component removed */}
 
         {/* Video Upload Section */}
         {(connectedAccounts.instagram || connectedAccounts.youtube || connectedAccounts.tiktok) ? (
@@ -628,231 +488,9 @@ export default function Home() {
         />
       )}
 
-      {/* Instagram Test Popup */}
-      {showInstagramPopup && (
-        <InstagramTestPopup 
-          isOpen={showInstagramPopup} 
-          onClose={() => setShowInstagramPopup(false)} 
-        />
-      )}
+      {/* Legacy Instagram popup removed */}
     </div>
   );
 }
 
-// Debug Console Component
-function DebugConsole({ onClose }: { onClose: () => void }) {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [results, setResults] = useState<Record<string, unknown> | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [accessToken, setAccessToken] = useState('');
-
-  const testInstagramStatus = async () => {
-    setStatus('loading');
-    setError(null);
-    setResults(null);
-
-    try {
-      const response = await fetch('https://backrooms-e8nm.onrender.com/api/debug/instagram/status');
-      const data = await response.json();
-      
-      setResults(data);
-      setStatus(data.success ? 'success' : 'error');
-      if (!data.success) {
-        setError(data.error || 'Unknown error');
-      }
-    } catch (err) {
-      setStatus('error');
-      setError(err instanceof Error ? err.message : 'Failed to test Instagram status');
-    }
-  };
-
-  const testAccessToken = async () => {
-    if (!accessToken.trim()) {
-      setError('Please enter an access token');
-      return;
-    }
-
-    setStatus('loading');
-    setError(null);
-    setResults(null);
-
-    try {
-      const response = await fetch('https://backrooms-e8nm.onrender.com/api/debug/instagram/test-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ access_token: accessToken }),
-      });
-      
-      const data = await response.json();
-      
-      setResults(data);
-      setStatus(data.success ? 'success' : 'error');
-      if (!data.success) {
-        setError(data.error || 'Unknown error');
-      }
-    } catch (err) {
-      setStatus('error');
-      setError(err instanceof Error ? err.message : 'Failed to test access token');
-    }
-  };
-
-  const getOAuthUrl = async () => {
-    setStatus('loading');
-    setError(null);
-    setResults(null);
-
-    try {
-      const response = await fetch('/api/instagram/meta/auth-url');
-      const data = await response.json();
-      
-      if (data.success) {
-        setResults({
-          success: true,
-          message: 'OAuth URL generated successfully',
-          auth_url: data.data.auth_url,
-          state: data.data.state
-        });
-        setStatus('success');
-      } else {
-        setStatus('error');
-        setError(data.detail || 'Failed to get OAuth URL');
-      }
-    } catch (err) {
-      setStatus('error');
-      setError(err instanceof Error ? err.message : 'Failed to get OAuth URL');
-    }
-  };
-
-  const reset = () => {
-    setStatus('idle');
-    setResults(null);
-    setError(null);
-    setAccessToken('');
-  };
-
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-          🔧 Instagram Debug Console
-        </h2>
-        <button
-          onClick={onClose}
-          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-        >
-          ✕
-        </button>
-      </div>
-      
-      <div className="space-y-6">
-        {/* Test 1: Instagram Status */}
-        <div className="border border-gray-200 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Test 1: Instagram API Status</h3>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">Check if Instagram Graph API is properly configured</p>
-          <button
-            onClick={testInstagramStatus}
-            disabled={status === 'loading'}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
-          >
-            {status === 'loading' ? '⏳' : '🔄'}
-            Test Instagram Status
-          </button>
-        </div>
-
-        {/* Test 2: OAuth URL Generation */}
-        <div className="border border-gray-200 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Test 2: OAuth URL Generation</h3>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">Test if OAuth URL can be generated (frontend proxy test)</p>
-          <button
-            onClick={getOAuthUrl}
-            disabled={status === 'loading'}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
-          >
-            {status === 'loading' ? '⏳' : '🔄'}
-            Test OAuth URL
-          </button>
-        </div>
-
-        {/* Test 3: Access Token Test */}
-        <div className="border border-gray-200 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Test 3: Access Token Test</h3>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">Test a specific access token and get detailed information</p>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Access Token
-              </label>
-              <input
-                type="text"
-                value={accessToken}
-                onChange={(e) => setAccessToken(e.target.value)}
-                placeholder="Enter access token to test..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
-            </div>
-            <button
-              onClick={testAccessToken}
-              disabled={status === 'loading' || !accessToken.trim()}
-              className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
-            >
-              {status === 'loading' ? '⏳' : '🔄'}
-              Test Access Token
-            </button>
-          </div>
-        </div>
-
-        {/* Reset Button */}
-        <div className="flex justify-center">
-          <button
-            onClick={reset}
-            className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-          >
-            Reset All Tests
-          </button>
-        </div>
-
-        {/* Results Display */}
-        {status !== 'idle' && (
-          <div className="border border-gray-200 rounded-lg p-4">
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-              {status === 'loading' && '⏳'}
-              {status === 'success' && '✅'}
-              {status === 'error' && '❌'}
-              Test Results
-            </h4>
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
-                <div className="flex items-center">
-                  <span className="text-sm text-red-800">⚠️ {error}</span>
-                </div>
-              </div>
-            )}
-
-            {results && (
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-4">
-                <pre className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap overflow-x-auto">
-                  {JSON.stringify(results, null, 2)}
-                </pre>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Instructions */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <h4 className="text-lg font-semibold text-blue-900 dark:text-blue-200 mb-2">How to Use</h4>
-          <ol className="list-decimal list-inside space-y-2 text-blue-800 dark:text-blue-200">
-            <li><strong>Test 1:</strong> Click &quot;Test Instagram Status&quot; to check if your backend is properly configured</li>
-            <li><strong>Test 2:</strong> Click &quot;Test OAuth URL&quot; to verify the frontend proxy is working</li>
-            <li><strong>Test 3:</strong> Get an access token by completing the OAuth flow, then paste it here to test</li>
-            <li>Check the results to see exactly what&apos;s working and what&apos;s not</li>
-          </ol>
-        </div>
-      </div>
-
-    </div>
-  );
-}
+// Intentionally left blank (legacy debug console removed)
