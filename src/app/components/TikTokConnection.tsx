@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Check, X, Music, AlertTriangle } from 'lucide-react';
-import Image from 'next/image';
+// Use native img for TikTok avatars to avoid Next/Image domain restrictions and signed-URL issues
 
 interface TikTokConnectionProps {
   onConnect: (connected: boolean) => void;
@@ -147,12 +147,13 @@ export default function TikTokConnection({ onConnect }: TikTokConnectionProps) {
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-2">
           <div className="flex items-center space-x-3">
             {userInfo.avatar_url ? (
-              <Image 
-                src={userInfo.avatar_url} 
+              <img 
+                src={userInfo.avatar_url}
                 alt={userInfo.display_name}
                 width={40}
                 height={40}
-                className="w-10 h-10 rounded-full"
+                referrerPolicy="no-referrer"
+                className="w-10 h-10 rounded-full object-cover"
               />
             ) : (
               <Music className="w-10 h-10 text-gray-400" />

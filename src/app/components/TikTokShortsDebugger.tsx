@@ -701,11 +701,12 @@ export default function TikTokShortsDebugger() {
           {/* Channel Header with Avatar */}
           <div className="flex items-start gap-4 mb-4">
             {authState.userInfo.avatarUrl && (
-              <Image 
-                src={authState.userInfo.avatarUrl} 
-                alt="Profile avatar" 
+              <img 
+                src={authState.userInfo.avatarUrl}
+                alt="Profile avatar"
                 width={64}
                 height={64}
+                referrerPolicy="no-referrer"
                 className="w-16 h-16 rounded-full object-cover"
               />
             )}
