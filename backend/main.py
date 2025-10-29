@@ -1547,6 +1547,25 @@ async def tiktok_login(request: YouTubeAuthRequest):  # Reuse the same request m
         
         logger.info(f"TikTok token exchange response body: {token_result}")
         
+        # Check for TikTok API errors first (TikTok may return 200 with error object)
+        if isinstance(token_result, dict) and "error" in token_result:
+            error_code = token_result.get("error", "unknown_error")
+            error_description = token_result.get("error_description", "No error description provided")
+            log_id = token_result.get("log_id", "N/A")
+            
+            logger.error(f"TikTok API returned error: {error_code} - {error_description} | Log ID: {log_id} | Full response: {token_result}")
+            
+            # Provide helpful error messages based on common TikTok API errors
+            user_friendly_error = error_description
+            if "invalid_code" in error_code.lower() or "code" in error_description.lower():
+                user_friendly_error = f"Authorization code is invalid or expired. Please try connecting again. ({error_description})"
+            elif "redirect_uri" in error_description.lower():
+                user_friendly_error = f"Redirect URI mismatch. Please verify the redirect URI matches your TikTok app settings. ({error_description})"
+            elif "client" in error_description.lower():
+                user_friendly_error = f"Client authentication failed. Please verify your TikTok app credentials. ({error_description})"
+            
+            raise HTTPException(status_code=400, detail=f"TikTok API error: {user_friendly_error} (Log ID: {log_id})")
+        
         if token_response.status_code != 200:
             error_msg = token_result.get("message") or token_result.get("error_description") or token_result.get("error") or str(token_result)
             logger.error(f"TikTok token exchange failed: {error_msg} | Full response: {token_result}")
