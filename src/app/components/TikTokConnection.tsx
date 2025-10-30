@@ -147,6 +147,7 @@ export default function TikTokConnection({ onConnect }: TikTokConnectionProps) {
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-2">
           <div className="flex items-center space-x-3">
             {userInfo.avatar_url ? (
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img 
                 src={userInfo.avatar_url}
                 alt={userInfo.display_name}

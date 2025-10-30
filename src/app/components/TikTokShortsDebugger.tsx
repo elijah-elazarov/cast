@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import Image from 'next/image';
+// Image not used; using native img for TikTok avatars
 
 interface UserInfo {
   id?: string;
@@ -710,6 +710,7 @@ export default function TikTokShortsDebugger() {
           {/* Channel Header with Avatar */}
           <div className="flex items-start gap-4 mb-4">
             {authState.userInfo.avatarUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
               <img 
                 src={authState.userInfo.avatarUrl}
                 alt="Profile avatar"

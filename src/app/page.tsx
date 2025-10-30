@@ -16,7 +16,6 @@ import InstagramReelsDebugger from './components/InstagramReelsDebugger';
 import YouTubeShortsDebugger from './components/YouTubeShortsDebugger';
 import TikTokShortsDebugger from './components/TikTokShortsDebugger';
 // import SimpleInstagramAuth from './components/SimpleInstagramAuth';
-import { Suspense } from 'react';
 
 export default function Home() {
   const [connectedAccounts, setConnectedAccounts] = useState({
@@ -49,7 +48,6 @@ export default function Home() {
     const hasSeenOnboarding = localStorage.getItem('has_seen_onboarding');
     
     // Check for Instagram OAuth errors in URL
-    const urlParams = new URLSearchParams(window.location.search);
     
     const initialConnectedAccounts = {
       instagram: !!instagramUsername,
