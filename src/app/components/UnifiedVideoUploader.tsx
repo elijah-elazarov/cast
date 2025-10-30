@@ -243,6 +243,22 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     }
   }, [addLog, INSTAGRAM_CONFIG.appId, INSTAGRAM_CONFIG.apiVersion]);
 
+  // React to localStorage updates from OAuth callbacks (cross-tab/popup)
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'youtube_user_id' || e.key === 'youtube_channel_title') {
+        const id = localStorage.getItem('youtube_user_id');
+        const title = localStorage.getItem('youtube_channel_title');
+        if (id && title) {
+          setYouTubeAuth({ isAuthenticated: true, isLoading: false, error: null, userInfo: { id, channelTitle: title } });
+          addLog(`YouTube connected (storage event): ${title}`);
+        }
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [addLog]);
+
   // Helper: exchange short-lived token to long-lived via backend
   const exchangeLongLivedToken = async (shortLived: string): Promise<string> => {
     const res = await fetch('/api/instagram/graph/long-lived-token', {
@@ -330,19 +346,31 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         if (event.origin !== window.location.origin) return;
         if (event.data.type === 'YOUTUBE_AUTH_SUCCESS') {
           completed = true;
-          // Read from localStorage populated by callback
-          const userId = localStorage.getItem('youtube_user_id');
-          const channelTitle = localStorage.getItem('youtube_channel_title');
-          if (userId && channelTitle) {
+          // Prefer direct authData from callback when available (like debugger)
+          const authData = event.data.authData?.data;
+          if (authData?.user_id && authData?.channel_title) {
+            setYouTubeAuth({
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+              userInfo: { id: authData.user_id, channelTitle: authData.channel_title }
+            });
+            addLog(`YouTube connected (postMessage): ${authData.channel_title}`);
+          } else {
+            // Fallback to localStorage populated by callback
+            const userId = localStorage.getItem('youtube_user_id');
+            const channelTitle = localStorage.getItem('youtube_channel_title');
+            if (userId && channelTitle) {
             setYouTubeAuth({
               isAuthenticated: true,
               isLoading: false,
               error: null,
               userInfo: { id: userId, channelTitle }
             });
-            addLog(`YouTube connected: ${channelTitle}`);
+            addLog(`YouTube connected (localStorage): ${channelTitle}`);
           } else {
-            setYouTubeAuth(prev => ({ ...prev, isLoading: false }));
+              setYouTubeAuth(prev => ({ ...prev, isLoading: false }));
+            }
           }
           popup.close();
           window.removeEventListener('message', messageHandler);
