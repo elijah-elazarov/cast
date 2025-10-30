@@ -1749,11 +1749,12 @@ async def upload_tiktok_video(
         if not upload_url or not publish_id:
             raise HTTPException(status_code=400, detail="Invalid init response")
         
-        # Step 2: Upload video file
+        # Step 2: Upload video file (single chunk with Content-Range)
         with open(temp_path, "rb") as f:
             upload_headers = {
                 "Content-Type": "video/mp4",
-                "Content-Length": str(file_size)
+                "Content-Length": str(file_size),
+                "Content-Range": f"bytes 0-{file_size - 1}/{file_size}",
             }
             upload_response = requests.put(upload_url, headers=upload_headers, data=f)
         

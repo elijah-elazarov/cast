@@ -440,11 +440,14 @@ export default function TikTokShortsDebugger() {
       addLog('🔄 Generating TikTok-optimized video...');
       setProcessingProgress(80);
 
-      // Validate the transformed video
-      const validateResponse = await fetch(tiktokTransformUrl, { method: 'HEAD' });
-      if (!validateResponse.ok) {
-        throw new Error('Video transformation failed');
+      // Validate the transformed video (best-effort; Cloudinary may delay availability)
+      let ready = false;
+      for (let i = 0; i < 3; i++) {
+        const resp = await fetch(tiktokTransformUrl, { method: 'HEAD' });
+        if (resp.ok) { ready = true; break; }
+        await new Promise(r => setTimeout(r, 600));
       }
+      if (!ready) addLog('⚠️ Proceeding even though HEAD validation did not pass yet');
 
       setProcessedVideoUrl(tiktokTransformUrl);
       setProcessingProgress(100);
