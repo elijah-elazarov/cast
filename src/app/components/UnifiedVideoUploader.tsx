@@ -98,6 +98,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
+  const [instagramStory, setInstagramStory] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -737,13 +738,14 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
 
     const uploads: Promise<{ platform: string; success: boolean; message: string }>[] = [];
 
-    // Instagram upload (download processed video if available, otherwise send original file)
+    // Instagram uploads (Reels and optionally Stories)
     if (instagramAuth.isAuthenticated) {
+      // Upload Reel
       uploads.push((async () => {
         try {
           const formData = new FormData();
           if (igReelsUrl) {
-            addLog('📥 [Instagram] Downloading processed video...');
+            addLog('📥 [Instagram Reel] Downloading processed video...');
             const rvid = await fetch(igReelsUrl);
             if (!rvid.ok) throw new Error('Failed to download processed video');
             const blob = await rvid.blob();
@@ -754,23 +756,59 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           }
           formData.append('caption', caption);
           formData.append('user_id', instagramAuth.userInfo?.id || '');
-          addLog('📤 [Instagram] Uploading to backend...');
+          addLog('📤 [Instagram Reel] Uploading to backend...');
           const r = await fetch('/api/instagram/upload-reel', {
             method: 'POST',
             body: formData,
             headers: { 'ngrok-skip-browser-warning': 'true' }
           });
           const data: ApiResponse = await r.json().catch(async () => ({ raw: await r.text() }));
-          addLog(`🧾 Instagram response: ${JSON.stringify(data)}`);
+          addLog(`🧾 Instagram Reel response: ${JSON.stringify(data)}`);
           return {
-            platform: 'Instagram',
+            platform: 'Instagram Reel',
             success: r.ok && !!data.success,
             message: data.message || data.detail || 'Uploaded'
           };
         } catch (e) {
-          return { platform: 'Instagram', success: false, message: String(e) };
+          return { platform: 'Instagram Reel', success: false, message: String(e) };
         }
       })());
+
+      // Upload Story if enabled
+      if (instagramStory) {
+        uploads.push((async () => {
+          try {
+            const formData = new FormData();
+            if (igReelsUrl) {
+              addLog('📥 [Instagram Story] Downloading processed video...');
+              const rvid = await fetch(igReelsUrl);
+              if (!rvid.ok) throw new Error('Failed to download processed video');
+              const blob = await rvid.blob();
+              formData.append('file', blob, 'story.mp4');
+            } else {
+              if (!selectedFile) throw new Error('No file available');
+              formData.append('file', selectedFile);
+            }
+            formData.append('caption', caption);
+            formData.append('user_id', instagramAuth.userInfo?.id || '');
+            addLog('📤 [Instagram Story] Uploading to backend...');
+            const r = await fetch('/api/instagram/graph/upload-story', {
+              method: 'POST',
+              body: formData,
+              headers: { 'ngrok-skip-browser-warning': 'true' }
+            });
+            const data: ApiResponse = await r.json().catch(async () => ({ raw: await r.text() }));
+            addLog(`🧾 Instagram Story response: ${JSON.stringify(data)}`);
+            return {
+              platform: 'Instagram Story',
+              success: r.ok && !!data.success,
+              message: data.message || data.detail || 'Uploaded'
+            };
+          } catch (e) {
+            return { platform: 'Instagram Story', success: false, message: String(e) };
+          }
+        })());
+      }
     }
 
     // YouTube upload (send processed video blob to backend)
@@ -1077,6 +1115,23 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
         />
       </div>
+
+      {/* Instagram Story Toggle */}
+      {instagramAuth.isAuthenticated && (
+        <div className="mb-6">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={instagramStory}
+              onChange={(e) => setInstagramStory(e.target.checked)}
+              className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
+            />
+            <span className="text-sm font-medium text-gray-900 dark:text-white">
+              📱 Also post to Instagram Stories
+            </span>
+          </label>
+        </div>
+      )}
 
       {/* Upload Button */}
       <div className="mb-6">
