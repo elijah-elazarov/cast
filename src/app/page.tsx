@@ -9,8 +9,7 @@ import YouTubeConnection from './components/YouTubeConnection';
 import TikTokConnection from './components/TikTokConnection';
 import VideoUploader from './components/VideoUploader';
 import ModernWelcomeFlow from './components/ModernWelcomeFlow';
-// Legacy test tools removed: RealOAuthTest, RealInstagramTest, InstagramTestComponent, InstagramTestPopup, FreshInstagramAuth
-import EnhancedInstagramAuth from './components/EnhancedInstagramAuth';
+// Legacy test tools removed: RealOAuthTest, RealInstagramTest, InstagramTestComponent, InstagramTestPopup, FreshInstagramAuth, EnhancedInstagramAuth
 import InstagramReelsPoster from './components/InstagramReelsPoster';
 import InstagramReelsDebugger from './components/InstagramReelsDebugger';
 import YouTubeShortsDebugger from './components/YouTubeShortsDebugger';
@@ -35,7 +34,6 @@ export default function Home() {
   const [isShowingComplete, setIsShowingComplete] = useState(false);
   const [isFadingToComplete, setIsFadingToComplete] = useState(false);
   const [showWelcomeFlow, setShowWelcomeFlow] = useState(false);
-  const [showEnhancedInstagram, setShowEnhancedInstagram] = useState(false);
   const [showReelsPoster, setShowReelsPoster] = useState(false);
   const [showReelsDebugger, setShowReelsDebugger] = useState(false);
   const [showYouTubeShortsDebugger, setShowYouTubeShortsDebugger] = useState(false);
@@ -279,13 +277,6 @@ export default function Home() {
               🧪 Advanced Uploader
             </button>
             <button
-              onClick={() => setShowEnhancedInstagram(true)}
-              className="inline-flex items-center gap-2 bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 transition-colors text-sm"
-            >
-              <TestTube className="w-4 h-4" />
-              Enhanced Instagram (Facebook SDK)
-            </button>
-            <button
               onClick={() => setShowReelsPoster(true)}
               className="inline-flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors text-sm"
             >
@@ -369,27 +360,6 @@ export default function Home() {
         )}
 
         {/* Legacy Instagram test components removed */}
-
-        {/* Enhanced Instagram Component */}
-        {showEnhancedInstagram && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                🚀 Enhanced Instagram (Facebook SDK)
-              </h2>
-              <button
-                onClick={() => setShowEnhancedInstagram(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                ✕
-              </button>
-            </div>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Using Facebook SDK for JavaScript with automatic token management and persistence.
-            </p>
-            <EnhancedInstagramAuth />
-          </div>
-        )}
 
         {/* Instagram Reels Poster */}
         {showReelsPoster && (
