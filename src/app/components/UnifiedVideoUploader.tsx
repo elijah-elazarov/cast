@@ -360,7 +360,22 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         if (popup.closed) {
           clearInterval(interval);
           window.removeEventListener('message', messageHandler);
-          if (!completed) setYouTubeAuth(prev => ({ ...prev, isLoading: false, error: 'Login cancelled' }));
+          if (!completed) {
+            // Fallback: check localStorage (backend callback may have populated it)
+            const userId = localStorage.getItem('youtube_user_id');
+            const channelTitle = localStorage.getItem('youtube_channel_title');
+            if (userId && channelTitle) {
+              setYouTubeAuth({
+                isAuthenticated: true,
+                isLoading: false,
+                error: null,
+                userInfo: { id: userId, channelTitle }
+              });
+              addLog(`YouTube connected (fallback): ${channelTitle}`);
+            } else {
+              setYouTubeAuth(prev => ({ ...prev, isLoading: false, error: 'Login cancelled' }));
+            }
+          }
         }
       }, 800);
     } catch (error) {
