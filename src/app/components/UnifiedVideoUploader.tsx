@@ -513,12 +513,90 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     setIsUploading(true);
     addLog(`🚀 Starting upload to ${connected} platform(s)...`);
 
+    // Cloudinary helpers (mirrors debuggers)
+    const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dkzbmeto1';
+    const uploadToCloudinary = async (file: File, preset: string, folder: string) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('upload_preset', preset);
+      fd.append('folder', folder);
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, { method: 'POST', body: fd });
+      if (!res.ok) throw new Error('Cloudinary upload failed');
+      return res.json() as Promise<{ public_id: string }>; 
+    };
+    const validateUrl = async (url: string, label: string, tries = 3) => {
+      for (let i = 0; i < tries; i++) {
+        const r = await fetch(url, { method: 'HEAD' });
+        if (r.ok) return true;
+        await new Promise(r => setTimeout(r, 600));
+      }
+      addLog(`⚠️ ${label} not confirmed yet; proceeding`);
+      return false;
+    };
+
+    // Prepare processed URLs
+    let ytProcessedUrl: string | null = null;
+    let ttProcessedUrl: string | null = null;
+    let igReelsUrl: string | null = null;
+    let igThumbUrl: string | null = null;
+
+    if (youtubeAuth.isAuthenticated) {
+      try {
+        addLog('🔄 [YouTube] Uploading to Cloudinary...');
+        const up = await uploadToCloudinary(selectedFile, process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_YOUTUBE || 'youtube_uploads', 'youtube_uploads');
+        ytProcessedUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_1080,h_1920,f_mp4,q_auto:best/${up.public_id}.mp4`;
+        addLog('🔄 [YouTube] Generating Shorts-optimized video...');
+        await validateUrl(ytProcessedUrl, 'YouTube Shorts video');
+        addLog('✅ [YouTube] Processing complete');
+        addLog(`📹 [YouTube] URL: ${ytProcessedUrl}`);
+      } catch (e) {
+        addLog(`❌ [YouTube] Processing error: ${e}`);
+      }
+    }
+
+    if (tiktokAuth.isAuthenticated) {
+      try {
+        addLog('🎬 [TikTok] Processing video...');
+        const up = await uploadToCloudinary(selectedFile, process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_TIKTOK || 'tiktok_uploads', 'tiktok_uploads');
+        ttProcessedUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_1080,h_1920,f_mp4,q_auto:best/${up.public_id}.mp4`;
+        addLog('🔄 [TikTok] Generating optimized video...');
+        await validateUrl(ttProcessedUrl, 'TikTok video');
+        addLog('🎉 [TikTok] Processing complete');
+        addLog(`📹 [TikTok] URL: ${ttProcessedUrl}`);
+      } catch (e) {
+        addLog(`❌ [TikTok] Processing error: ${e}`);
+      }
+    }
+
+    if (instagramAuth.isAuthenticated) {
+      try {
+        addLog('🔄 [Instagram] Uploading to Cloudinary...');
+        const up = await uploadToCloudinary(selectedFile, process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_INSTAGRAM || 'instagram_uploads', 'instagram_uploads');
+        igReelsUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best/${up.public_id}.mp4`;
+        igThumbUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_720,h_1280,c_fill,f_jpg,q_auto:best/${up.public_id}.jpg`;
+        addLog('🔄 [Instagram] Validating transformed assets...');
+        await Promise.all([
+          validateUrl(igReelsUrl, 'Instagram Reels video'),
+          validateUrl(igThumbUrl, 'Instagram thumbnail')
+        ]);
+        addLog('✅ [Instagram] Processing complete');
+        addLog(`📹 [Instagram] Reels URL: ${igReelsUrl}`);
+      } catch (e) {
+        addLog(`❌ [Instagram] Processing error: ${e}`);
+      }
+    }
+
     const uploads: Promise<{ platform: string; success: boolean; message: string }>[] = [];
 
     // Instagram upload
     if (instagramAuth.isAuthenticated) {
       const formData = new FormData();
-      formData.append('file', selectedFile);
+      if (igReelsUrl) {
+        formData.append('video_url', igReelsUrl);
+        if (igThumbUrl) formData.append('thumbnail_url', igThumbUrl);
+      } else {
+        formData.append('file', selectedFile);
+      }
       formData.append('caption', caption);
       formData.append('user_id', instagramAuth.userInfo?.id || '');
       
@@ -541,55 +619,43 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       );
     }
 
-    // YouTube upload
+    // YouTube upload (send processed video blob)
     if (youtubeAuth.isAuthenticated) {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('title', caption);
-      formData.append('description', caption);
-      formData.append('user_id', youtubeAuth.userInfo?.id || '');
-      
-      uploads.push(
-        fetch('/api/youtube/upload-short', {
-          method: 'POST',
-          body: formData,
-          headers: { 'ngrok-skip-browser-warning': 'true' }
-        })
-          .then(async r => {
-            const data = await r.json();
-            addLog(`🧾 YouTube response: ${JSON.stringify(data)}`);
-            return {
-              platform: 'YouTube',
-              success: r.ok && data.success,
-              message: data.message || 'Uploaded'
-            };
-          })
-          .catch(e => ({ platform: 'YouTube', success: false, message: String(e) }))
-      );
+      uploads.push((async () => {
+        try {
+          if (!ytProcessedUrl) throw new Error('Processed video missing');
+          addLog('📥 [YouTube] Downloading processed video...');
+          const rvid = await fetch(ytProcessedUrl);
+          if (!rvid.ok) throw new Error('Failed to download processed video');
+          const blob = await rvid.blob();
+          const formData = new FormData();
+          formData.append('file', blob, 'shorts.mp4');
+          formData.append('title', caption);
+          formData.append('description', caption);
+          formData.append('user_id', youtubeAuth.userInfo?.id || '');
+          const r = await fetch('/api/youtube/upload-short', { method: 'POST', body: formData, headers: { 'ngrok-skip-browser-warning': 'true' } });
+          const data = await r.json().catch(async () => ({ raw: await r.text() }));
+          addLog(`🧾 YouTube response: ${JSON.stringify(data)}`);
+          return { platform: 'YouTube', success: r.ok && !!(data as any).success, message: (data as any).message || 'Uploaded' };
+        } catch (e) {
+          return { platform: 'YouTube', success: false, message: String(e) };
+        }
+      })());
     }
 
-    // TikTok upload
+    // TikTok upload (prefer video_url so backend pulls it)
     if (tiktokAuth.isAuthenticated) {
       const formData = new FormData();
-      formData.append('video', selectedFile);
+      if (ttProcessedUrl) {
+        formData.append('video_url', ttProcessedUrl);
+      } else {
+        formData.append('video', selectedFile);
+      }
       formData.append('description', caption);
       formData.append('user_id', tiktokAuth.userInfo?.userId || '');
-      
       uploads.push(
-        fetch('/api/tiktok/upload-video', {
-          method: 'POST',
-          body: formData,
-          headers: { 'ngrok-skip-browser-warning': 'true' }
-        })
-          .then(async r => {
-            const data = await r.json();
-            addLog(`🧾 TikTok response: ${JSON.stringify(data)}`);
-            return {
-              platform: 'TikTok',
-              success: r.ok && data.success,
-              message: data.message || 'Uploaded'
-            };
-          })
+        fetch('/api/tiktok/upload-video', { method: 'POST', body: formData, headers: { 'ngrok-skip-browser-warning': 'true' } })
+          .then(async r => { const data = await r.json().catch(async () => ({ raw: await r.text() })); addLog(`🧾 TikTok response: ${JSON.stringify(data)}`); return { platform: 'TikTok', success: r.ok && !!(data as any).success, message: (data as any).message || 'Uploaded' }; })
           .catch(e => ({ platform: 'TikTok', success: false, message: String(e) }))
       );
     }
