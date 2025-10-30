@@ -1716,6 +1716,29 @@ async def upload_tiktok_video(
         # Log TikTok upload start
         social_logger.info(f"TIKTOK_UPLOAD_START - User: {user_id} | File: {video.filename if video else 'from_url'} | Description: {description} | Size: {file_size} bytes")
         
+        # Fetch creator info to determine allowed privacy levels (required by Direct Post)
+        creator_info_url = "https://open.tiktokapis.com/v2/post/publish/creator_info/query/?fields=privacy_level_options,account_private"
+        ci_headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+        try:
+            ci_resp = requests.get(creator_info_url, headers=ci_headers)
+            ci_json = ci_resp.json() if ci_resp.content else {}
+        except Exception:
+            ci_json = {}
+        # Choose privacy level: prefer SELF_ONLY when available; otherwise first option
+        privacy_level_options = (
+            ci_json.get("data", {}).get("creator_info", {}).get("privacy_level_options")
+            if isinstance(ci_json, dict) else None
+        )
+        chosen_privacy = "SELF_ONLY"
+        if isinstance(privacy_level_options, list) and len(privacy_level_options) > 0:
+            if "SELF_ONLY" in privacy_level_options:
+                chosen_privacy = "SELF_ONLY"
+            else:
+                chosen_privacy = str(privacy_level_options[0])
+
         # Step 1: Initialize upload for Direct Post
         # Direct flow uses the non-inbox init endpoint
         init_url = "https://open.tiktokapis.com/v2/post/publish/video/init/"
@@ -1724,8 +1747,13 @@ async def upload_tiktok_video(
             "Content-Type": "application/json"
         }
         
-        # Init requires only source_info for FILE_UPLOAD
+        # Init requires post_info.privacy_level plus source_info for FILE_UPLOAD
         init_data = {
+            "post_info": {
+                "privacy_level": chosen_privacy,
+                # Optional caption field per docs is "title"
+                "title": (description or "")[:2200],
+            },
             "source_info": {
                 "source": "FILE_UPLOAD",
                 "video_size": file_size,
