@@ -102,6 +102,15 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fbSdkLoaded, setFbSdkLoaded] = useState(false);
+  
+  // Processed video URLs for each platform
+  const [ytProcessedUrl, setYtProcessedUrl] = useState<string | null>(null);
+  const [ttProcessedUrl, setTtProcessedUrl] = useState<string | null>(null);
+  const [igReelsUrl, setIgReelsUrl] = useState<string | null>(null);
+  const [igThumbUrl, setIgThumbUrl] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [videosReady, setVideosReady] = useState(false);
 
   const addLog = useCallback((message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -271,29 +280,88 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
 
   // Helper: exchange short-lived token to long-lived via backend
   const exchangeLongLivedToken = async (shortLived: string): Promise<string> => {
-    const res = await fetch('/api/instagram/graph/long-lived-token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ access_token: shortLived })
-    });
-    const json = await res.json();
-    if (!res.ok || !json?.success) throw new Error(json?.error || 'Long-lived token failed');
-    return json.data.access_token as string;
+    addLog('Getting long-lived token from backend...');
+    try {
+      const res = await fetch('/api/instagram/graph/long-lived-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token: shortLived })
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        addLog(`Long-lived token failed: ${JSON.stringify(errorData)}`);
+        throw new Error(`Long-lived token failed: ${errorData.error || 'Unknown error'}`);
+      }
+      const json = await res.json();
+      addLog(`Long-lived token successful: ${json.success}`);
+      if (json.data?.expires_in) {
+        addLog(`Token expires in: ${json.data.expires_in} seconds`);
+      }
+      const longLivedToken = json.data.access_token as string;
+      addLog(`Long-lived token obtained: ${longLivedToken.substring(0, 20)}...`);
+      return longLivedToken;
+    } catch (error) {
+      addLog(`Long-lived token error: ${error}`);
+      throw error;
+    }
   };
 
   // Helper: find IG business account via FB pages
   const resolveInstagramAccount = async (accessToken: string): Promise<{ id: string; username: string }> => {
+    addLog('Getting Instagram Business Account from Facebook Pages...');
     const pagesUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${accessToken}`;
     const pagesRes = await fetch(pagesUrl);
+    if (!pagesRes.ok) {
+      const errorData = await pagesRes.json();
+      addLog(`Pages fetch failed: ${JSON.stringify(errorData)}`);
+      throw new Error(`Pages fetch failed: ${errorData.error?.message || 'Unknown error'}`);
+    }
     const pages = await pagesRes.json();
-    if (!pagesRes.ok) throw new Error('Failed to fetch pages');
+    addLog(`Found ${pages.data?.length || 0} Facebook Pages`);
     for (const page of pages.data || []) {
+      addLog(`Checking page: ${page.name} (${page.id})`);
       if (page.instagram_business_account) {
         const igId = page.instagram_business_account.id;
-        const igUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${igId}?fields=id,username&access_token=${accessToken}`;
+        addLog(`Found Instagram Business Account: ${igId}`);
+        addLog(`Page ID: ${page.id}, Page Access Token: ${page.access_token ? 'Present' : 'Missing'}`);
+        const igUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${igId}?fields=id,username,name&access_token=${accessToken}`;
         const igRes = await fetch(igUrl);
+        if (!igRes.ok) {
+          const errorData = await igRes.json();
+          addLog(`Instagram account fetch failed: ${JSON.stringify(errorData)}`);
+          continue;
+        }
         const ig = await igRes.json();
-        if (igRes.ok && ig?.id && ig?.username) return { id: ig.id, username: ig.username };
+        addLog(`Instagram account details: ${JSON.stringify(ig)}`);
+        if (page.access_token && page.id) {
+          const pageUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${page.id}`;
+          const pageParams = new URLSearchParams({
+            fields: 'instagram_business_account{id,username,name,media_count,followers_count}',
+            access_token: page.access_token
+          });
+          try {
+            const pageResponse = await fetch(`${pageUrl}?${pageParams.toString()}`);
+            if (pageResponse.ok) {
+              const pageData = await pageResponse.json();
+              if (pageData.instagram_business_account) {
+                addLog(`✅ Instagram Business Account connected to page: ${pageData.instagram_business_account.username}`);
+              }
+            } else {
+              const errorData = await pageResponse.json().catch(() => ({}));
+              addLog(`Page API call failed (${pageResponse.status}): ${JSON.stringify(errorData)}`);
+            }
+          } catch (error) {
+            addLog(`Page API call error: ${error}`);
+          }
+        }
+        if (ig?.id && ig?.username) {
+          addLog(`Instagram account found: ${ig.username} (${ig.id})`);
+          addLog(`Instagram Page ID: ${igId}`);
+          addLog('Authentication completed successfully!');
+          return { id: ig.id, username: ig.username };
+        }
+      } else {
+        addLog(`Page ${page.name} has no Instagram Business Account`);
       }
     }
     throw new Error('No Instagram Business account found');
@@ -318,9 +386,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         accessToken = loginRes.authResponse?.accessToken || null;
       }
       if (!accessToken) throw new Error('Login failed or cancelled');
-      addLog('Exchanging long-lived token...');
       const longLived = await exchangeLongLivedToken(accessToken);
-      addLog('Resolving Instagram Business account...');
       const ig = await resolveInstagramAccount(longLived);
       // Persist and update UI
       localStorage.setItem('instagram_user_id', ig.id);
@@ -499,12 +565,153 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     }
   };
 
+  // Cloudinary helpers (mirrors debuggers)
+  const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dkzbmeto1';
+  const uploadToCloudinary = async (file: File, preset: string, folder: string) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', preset);
+    fd.append('folder', folder);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, { method: 'POST', body: fd });
+    if (!res.ok) throw new Error('Cloudinary upload failed');
+    return res.json() as Promise<{ public_id: string }>; 
+  };
+  const validateUrl = async (url: string, label: string, tries = 3) => {
+    for (let i = 0; i < tries; i++) {
+      const r = await fetch(url, { method: 'HEAD' });
+      if (r.ok) return true;
+      await new Promise(r => setTimeout(r, 600));
+    }
+    addLog(`⚠️ ${label} not confirmed yet; proceeding`);
+    return false;
+  };
+
+  // Process video for all connected platforms
+  const processVideoForAllPlatforms = useCallback(async (file: File) => {
+    setIsProcessing(true);
+    setVideosReady(false);
+    setProcessingProgress(0);
+    setYtProcessedUrl(null);
+    setTtProcessedUrl(null);
+    setIgReelsUrl(null);
+    setIgThumbUrl(null);
+
+    const connectedCount = [youtubeAuth.isAuthenticated, tiktokAuth.isAuthenticated, instagramAuth.isAuthenticated].filter(Boolean).length;
+    if (connectedCount === 0) {
+      addLog('ℹ️ No platforms connected; please connect at least one platform');
+      setIsProcessing(false);
+      return;
+    }
+
+    const processingPromises: Promise<void>[] = [];
+    let completed = 0;
+
+    const updateProgress = () => {
+      completed++;
+      setProcessingProgress(Math.round((completed / connectedCount) * 100));
+    };
+
+    if (youtubeAuth.isAuthenticated) {
+      processingPromises.push(
+        (async () => {
+          try {
+            addLog('🔄 [YouTube] Uploading to Cloudinary...');
+            setProcessingProgress(10);
+            const up = await uploadToCloudinary(file, process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_YOUTUBE || 'youtube_uploads', 'youtube_uploads');
+            const url = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_1080,h_1920,f_mp4,q_auto:best/${up.public_id}.mp4`;
+            addLog('🔄 [YouTube] Generating Shorts-optimized video...');
+            setProcessingProgress(50);
+            await validateUrl(url, 'YouTube Shorts video');
+            setYtProcessedUrl(url);
+            updateProgress();
+            addLog('✅ [YouTube] Processing complete');
+            addLog(`📹 [YouTube] URL: ${url}`);
+          } catch (e) {
+            updateProgress();
+            addLog(`❌ [YouTube] Processing error: ${e}`);
+          }
+        })()
+      );
+    }
+
+    if (tiktokAuth.isAuthenticated) {
+      processingPromises.push(
+        (async () => {
+          try {
+            addLog('🎬 [TikTok] Processing video...');
+            setProcessingProgress(10);
+            const up = await uploadToCloudinary(file, process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_TIKTOK || 'tiktok_uploads', 'tiktok_uploads');
+            const url = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_1080,h_1920,f_mp4,q_auto:best/${up.public_id}.mp4`;
+            addLog('🔄 [TikTok] Generating optimized video...');
+            setProcessingProgress(50);
+            await validateUrl(url, 'TikTok video');
+            setTtProcessedUrl(url);
+            updateProgress();
+            addLog('🎉 [TikTok] Processing complete');
+            addLog(`📹 [TikTok] URL: ${url}`);
+          } catch (e) {
+            updateProgress();
+            addLog(`❌ [TikTok] Processing error: ${e}`);
+          }
+        })()
+      );
+    }
+
+    if (instagramAuth.isAuthenticated) {
+      processingPromises.push(
+        (async () => {
+          try {
+            addLog('🔄 [Instagram] Uploading to Cloudinary...');
+            setProcessingProgress(10);
+            const up = await uploadToCloudinary(file, process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_INSTAGRAM || 'instagram_uploads', 'instagram_uploads');
+            const reelsUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best/${up.public_id}.mp4`;
+            const thumbUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_720,h_1280,c_fill,f_jpg,q_auto:best/${up.public_id}.jpg`;
+            addLog('🔄 [Instagram] Validating transformed assets...');
+            setProcessingProgress(50);
+            await Promise.all([
+              validateUrl(reelsUrl, 'Instagram Reels video'),
+              validateUrl(thumbUrl, 'Instagram thumbnail')
+            ]);
+            setIgReelsUrl(reelsUrl);
+            setIgThumbUrl(thumbUrl);
+            updateProgress();
+            addLog('✅ [Instagram] Processing complete');
+            addLog(`📹 [Instagram] Reels URL: ${reelsUrl}`);
+          } catch (e) {
+            updateProgress();
+            addLog(`❌ [Instagram] Processing error: ${e}`);
+          }
+        })()
+      );
+    }
+
+    await Promise.all(processingPromises);
+    setIsProcessing(false);
+    setVideosReady(true);
+    setProcessingProgress(100);
+    addLog(`✅ Video processed for ${connectedCount} platform(s)`);
+  }, [youtubeAuth.isAuthenticated, tiktokAuth.isAuthenticated, instagramAuth.isAuthenticated, addLog]);
+
   // Handle file selection
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
+    setVideosReady(false);
+    setYtProcessedUrl(null);
+    setTtProcessedUrl(null);
+    setIgReelsUrl(null);
+    setIgThumbUrl(null);
     addLog(`Selected file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
+  };
+
+  // Manual process handler
+  const handleProcess = async () => {
+    if (!selectedFile) {
+      addLog('❌ No file selected');
+      return;
+    }
+    await processVideoForAllPlatforms(selectedFile);
   };
 
   // Unified upload to all connected platforms
@@ -520,81 +727,13 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       return;
     }
 
+    if (isProcessing) {
+      addLog('⏳ Video is still processing; please wait...');
+      return;
+    }
+
     setIsUploading(true);
     addLog(`🚀 Starting upload to ${connected} platform(s)...`);
-
-    // Cloudinary helpers (mirrors debuggers)
-    const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dkzbmeto1';
-    const uploadToCloudinary = async (file: File, preset: string, folder: string) => {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('upload_preset', preset);
-      fd.append('folder', folder);
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, { method: 'POST', body: fd });
-      if (!res.ok) throw new Error('Cloudinary upload failed');
-      return res.json() as Promise<{ public_id: string }>; 
-    };
-    const validateUrl = async (url: string, label: string, tries = 3) => {
-      for (let i = 0; i < tries; i++) {
-        const r = await fetch(url, { method: 'HEAD' });
-        if (r.ok) return true;
-        await new Promise(r => setTimeout(r, 600));
-      }
-      addLog(`⚠️ ${label} not confirmed yet; proceeding`);
-      return false;
-    };
-
-    // Prepare processed URLs
-    let ytProcessedUrl: string | null = null;
-    let ttProcessedUrl: string | null = null;
-    let igReelsUrl: string | null = null;
-    let igThumbUrl: string | null = null;
-
-    if (youtubeAuth.isAuthenticated) {
-      try {
-        addLog('🔄 [YouTube] Uploading to Cloudinary...');
-        const up = await uploadToCloudinary(selectedFile, process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_YOUTUBE || 'youtube_uploads', 'youtube_uploads');
-        ytProcessedUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_1080,h_1920,f_mp4,q_auto:best/${up.public_id}.mp4`;
-        addLog('🔄 [YouTube] Generating Shorts-optimized video...');
-        await validateUrl(ytProcessedUrl, 'YouTube Shorts video');
-        addLog('✅ [YouTube] Processing complete');
-        addLog(`📹 [YouTube] URL: ${ytProcessedUrl}`);
-      } catch (e) {
-        addLog(`❌ [YouTube] Processing error: ${e}`);
-      }
-    }
-
-    if (tiktokAuth.isAuthenticated) {
-      try {
-        addLog('🎬 [TikTok] Processing video...');
-        const up = await uploadToCloudinary(selectedFile, process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_TIKTOK || 'tiktok_uploads', 'tiktok_uploads');
-        ttProcessedUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_1080,h_1920,f_mp4,q_auto:best/${up.public_id}.mp4`;
-        addLog('🔄 [TikTok] Generating optimized video...');
-        await validateUrl(ttProcessedUrl, 'TikTok video');
-        addLog('🎉 [TikTok] Processing complete');
-        addLog(`📹 [TikTok] URL: ${ttProcessedUrl}`);
-      } catch (e) {
-        addLog(`❌ [TikTok] Processing error: ${e}`);
-      }
-    }
-
-    if (instagramAuth.isAuthenticated) {
-      try {
-        addLog('🔄 [Instagram] Uploading to Cloudinary...');
-        const up = await uploadToCloudinary(selectedFile, process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_INSTAGRAM || 'instagram_uploads', 'instagram_uploads');
-        igReelsUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best/${up.public_id}.mp4`;
-        igThumbUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_720,h_1280,c_fill,f_jpg,q_auto:best/${up.public_id}.jpg`;
-        addLog('🔄 [Instagram] Validating transformed assets...');
-        await Promise.all([
-          validateUrl(igReelsUrl, 'Instagram Reels video'),
-          validateUrl(igThumbUrl, 'Instagram thumbnail')
-        ]);
-        addLog('✅ [Instagram] Processing complete');
-        addLog(`📹 [Instagram] Reels URL: ${igReelsUrl}`);
-      } catch (e) {
-        addLog(`❌ [Instagram] Processing error: ${e}`);
-      }
-    }
 
     const uploads: Promise<{ platform: string; success: boolean; message: string }>[] = [];
 
@@ -862,6 +1001,64 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         </div>
       </div>
 
+      {/* Process Button */}
+      {selectedFile && (
+        <div className="mb-6">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleProcess}
+              disabled={!selectedFile || isProcessing || (!instagramAuth.isAuthenticated && !youtubeAuth.isAuthenticated && !tiktokAuth.isAuthenticated)}
+              className={`px-4 py-2 rounded ${!selectedFile || (!instagramAuth.isAuthenticated && !youtubeAuth.isAuthenticated && !tiktokAuth.isAuthenticated) ? 'bg-gray-400 text-gray-600 cursor-not-allowed' : 'bg-blue-700 text-white hover:bg-blue-800 disabled:opacity-50'}`}
+            >
+              {!instagramAuth.isAuthenticated && !youtubeAuth.isAuthenticated && !tiktokAuth.isAuthenticated
+                ? 'Connect platforms to process video'
+                : isProcessing
+                  ? `Processing... ${processingProgress}%`
+                  : 'Process with Cloudinary'}
+            </button>
+            {isProcessing && (
+              <div className="flex-1 bg-gray-200 rounded h-2">
+                <div className="bg-blue-600 h-2 rounded transition-all duration-300" style={{ width: `${processingProgress}%` }} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Video Status Boxes */}
+      {videosReady && (ytProcessedUrl || ttProcessedUrl || igReelsUrl) && (
+        <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center mb-2">
+            <div className="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
+            <span className="text-green-800 font-medium">Video Status: Ready for Upload</span>
+          </div>
+          {ytProcessedUrl && youtubeAuth.isAuthenticated && (
+            <div className="text-sm text-green-700 mt-1 flex items-center">
+              <span className="mr-2">📹</span>
+              <span>YouTube Shorts video: </span>
+              <a className="text-blue-600 underline ml-1" href={ytProcessedUrl} target="_blank" rel="noreferrer">open</a>
+              <span className="ml-2 text-green-600">✓</span>
+            </div>
+          )}
+          {ttProcessedUrl && tiktokAuth.isAuthenticated && (
+            <div className="text-sm text-green-700 mt-1 flex items-center">
+              <span className="mr-2">🎬</span>
+              <span>TikTok video: </span>
+              <a className="text-blue-600 underline ml-1" href={ttProcessedUrl} target="_blank" rel="noreferrer">open</a>
+              <span className="ml-2 text-green-600">✓</span>
+            </div>
+          )}
+          {igReelsUrl && instagramAuth.isAuthenticated && (
+            <div className="text-sm text-green-700 mt-1 flex items-center">
+              <span className="mr-2">📹</span>
+              <span>Instagram Reels video: </span>
+              <a className="text-blue-600 underline ml-1" href={igReelsUrl} target="_blank" rel="noreferrer">open</a>
+              <span className="ml-2 text-green-600">✓</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Caption */}
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Caption</label>
@@ -878,13 +1075,18 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       <div className="mb-6">
         <button
           onClick={handleUpload}
-          disabled={!selectedFile || isUploading || (!instagramAuth.isAuthenticated && !youtubeAuth.isAuthenticated && !tiktokAuth.isAuthenticated)}
+          disabled={!selectedFile || isUploading || !videosReady || (!instagramAuth.isAuthenticated && !youtubeAuth.isAuthenticated && !tiktokAuth.isAuthenticated)}
           className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
         >
           {isUploading ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
               Uploading...
+            </>
+          ) : !videosReady ? (
+            <>
+              <UploadCloud className="w-5 h-5" />
+              Process video first
             </>
           ) : (
             <>
