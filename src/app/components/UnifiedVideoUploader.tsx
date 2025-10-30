@@ -1,8 +1,24 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Instagram, Youtube, Music, UploadCloud, FileVideo2, Loader2, X, Check } from 'lucide-react';
+import { Instagram, Youtube, Music, UploadCloud, FileVideo2, Loader2, X } from 'lucide-react';
 /* eslint-disable @next/next/no-img-element */
+
+type FacebookLoginStatus = {
+  status: 'connected' | 'not_authorized' | 'unknown';
+  authResponse?: { accessToken: string };
+};
+
+type FacebookSDK = {
+  init: (config: { appId: string; cookie: boolean; xfbml: boolean; version: string }) => void;
+  getLoginStatus: (callback: (response: FacebookLoginStatus) => void) => void;
+  login: (
+    callback: (response: { authResponse?: { accessToken: string } }) => void,
+    options: { scope: string; return_scopes: boolean }
+  ) => void;
+};
+
+type FBWindow = Window & { FB?: FacebookSDK; fbAsyncInit?: () => void };
 
 // Instagram auth (from InstagramReelsDebugger)
 interface InstagramAuthState {
@@ -87,7 +103,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
   useEffect(() => {
     // Load Facebook SDK (for Instagram)
     const loadFacebookSDK = () => {
-      if ((window as any).FB) {
+      const w = window as FBWindow;
+      if (w.FB) {
         setFbSdkLoaded(true);
         addLog('Facebook SDK already loaded');
         return;
@@ -99,8 +116,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       script.defer = true;
       script.crossOrigin = 'anonymous';
       script.onload = () => {
-        (window as any).fbAsyncInit = () => {
-          (window as any).FB.init({
+        (w as FBWindow).fbAsyncInit = () => {
+          w.FB?.init({
             appId: INSTAGRAM_CONFIG.appId,
             cookie: true,
             xfbml: true,
@@ -224,7 +241,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         }
       });
     }
-  }, [addLog]);
+  }, [addLog, INSTAGRAM_CONFIG.appId, INSTAGRAM_CONFIG.apiVersion]);
 
   // Helper: exchange short-lived token to long-lived via backend
   const exchangeLongLivedToken = async (shortLived: string): Promise<string> => {
@@ -261,17 +278,18 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     setInstagramAuth(prev => ({ ...prev, isLoading: true, error: null }));
     addLog('Starting Instagram authentication (Facebook SDK)...');
     try {
-      if (!(window as any).FB || !fbSdkLoaded) throw new Error('Facebook SDK not loaded yet');
+      const w = window as FBWindow;
+      if (!w.FB || !fbSdkLoaded) throw new Error('Facebook SDK not loaded yet');
       // Check existing login
-      const auth = await new Promise<any>((resolve) => (window as any).FB.getLoginStatus((r: any) => resolve(r)));
+      const auth = await new Promise<FacebookLoginStatus>((resolve) => w.FB!.getLoginStatus((r) => resolve(r as unknown as FacebookLoginStatus)));
       let accessToken: string | null = null;
       if (auth?.status === 'connected') {
         accessToken = auth.authResponse?.accessToken || null;
         addLog('Using existing Facebook session');
       } else {
         addLog('Invoking FB.login...');
-        const loginRes = await new Promise<any>((resolve) => (window as any).FB.login((r: any) => resolve(r), { scope: INSTAGRAM_CONFIG.scope, return_scopes: true }));
-        accessToken = loginRes?.authResponse?.accessToken || null;
+        const loginRes = await new Promise<{ authResponse?: { accessToken: string } }>((resolve) => w.FB!.login((r) => resolve(r as unknown as { authResponse?: { accessToken: string } }), { scope: INSTAGRAM_CONFIG.scope, return_scopes: true }));
+        accessToken = loginRes.authResponse?.accessToken || null;
       }
       if (!accessToken) throw new Error('Login failed or cancelled');
       addLog('Exchanging long-lived token...');
