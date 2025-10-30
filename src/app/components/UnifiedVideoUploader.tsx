@@ -335,8 +335,9 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       if (!popup) throw new Error('Popup blocked. Please allow popups for this site.');
       try { popup.document.title = 'Connecting to YouTube…'; popup.focus(); } catch {}
 
+      interface YoutubeAuthUrlResponse { success: boolean; data?: { auth_url?: string }; auth_url?: string; error?: string }
       const response = await fetch('/api/youtube/auth-url', { headers: { 'ngrok-skip-browser-warning': 'true' } });
-      let data: any;
+      let data: unknown;
       try {
         data = await response.json();
       } catch {
@@ -344,9 +345,12 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         popup.close();
         throw new Error(`Auth URL fetch returned non-JSON: ${text.slice(0,80)}...`);
       }
-      if (!data?.success) { popup.close(); throw new Error(data?.error || 'Failed to get auth URL'); }
+      const json = data as Partial<YoutubeAuthUrlResponse>;
+      if (!json.success) { popup.close(); throw new Error(json.error || 'Failed to get auth URL'); }
+      const authUrl = json.data?.auth_url ?? json.auth_url;
+      if (!authUrl) { popup.close(); throw new Error('Auth URL missing in response'); }
       addLog('Opening YouTube authentication popup...');
-      popup.location.href = data.data?.auth_url || data.auth_url;
+      popup.location.href = authUrl;
 
       let completed = false;
       const messageHandler = (event: MessageEvent) => {
