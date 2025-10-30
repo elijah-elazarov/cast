@@ -1678,7 +1678,7 @@ async def upload_tiktok_video(
         
         # Try to get token info to see what scopes we have
         try:
-            token_info_url = "https://open.tiktokapis.com/v2/user/info/"
+            token_info_url = "https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url"
             token_headers = {
                 "Authorization": f"Bearer {access_token}",
                 "Content-Type": "application/json"
@@ -1758,7 +1758,8 @@ async def upload_tiktok_video(
             }
             upload_response = requests.put(upload_url, headers=upload_headers, data=f)
         
-        if upload_response.status_code != 200:
+        if upload_response.status_code not in (200, 201, 202, 204):
+            logger.error(f"TikTok upload PUT failed: status={upload_response.status_code} body={upload_response.text}")
             raise HTTPException(status_code=400, detail="Failed to upload video file")
         
         # Clean up temp file
