@@ -7,7 +7,6 @@ import InstagramOAuthConnection from './components/InstagramOAuthConnection';
 import InstagramVideoUploader from './components/InstagramVideoUploader';
 import YouTubeConnection from './components/YouTubeConnection';
 import TikTokConnection from './components/TikTokConnection';
-import VideoUploader from './components/VideoUploader';
 import ModernWelcomeFlow from './components/ModernWelcomeFlow';
 // Legacy test tools removed: RealOAuthTest, RealInstagramTest, InstagramTestComponent, InstagramTestPopup, FreshInstagramAuth, EnhancedInstagramAuth
 import InstagramReelsPoster from './components/InstagramReelsPoster';
@@ -446,16 +445,6 @@ export default function Home() {
         )}
 
         {/* Fresh Instagram component removed */}
-
-        {/* Video Upload Section */}
-        {(connectedAccounts.instagram || connectedAccounts.youtube || connectedAccounts.tiktok) ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-              Upload Video Content
-            </h2>
-            <VideoUploader connectedAccounts={connectedAccounts} />
-          </div>
-        ) : null}
       </div>
 
       {/* Modern Welcome Flow Modal */}
