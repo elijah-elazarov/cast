@@ -509,7 +509,7 @@ export default function TikTokShortsDebugger() {
         try {
           const errorData = await response.json();
           detail = errorData.detail || errorData.error || JSON.stringify(errorData);
-        } catch (e) {
+        } catch {
           const text = await response.text();
           detail = text || detail;
         }
@@ -517,11 +517,14 @@ export default function TikTokShortsDebugger() {
       }
 
       const data = await response.json();
+      // Always show raw backend response for debugging
+      addLog(`🧾 Backend response: ${JSON.stringify(data)}`);
 
-      if (data.success && data.data) {
-        addLog(`🎉 SUCCESS! TikTok video uploaded with ID: ${data.data.publish_id}`);
-        addLog('✅ Your TikTok video has been uploaded successfully!');
-        addLog(`🔗 Video URL: ${data.data.video_url || 'Check your TikTok profile'}`);
+      // Treat inbox-ready message as success and surface publish_id when present
+      if (data.success) {
+        const publishId = data.publish_id || (data.data && data.data.publish_id);
+        if (publishId) addLog(`📨 TikTok inbox publish_id: ${publishId}`);
+        addLog('✅ Upload sent to TikTok. Open the TikTok app to finish posting.');
       } else {
         addLog(`❌ Upload failed: ${data.detail || data.message || 'Unknown error'}`);
       }
