@@ -20,6 +20,16 @@ type FacebookSDK = {
 
 type FBWindow = Window & { FB?: FacebookSDK; fbAsyncInit?: () => void };
 
+// API response type
+type ApiResponse = {
+  success?: boolean;
+  message?: string;
+  detail?: string;
+  error?: string;
+  raw?: string;
+  data?: unknown;
+};
+
 // Instagram auth (from InstagramReelsDebugger)
 interface InstagramAuthState {
   isAuthenticated: boolean;
@@ -634,9 +644,9 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           formData.append('description', caption);
           formData.append('user_id', youtubeAuth.userInfo?.id || '');
           const r = await fetch('/api/youtube/upload-short', { method: 'POST', body: formData, headers: { 'ngrok-skip-browser-warning': 'true' } });
-          const data = await r.json().catch(async () => ({ raw: await r.text() }));
+          const data: ApiResponse = await r.json().catch(async () => ({ raw: await r.text() }));
           addLog(`🧾 YouTube response: ${JSON.stringify(data)}`);
-          return { platform: 'YouTube', success: r.ok && !!(data as any).success, message: (data as any).message || 'Uploaded' };
+          return { platform: 'YouTube', success: r.ok && !!data.success, message: data.message || 'Uploaded' };
         } catch (e) {
           return { platform: 'YouTube', success: false, message: String(e) };
         }
@@ -655,7 +665,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       formData.append('user_id', tiktokAuth.userInfo?.userId || '');
       uploads.push(
         fetch('/api/tiktok/upload-video', { method: 'POST', body: formData, headers: { 'ngrok-skip-browser-warning': 'true' } })
-          .then(async r => { const data = await r.json().catch(async () => ({ raw: await r.text() })); addLog(`🧾 TikTok response: ${JSON.stringify(data)}`); return { platform: 'TikTok', success: r.ok && !!(data as any).success, message: (data as any).message || 'Uploaded' }; })
+          .then(async r => { const data: ApiResponse = await r.json().catch(async () => ({ raw: await r.text() })); addLog(`🧾 TikTok response: ${JSON.stringify(data)}`); return { platform: 'TikTok', success: r.ok && !!data.success, message: data.message || 'Uploaded' }; })
           .catch(e => ({ platform: 'TikTok', success: false, message: String(e) }))
       );
     }
