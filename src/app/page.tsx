@@ -8,8 +8,7 @@ import InstagramVideoUploader from './components/InstagramVideoUploader';
 import YouTubeConnection from './components/YouTubeConnection';
 import TikTokConnection from './components/TikTokConnection';
 import ModernWelcomeFlow from './components/ModernWelcomeFlow';
-// Legacy test tools removed: RealOAuthTest, RealInstagramTest, InstagramTestComponent, InstagramTestPopup, FreshInstagramAuth, EnhancedInstagramAuth
-import InstagramReelsPoster from './components/InstagramReelsPoster';
+// Legacy test tools removed: RealOAuthTest, RealInstagramTest, InstagramTestComponent, InstagramTestPopup, FreshInstagramAuth, EnhancedInstagramAuth, InstagramReelsPoster
 import InstagramReelsDebugger from './components/InstagramReelsDebugger';
 import YouTubeShortsDebugger from './components/YouTubeShortsDebugger';
 import TikTokShortsDebugger from './components/TikTokShortsDebugger';
@@ -33,7 +32,6 @@ export default function Home() {
   const [isShowingComplete, setIsShowingComplete] = useState(false);
   const [isFadingToComplete, setIsFadingToComplete] = useState(false);
   const [showWelcomeFlow, setShowWelcomeFlow] = useState(false);
-  const [showReelsPoster, setShowReelsPoster] = useState(false);
   const [showReelsDebugger, setShowReelsDebugger] = useState(false);
   const [showYouTubeShortsDebugger, setShowYouTubeShortsDebugger] = useState(false);
   const [showTikTokShortsDebugger, setShowTikTokShortsDebugger] = useState(false);
@@ -276,13 +274,6 @@ export default function Home() {
               🧪 Advanced Uploader
             </button>
             <button
-              onClick={() => setShowReelsPoster(true)}
-              className="inline-flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors text-sm"
-            >
-              <TestTube className="w-4 h-4" />
-              Instagram Reels Poster
-            </button>
-            <button
               onClick={() => setShowReelsDebugger(true)}
               className="inline-flex items-center gap-2 bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors text-sm"
             >
@@ -359,27 +350,6 @@ export default function Home() {
         )}
 
         {/* Legacy Instagram test components removed */}
-
-        {/* Instagram Reels Poster */}
-        {showReelsPoster && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                🎬 Instagram Reels Poster
-              </h2>
-              <button
-                onClick={() => setShowReelsPoster(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                ✕
-              </button>
-            </div>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              App-authenticated posting for Instagram Reels with complete 3-step flow.
-            </p>
-            <InstagramReelsPoster />
-          </div>
-        )}
 
         {/* Instagram Reels Debugger */}
         {showReelsDebugger && (
