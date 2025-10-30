@@ -335,9 +335,16 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       if (!popup) throw new Error('Popup blocked. Please allow popups for this site.');
       try { popup.document.title = 'Connecting to YouTube…'; popup.focus(); } catch {}
 
-      const response = await fetch('/api/youtube/auth-url');
-      const data = await response.json();
-      if (!data.success) { popup.close(); throw new Error(data.error || 'Failed to get auth URL'); }
+      const response = await fetch('/api/youtube/auth-url', { headers: { 'ngrok-skip-browser-warning': 'true' } });
+      let data: any;
+      try {
+        data = await response.json();
+      } catch {
+        const text = await response.text();
+        popup.close();
+        throw new Error(`Auth URL fetch returned non-JSON: ${text.slice(0,80)}...`);
+      }
+      if (!data?.success) { popup.close(); throw new Error(data?.error || 'Failed to get auth URL'); }
       addLog('Opening YouTube authentication popup...');
       popup.location.href = data.data?.auth_url || data.auth_url;
 
