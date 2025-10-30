@@ -1734,6 +1734,11 @@ async def upload_tiktok_video(
         }
         
         init_response = requests.post(init_url, headers=headers, json=init_data)
+        # Log raw response for debugging
+        try:
+            logger.info(f"TikTok INIT raw: status={init_response.status_code} body={init_response.text}")
+        except Exception:
+            pass
         try:
             init_result = init_response.json()
         except Exception:
@@ -1757,6 +1762,11 @@ async def upload_tiktok_video(
                 "Content-Range": f"bytes 0-{file_size - 1}/{file_size}",
             }
             upload_response = requests.put(upload_url, headers=upload_headers, data=f)
+        # Log raw upload response
+        try:
+            logger.info(f"TikTok UPLOAD raw: status={upload_response.status_code} body={upload_response.text}")
+        except Exception:
+            pass
         
         if upload_response.status_code not in (200, 201, 202, 204):
             logger.error(f"TikTok upload PUT failed: status={upload_response.status_code} body={upload_response.text}")
