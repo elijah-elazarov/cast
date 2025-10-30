@@ -15,6 +15,8 @@ import InstagramReelsPoster from './components/InstagramReelsPoster';
 import InstagramReelsDebugger from './components/InstagramReelsDebugger';
 import YouTubeShortsDebugger from './components/YouTubeShortsDebugger';
 import TikTokShortsDebugger from './components/TikTokShortsDebugger';
+import UnifiedVideoUploader from './components/UnifiedVideoUploader';
+import UnifiedUploaderAdvanced from './components/UnifiedUploaderAdvanced';
 // import SimpleInstagramAuth from './components/SimpleInstagramAuth';
 
 export default function Home() {
@@ -38,6 +40,8 @@ export default function Home() {
   const [showReelsDebugger, setShowReelsDebugger] = useState(false);
   const [showYouTubeShortsDebugger, setShowYouTubeShortsDebugger] = useState(false);
   const [showTikTokShortsDebugger, setShowTikTokShortsDebugger] = useState(false);
+  const [showUnifiedUploader, setShowUnifiedUploader] = useState(false);
+  const [showUnifiedAdvanced, setShowUnifiedAdvanced] = useState(false);
   const TOTAL_COUNTDOWN = 3;
 
   // Check localStorage on mount to initialize connected state
@@ -263,6 +267,18 @@ export default function Home() {
           </p>
           <div className="flex flex-wrap gap-2">
             <button
+              onClick={() => setShowUnifiedUploader(true)}
+              className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+            >
+              🚀 Unified Uploader
+            </button>
+            <button
+              onClick={() => setShowUnifiedAdvanced(true)}
+              className="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+            >
+              🧪 Advanced Uploader
+            </button>
+            <button
               onClick={() => setShowEnhancedInstagram(true)}
               className="inline-flex items-center gap-2 bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 transition-colors text-sm"
             >
@@ -487,6 +503,14 @@ export default function Home() {
       )}
 
       {/* Legacy Instagram popup removed */}
+
+      {showUnifiedUploader && (
+        <UnifiedVideoUploader onClose={() => setShowUnifiedUploader(false)} />
+      )}
+
+      {showUnifiedAdvanced && (
+        <UnifiedUploaderAdvanced onClose={() => setShowUnifiedAdvanced(false)} />
+      )}
     </div>
   );
 }
