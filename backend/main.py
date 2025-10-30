@@ -1716,44 +1716,15 @@ async def upload_tiktok_video(
         # Log TikTok upload start
         social_logger.info(f"TIKTOK_UPLOAD_START - User: {user_id} | File: {video.filename if video else 'from_url'} | Description: {description} | Size: {file_size} bytes")
         
-        # Fetch creator info to determine allowed privacy levels (required by Direct Post)
-        creator_info_url = "https://open.tiktokapis.com/v2/post/publish/creator_info/query/?fields=privacy_level_options,account_private"
-        ci_headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json",
-        }
-        try:
-            ci_resp = requests.get(creator_info_url, headers=ci_headers)
-            ci_json = ci_resp.json() if ci_resp.content else {}
-        except Exception:
-            ci_json = {}
-        # Choose privacy level: prefer SELF_ONLY when available; otherwise first option
-        privacy_level_options = (
-            ci_json.get("data", {}).get("creator_info", {}).get("privacy_level_options")
-            if isinstance(ci_json, dict) else None
-        )
-        chosen_privacy = "SELF_ONLY"
-        if isinstance(privacy_level_options, list) and len(privacy_level_options) > 0:
-            if "SELF_ONLY" in privacy_level_options:
-                chosen_privacy = "SELF_ONLY"
-            else:
-                chosen_privacy = str(privacy_level_options[0])
-
-        # Step 1: Initialize upload for Direct Post
-        # Direct flow uses the non-inbox init endpoint
-        init_url = "https://open.tiktokapis.com/v2/post/publish/video/init/"
+        # Step 1: Initialize upload for Inbox flow (works without audit)
+        init_url = "https://open.tiktokapis.com/v2/post/publish/inbox/video/init/"
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json"
         }
         
-        # Init requires post_info.privacy_level plus source_info for FILE_UPLOAD
+        # Inbox init requires only source_info
         init_data = {
-            "post_info": {
-                "privacy_level": chosen_privacy,
-                # Optional caption field per docs is "title"
-                "title": (description or "")[:2200],
-            },
             "source_info": {
                 "source": "FILE_UPLOAD",
                 "video_size": file_size,
@@ -1796,37 +1767,13 @@ async def upload_tiktok_video(
             os.remove(temp_path)
             temp_path = None
         
-        # Step 3: Submit for Direct Post publish
-        submit_url = "https://open.tiktokapis.com/v2/post/publish/video/submit/"
-        submit_headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json",
-        }
-        submit_body = {
-            "publish_id": publish_id,
-            "post_info": {
-                "caption": (description or "Posted via Cast")[:150],
-                "privacy_level": "SELF_ONLY",
-            }
-        }
-        submit_response = requests.post(submit_url, headers=submit_headers, json=submit_body)
-        try:
-            submit_json = submit_response.json()
-        except Exception:
-            submit_json = {"raw": submit_response.text}
-        if submit_response.status_code != 200:
-            logger.error(f"TikTok submit failed: status={submit_response.status_code} body={submit_json}")
-            raise HTTPException(status_code=400, detail="Failed to submit TikTok post")
-
-        # Log successful direct publish submission
-        social_logger.info(f"TIKTOK_DIRECT_SUBMIT_SUCCESS - User: {user_id} | Publish ID: {publish_id}")
-        logger.info(f"TikTok direct post submitted successfully for user: {user_id}")
-
+        # Inbox flow complete – user gets a TikTok notification to finish posting
+        social_logger.info(f"TIKTOK_UPLOAD_SUCCESS - User: {user_id} | Publish ID: {publish_id}")
+        logger.info(f"TikTok inbox upload initialized and file uploaded for user: {user_id}")
         return JSONResponse({
             "success": True,
-            "message": "TikTok direct post submitted successfully",
-            "publish_id": publish_id,
-            "submit": submit_json
+            "message": "TikTok inbox upload ready. Finish posting in TikTok app.",
+            "publish_id": publish_id
         })
         
     except HTTPException:
