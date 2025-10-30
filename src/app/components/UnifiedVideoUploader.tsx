@@ -737,38 +737,43 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
 
     const uploads: Promise<{ platform: string; success: boolean; message: string }>[] = [];
 
-    // Instagram upload
+    // Instagram upload (download processed video if available, otherwise send original file)
     if (instagramAuth.isAuthenticated) {
-      const formData = new FormData();
-      if (igReelsUrl) {
-        formData.append('video_url', igReelsUrl);
-        if (igThumbUrl) formData.append('thumbnail_url', igThumbUrl);
-      } else {
-        formData.append('file', selectedFile);
-      }
-      formData.append('caption', caption);
-      formData.append('user_id', instagramAuth.userInfo?.id || '');
-      
-      uploads.push(
-        fetch('/api/instagram/upload-reel', {
-          method: 'POST',
-          body: formData,
-          headers: { 'ngrok-skip-browser-warning': 'true' }
-        })
-          .then(async r => {
-            const data = await r.json();
-            addLog(`🧾 Instagram response: ${JSON.stringify(data)}`);
-            return {
-              platform: 'Instagram',
-              success: r.ok && data.success,
-              message: data.message || data.detail || 'Uploaded'
-            };
-          })
-          .catch(e => ({ platform: 'Instagram', success: false, message: String(e) }))
-      );
+      uploads.push((async () => {
+        try {
+          const formData = new FormData();
+          if (igReelsUrl) {
+            addLog('📥 [Instagram] Downloading processed video...');
+            const rvid = await fetch(igReelsUrl);
+            if (!rvid.ok) throw new Error('Failed to download processed video');
+            const blob = await rvid.blob();
+            formData.append('file', blob, 'reel.mp4');
+          } else {
+            if (!selectedFile) throw new Error('No file available');
+            formData.append('file', selectedFile);
+          }
+          formData.append('caption', caption);
+          formData.append('user_id', instagramAuth.userInfo?.id || '');
+          addLog('📤 [Instagram] Uploading to backend...');
+          const r = await fetch('/api/instagram/upload-reel', {
+            method: 'POST',
+            body: formData,
+            headers: { 'ngrok-skip-browser-warning': 'true' }
+          });
+          const data: ApiResponse = await r.json().catch(async () => ({ raw: await r.text() }));
+          addLog(`🧾 Instagram response: ${JSON.stringify(data)}`);
+          return {
+            platform: 'Instagram',
+            success: r.ok && !!data.success,
+            message: data.message || data.detail || 'Uploaded'
+          };
+        } catch (e) {
+          return { platform: 'Instagram', success: false, message: String(e) };
+        }
+      })());
     }
 
-    // YouTube upload (send processed video blob)
+    // YouTube upload (send processed video blob to backend)
     if (youtubeAuth.isAuthenticated) {
       uploads.push((async () => {
         try {
@@ -782,10 +787,12 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           formData.append('title', caption);
           formData.append('description', caption);
           formData.append('user_id', youtubeAuth.userInfo?.id || '');
-          const r = await fetch('/api/youtube/upload-short', { method: 'POST', body: formData, headers: { 'ngrok-skip-browser-warning': 'true' } });
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com';
+          addLog('📤 [YouTube] Uploading to backend...');
+          const r = await fetch(`${backendUrl}/api/youtube/upload-short`, { method: 'POST', body: formData });
           const data: ApiResponse = await r.json().catch(async () => ({ raw: await r.text() }));
           addLog(`🧾 YouTube response: ${JSON.stringify(data)}`);
-          return { platform: 'YouTube', success: r.ok && !!data.success, message: data.message || 'Uploaded' };
+          return { platform: 'YouTube', success: r.ok && !!data.success, message: data.message || data.detail || 'Uploaded' };
         } catch (e) {
           return { platform: 'YouTube', success: false, message: String(e) };
         }
