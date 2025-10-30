@@ -43,6 +43,13 @@ interface TikTokAuthState {
 }
 
 export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void }) {
+  // Instagram SDK config (same as debugger)
+  const INSTAGRAM_CONFIG = {
+    appId: '717044718072411',
+    scope: 'instagram_basic,pages_show_list,pages_read_engagement,business_management,instagram_content_publish,instagram_manage_comments,instagram_manage_insights',
+    apiVersion: 'v21.0'
+  } as const;
+
   const [instagramAuth, setInstagramAuth] = useState<InstagramAuthState>({
     isAuthenticated: false,
     isLoading: false,
@@ -68,6 +75,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
   const [isUploading, setIsUploading] = useState(false);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fbSdkLoaded, setFbSdkLoaded] = useState(false);
 
   const addLog = useCallback((message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -77,6 +85,34 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
 
   // Check existing connections on mount and handle OAuth callbacks
   useEffect(() => {
+    // Load Facebook SDK (for Instagram)
+    const loadFacebookSDK = () => {
+      if ((window as any).FB) {
+        setFbSdkLoaded(true);
+        addLog('Facebook SDK already loaded');
+        return;
+      }
+      addLog('Loading Facebook SDK...');
+      const script = document.createElement('script');
+      script.src = 'https://connect.facebook.net/en_US/sdk.js';
+      script.async = true;
+      script.defer = true;
+      script.crossOrigin = 'anonymous';
+      script.onload = () => {
+        (window as any).fbAsyncInit = () => {
+          (window as any).FB.init({
+            appId: INSTAGRAM_CONFIG.appId,
+            cookie: true,
+            xfbml: true,
+            version: INSTAGRAM_CONFIG.apiVersion
+          });
+          setFbSdkLoaded(true);
+          addLog('Facebook SDK loaded successfully');
+        };
+      };
+      document.head.appendChild(script);
+    };
+    loadFacebookSDK();
     // Check Instagram callback
     const urlParams = new URLSearchParams(window.location.search);
     const instagramConnected = urlParams.get('instagram_connected');
@@ -118,6 +154,26 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         });
         addLog(`YouTube connected: ${youtubeChannelTitle}`);
       }
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    // TikTok callback via query params (fallback)
+    const tiktokConnected = urlParams.get('tiktok_connected');
+    const tiktokUserIdQP = urlParams.get('tiktok_user_id');
+    const tiktokDisplayNameQP = urlParams.get('tiktok_display_name');
+    const tiktokAvatarUrlQP = urlParams.get('tiktok_avatar_url');
+    if (tiktokConnected === 'true' && tiktokUserIdQP) {
+      setTiktokAuth({
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        userInfo: {
+          userId: tiktokUserIdQP,
+          displayName: tiktokDisplayNameQP || 'TikTok User',
+          avatarUrl: tiktokAvatarUrlQP || undefined
+        }
+      });
+      addLog('TikTok authentication successful (URL callback)');
       window.history.replaceState({}, '', window.location.pathname);
     }
 
@@ -170,40 +226,125 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     }
   }, [addLog]);
 
-  // Instagram connect (using OAuth flow like InstagramReelsDebugger)
+  // Helper: exchange short-lived token to long-lived via backend
+  const exchangeLongLivedToken = async (shortLived: string): Promise<string> => {
+    const res = await fetch('/api/instagram/graph/long-lived-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ access_token: shortLived })
+    });
+    const json = await res.json();
+    if (!res.ok || !json?.success) throw new Error(json?.error || 'Long-lived token failed');
+    return json.data.access_token as string;
+  };
+
+  // Helper: find IG business account via FB pages
+  const resolveInstagramAccount = async (accessToken: string): Promise<{ id: string; username: string }> => {
+    const pagesUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${accessToken}`;
+    const pagesRes = await fetch(pagesUrl);
+    const pages = await pagesRes.json();
+    if (!pagesRes.ok) throw new Error('Failed to fetch pages');
+    for (const page of pages.data || []) {
+      if (page.instagram_business_account) {
+        const igId = page.instagram_business_account.id;
+        const igUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${igId}?fields=id,username&access_token=${accessToken}`;
+        const igRes = await fetch(igUrl);
+        const ig = await igRes.json();
+        if (igRes.ok && ig?.id && ig?.username) return { id: ig.id, username: ig.username };
+      }
+    }
+    throw new Error('No Instagram Business account found');
+  };
+
+  // Instagram connect (use Facebook SDK like the debugger)
   const handleInstagramConnect = async () => {
     setInstagramAuth(prev => ({ ...prev, isLoading: true, error: null }));
-    addLog('Starting Instagram authentication...');
-    
+    addLog('Starting Instagram authentication (Facebook SDK)...');
     try {
-      const response = await fetch('/api/instagram/meta/auth-url');
-      const data = await response.json();
-      
-      if (data.success) {
-        window.location.href = data.data.auth_url;
+      if (!(window as any).FB || !fbSdkLoaded) throw new Error('Facebook SDK not loaded yet');
+      // Check existing login
+      const auth = await new Promise<any>((resolve) => (window as any).FB.getLoginStatus((r: any) => resolve(r)));
+      let accessToken: string | null = null;
+      if (auth?.status === 'connected') {
+        accessToken = auth.authResponse?.accessToken || null;
+        addLog('Using existing Facebook session');
       } else {
-        throw new Error(data.detail || 'Failed to get auth URL');
+        addLog('Invoking FB.login...');
+        const loginRes = await new Promise<any>((resolve) => (window as any).FB.login((r: any) => resolve(r), { scope: INSTAGRAM_CONFIG.scope, return_scopes: true }));
+        accessToken = loginRes?.authResponse?.accessToken || null;
       }
+      if (!accessToken) throw new Error('Login failed or cancelled');
+      addLog('Exchanging long-lived token...');
+      const longLived = await exchangeLongLivedToken(accessToken);
+      addLog('Resolving Instagram Business account...');
+      const ig = await resolveInstagramAccount(longLived);
+      // Persist and update UI
+      localStorage.setItem('instagram_user_id', ig.id);
+      localStorage.setItem('instagram_username', ig.username);
+      setInstagramAuth({ isAuthenticated: true, isLoading: false, error: null, userInfo: { id: ig.id, username: ig.username } });
+      addLog(`Instagram connected: @${ig.username}`);
     } catch (error) {
-      addLog(`Instagram authentication error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      setInstagramAuth(prev => ({ ...prev, isLoading: false, error: String(error) }));
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      addLog(`Instagram authentication error: ${msg}`);
+      setInstagramAuth(prev => ({ ...prev, isLoading: false, error: msg }));
     }
   };
 
-  // YouTube connect (using OAuth flow like YouTubeShortsDebugger)
+  // YouTube connect (popup OAuth like YouTubeShortsDebugger)
   const handleYouTubeConnect = async () => {
     setYouTubeAuth(prev => ({ ...prev, isLoading: true, error: null }));
     addLog('Starting YouTube authentication...');
-    
     try {
+      const popupWidth = 600;
+      const popupHeight = 650;
+      const popup = window.open('', 'youtube-oauth', `width=${popupWidth},height=${popupHeight},scrollbars=yes,resizable=yes`);
+      if (!popup) throw new Error('Popup blocked. Please allow popups for this site.');
+      try { popup.document.title = 'Connecting to YouTube…'; popup.focus(); } catch {}
+
       const response = await fetch('/api/youtube/auth-url');
       const data = await response.json();
-      
-      if (data.success) {
-        window.location.href = data.auth_url;
-      } else {
-        throw new Error(data.error || 'Failed to get auth URL');
-      }
+      if (!data.success) { popup.close(); throw new Error(data.error || 'Failed to get auth URL'); }
+      addLog('Opening YouTube authentication popup...');
+      popup.location.href = data.data?.auth_url || data.auth_url;
+
+      let completed = false;
+      const messageHandler = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        if (event.data.type === 'YOUTUBE_AUTH_SUCCESS') {
+          completed = true;
+          // Read from localStorage populated by callback
+          const userId = localStorage.getItem('youtube_user_id');
+          const channelTitle = localStorage.getItem('youtube_channel_title');
+          if (userId && channelTitle) {
+            setYouTubeAuth({
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+              userInfo: { id: userId, channelTitle }
+            });
+            addLog(`YouTube connected: ${channelTitle}`);
+          } else {
+            setYouTubeAuth(prev => ({ ...prev, isLoading: false }));
+          }
+          popup.close();
+          window.removeEventListener('message', messageHandler);
+        } else if (event.data.type === 'YOUTUBE_AUTH_ERROR') {
+          completed = true;
+          const err = event.data.error || 'Authorization failed';
+          addLog(`YouTube authentication failed: ${err}`);
+          setYouTubeAuth(prev => ({ ...prev, isLoading: false, error: err }));
+          popup.close();
+          window.removeEventListener('message', messageHandler);
+        }
+      };
+      window.addEventListener('message', messageHandler);
+      const interval = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(interval);
+          window.removeEventListener('message', messageHandler);
+          if (!completed) setYouTubeAuth(prev => ({ ...prev, isLoading: false, error: 'Login cancelled' }));
+        }
+      }, 800);
     } catch (error) {
       addLog(`YouTube authentication error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setYouTubeAuth(prev => ({ ...prev, isLoading: false, error: String(error) }));
@@ -221,7 +362,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       const popup = window.open('', 'tiktok-oauth', `width=${popupWidth},height=${popupHeight}`);
       if (!popup) throw new Error('Popup blocked');
       
-      const response = await fetch('/api/tiktok/auth-url');
+      const response = await fetch('/api/tiktok/auth-url', { headers: { 'ngrok-skip-browser-warning': 'true' } });
       const data = await response.json();
       
       if (!data.success) throw new Error(data.error || 'Failed to get auth URL');
