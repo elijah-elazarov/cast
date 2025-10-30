@@ -1716,14 +1716,15 @@ async def upload_tiktok_video(
         # Log TikTok upload start
         social_logger.info(f"TIKTOK_UPLOAD_START - User: {user_id} | File: {video.filename if video else 'from_url'} | Description: {description} | Size: {file_size} bytes")
         
-        # Step 1: Initialize upload (correct endpoint for inbox upload)
-        init_url = "https://open.tiktokapis.com/v2/post/publish/inbox/video/init/"
+        # Step 1: Initialize upload for Direct Post
+        # Direct flow uses the non-inbox init endpoint
+        init_url = "https://open.tiktokapis.com/v2/post/publish/video/init/"
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json"
         }
         
-        # Correct payload structure for inbox upload (no post_info needed)
+        # Init requires only source_info for FILE_UPLOAD
         init_data = {
             "source_info": {
                 "source": "FILE_UPLOAD",
@@ -1767,14 +1768,37 @@ async def upload_tiktok_video(
             os.remove(temp_path)
             temp_path = None
         
-        # Log successful upload
-        social_logger.info(f"TIKTOK_UPLOAD_SUCCESS - User: {user_id} | Publish ID: {publish_id} | Description: {description}")
-        logger.info(f"TikTok video uploaded successfully for user: {user_id}")
-        
+        # Step 3: Submit for Direct Post publish
+        submit_url = "https://open.tiktokapis.com/v2/post/publish/video/submit/"
+        submit_headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+        submit_body = {
+            "publish_id": publish_id,
+            "post_info": {
+                "caption": (description or "Posted via Cast")[:150],
+                "privacy_level": "SELF_ONLY",
+            }
+        }
+        submit_response = requests.post(submit_url, headers=submit_headers, json=submit_body)
+        try:
+            submit_json = submit_response.json()
+        except Exception:
+            submit_json = {"raw": submit_response.text}
+        if submit_response.status_code != 200:
+            logger.error(f"TikTok submit failed: status={submit_response.status_code} body={submit_json}")
+            raise HTTPException(status_code=400, detail="Failed to submit TikTok post")
+
+        # Log successful direct publish submission
+        social_logger.info(f"TIKTOK_DIRECT_SUBMIT_SUCCESS - User: {user_id} | Publish ID: {publish_id}")
+        logger.info(f"TikTok direct post submitted successfully for user: {user_id}")
+
         return JSONResponse({
             "success": True,
-            "message": "Video uploaded to TikTok successfully",
-            "publish_id": publish_id
+            "message": "TikTok direct post submitted successfully",
+            "publish_id": publish_id,
+            "submit": submit_json
         })
         
     except HTTPException:
