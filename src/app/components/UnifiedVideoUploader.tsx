@@ -180,28 +180,6 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       }
       window.history.replaceState({}, '', window.location.pathname);
     }
-    
-    // Also check on load for existing auth
-    const existingUserId = localStorage.getItem('instagram_user_id');
-    const existingUsername = localStorage.getItem('instagram_username');
-    const existingToken = localStorage.getItem('instagram_long_lived_token');
-    const existingPageId = localStorage.getItem('instagram_page_id');
-    const existingFbUserId = localStorage.getItem('facebook_user_id');
-    if (existingUserId && existingUsername && !instagramAuth.isAuthenticated) {
-      setInstagramAuth({
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-        userInfo: {
-          id: existingUserId,
-          username: existingUsername,
-          account_type: localStorage.getItem('instagram_account_type') || undefined
-        },
-        longLivedToken: existingToken || null,
-        instagramPageId: existingPageId || null,
-        facebookUserId: existingFbUserId || null
-      });
-    }
 
     // Check YouTube callback
     const youtubeConnected = urlParams.get('youtube_connected');
@@ -245,22 +223,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       window.history.replaceState({}, '', window.location.pathname);
     }
 
-    // Check existing connections
-    const instagramUserId = localStorage.getItem('instagram_user_id');
-    const instagramUsername = localStorage.getItem('instagram_username');
-    if (instagramUserId && instagramUsername && !instagramConnected) {
-      setInstagramAuth({
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-        userInfo: {
-          id: instagramUserId,
-          username: instagramUsername,
-          account_type: localStorage.getItem('instagram_account_type') || undefined
-        }
-      });
-    }
-
+    // Check existing YouTube connection (YouTube can still auto-login)
     const youtubeUserId = localStorage.getItem('youtube_user_id');
     const youtubeChannelTitle = localStorage.getItem('youtube_channel_title');
     if (youtubeUserId && youtubeChannelTitle && !youtubeConnected) {
@@ -273,22 +236,6 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           channelTitle: youtubeChannelTitle,
           thumbnailUrl: localStorage.getItem('youtube_thumbnail_url') || undefined,
           subscriberCount: localStorage.getItem('youtube_subscriber_count') || undefined
-        }
-      });
-    }
-
-    const tiktokUserId = localStorage.getItem('tiktok_user_id');
-    const tiktokDisplayName = localStorage.getItem('tiktok_display_name');
-    if (tiktokUserId && tiktokDisplayName) {
-      setTiktokAuth({
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-        userInfo: {
-          userId: tiktokUserId,
-          displayName: tiktokDisplayName,
-          avatarUrl: localStorage.getItem('tiktok_avatar_url') || undefined,
-          followerCount: localStorage.getItem('tiktok_follower_count') || undefined
         }
       });
     }
