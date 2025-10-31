@@ -53,8 +53,15 @@ interface YouTubeAuthState {
   userInfo: {
     id?: string;
     channelTitle?: string;
+    channelDescription?: string;
+    customUrl?: string;
+    publishedAt?: string;
+    country?: string;
     thumbnailUrl?: string;
     subscriberCount?: string;
+    videoCount?: string;
+    viewCount?: string;
+    hiddenSubscriberCount?: boolean;
   } | null;
 }
 
@@ -427,16 +434,41 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     }
   };
 
+  // Check if already authenticated (for YouTube)
+  const checkYouTubeExistingAuth = (): boolean => {
+    if (!youtubeAuth.isAuthenticated || !youtubeAuth.userInfo) {
+      return false;
+    }
+    addLog('Already authenticated, refreshing auth data...');
+    addLog(`✅ Authenticated as: ${youtubeAuth.userInfo.channelTitle || 'YouTube User'}`);
+    if (youtubeAuth.userInfo.id) {
+      addLog(`📺 Channel ID: ${youtubeAuth.userInfo.id}`);
+    }
+    if (youtubeAuth.userInfo.subscriberCount) {
+      addLog(`👥 Subscribers: ${youtubeAuth.userInfo.subscriberCount}`);
+    }
+    addLog('Authentication refreshed successfully!');
+    return true;
+  };
+
   // YouTube connect (popup OAuth like YouTubeShortsDebugger)
   const handleYouTubeConnect = async () => {
     setYouTubeAuth(prev => ({ ...prev, isLoading: true, error: null }));
-    addLog('Starting YouTube authentication...');
+    addLog('Starting YouTube Shorts authentication...');
     try {
-      const popupWidth = 600;
-      const popupHeight = 650;
-      const popup = window.open('', 'youtube-oauth', `width=${popupWidth},height=${popupHeight},scrollbars=yes,resizable=yes`);
+      // First check if already authenticated
+      const isRefreshed = checkYouTubeExistingAuth();
+      if (isRefreshed) {
+        setYouTubeAuth(prev => ({ ...prev, isLoading: false }));
+        return;
+      }
+
+      const popupWidth = 640;
+      const popupHeight = 655;
+      const popup = window.open('', 'youtube-oauth', `width=${popupWidth},height=${popupHeight},scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no`);
       if (!popup) throw new Error('Popup blocked. Please allow popups for this site.');
       try { popup.document.title = 'Connecting to YouTube…'; popup.focus(); } catch {}
+      addLog(`Popup metrics -> width:${popupWidth}, height:${popupHeight} (browser-positioned)`);
 
       interface YoutubeAuthUrlResponse { success: boolean; data?: { auth_url?: string }; auth_url?: string; error?: string }
       const response = await fetch('/api/youtube/auth-url', { headers: { 'ngrok-skip-browser-warning': 'true' } });
@@ -460,17 +492,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         if (event.origin !== window.location.origin) return;
         if (event.data.type === 'YOUTUBE_AUTH_SUCCESS') {
           completed = true;
-          // Prefer direct authData from callback when available (like debugger)
-          const authData = event.data.authData?.data;
-          if (authData?.user_id && authData?.channel_title) {
-            setYouTubeAuth({
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              userInfo: { id: authData.user_id, channelTitle: authData.channel_title }
-            });
-            addLog(`YouTube connected (postMessage): ${authData.channel_title}`);
-          }
+          handleYouTubeAuthSuccess(event.data.authData);
           popup.close();
           window.removeEventListener('message', messageHandler);
         } else if (event.data.type === 'YOUTUBE_AUTH_ERROR') {
@@ -488,7 +510,6 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           clearInterval(interval);
           window.removeEventListener('message', messageHandler);
           if (!completed) {
-            // No fallback to localStorage - require explicit postMessage or URL callback
             setYouTubeAuth(prev => ({ ...prev, isLoading: false, error: 'Login cancelled or failed' }));
           }
         }
@@ -496,6 +517,52 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     } catch (error) {
       addLog(`YouTube authentication error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setYouTubeAuth(prev => ({ ...prev, isLoading: false, error: String(error) }));
+    }
+  };
+
+  // Handle successful YouTube authentication (matching debugger)
+  const handleYouTubeAuthSuccess = async (authData: { success: boolean; data?: { user_id?: string; channel_title?: string; channel_description?: string; custom_url?: string; published_at?: string; country?: string; thumbnail_url?: string; subscriber_count?: string; video_count?: string; view_count?: string; hidden_subscriber_count?: boolean }; message?: string }) => {
+    try {
+      addLog('Processing authentication data...');
+      
+      if (!authData || !authData.data) {
+        throw new Error('Invalid authentication data');
+      }
+      
+      const userData = authData.data;
+      addLog(`🔍 Debug - Received data: ${JSON.stringify(userData)}`);
+      
+      setYouTubeAuth({
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        userInfo: {
+          id: userData.user_id,
+          channelTitle: userData.channel_title,
+          channelDescription: userData.channel_description,
+          customUrl: userData.custom_url,
+          publishedAt: userData.published_at,
+          country: userData.country,
+          thumbnailUrl: userData.thumbnail_url,
+          subscriberCount: userData.subscriber_count,
+          videoCount: userData.video_count,
+          viewCount: userData.view_count,
+          hiddenSubscriberCount: userData.hidden_subscriber_count
+        }
+      });
+
+      addLog(`✅ Authenticated as: ${userData.channel_title || 'YouTube User'}`);
+      if (userData.user_id) {
+        addLog(`📺 Channel ID: ${userData.user_id}`);
+      }
+      if (userData.subscriber_count) {
+        addLog(`👥 Subscribers: ${userData.subscriber_count}`);
+      }
+      addLog('Authentication completed successfully!');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      addLog(`❌ Auth success processing error: ${msg}`);
+      setYouTubeAuth(prev => ({ ...prev, isLoading: false, error: msg }));
     }
   };
 
@@ -648,20 +715,45 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       processingPromises.push(
         (async () => {
           try {
-            addLog('🔄 [YouTube] Uploading to Cloudinary...');
-            setProcessingProgress(10);
+            // Step 1: Upload original file to Cloudinary
+            addLog('🔄 Step 1/3: Uploading video to Cloudinary...');
+            setProcessingProgress(20);
             const up = await uploadToCloudinary(file, process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_YOUTUBE || 'youtube_uploads', 'youtube_uploads');
-            const url = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_1080,h_1920,f_mp4,q_auto:best/${up.public_id}.mp4`;
-            addLog('🔄 [YouTube] Generating Shorts-optimized video...');
-            setProcessingProgress(50);
-            await validateUrl(url, 'YouTube Shorts video');
-            setYtProcessedUrl(url);
+            addLog('✅ Uploaded source video to Cloudinary');
+
+            // Step 2: Generate YouTube Shorts transformation URL
+            addLog('🔄 Step 2/3: Generating YouTube Shorts-compliant transformation URL...');
+            setProcessingProgress(60);
+            const shortsTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_1080,h_1920,f_mp4,q_auto:best/${up.public_id}.mp4`;
+            const thumbnailUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_1080,h_1920,c_fill,f_jpg,q_auto:best/${up.public_id}.jpg`;
+
+            // Step 3: Validate URLs are accessible
+            addLog('🔄 Step 3/3: Validating transformed video is accessible...');
+            setProcessingProgress(80);
+            const [shortsOk] = await Promise.all([
+              validateUrl(shortsTransformUrl, 'YouTube Shorts video'),
+              validateUrl(thumbnailUrl, 'Thumbnail')
+            ]);
+
+            if (!shortsOk) {
+              addLog('⚠️ YouTube Shorts video validation failed, but allowing upload');
+              addLog('Note: Cloudinary transformations may still be processing in background');
+            }
+
+            setYtProcessedUrl(shortsTransformUrl);
             updateProgress();
-            addLog('✅ [YouTube] Processing complete');
-            addLog(`📹 [YouTube] URL: ${url}`);
+            setProcessingProgress(100);
+
+            if (shortsOk) {
+              addLog('🎉 Video processing complete! Ready for YouTube Shorts upload');
+            } else {
+              addLog('⚠️ Video processing completed with issues - check logs above');
+            }
+            addLog(`📹 YouTube Shorts URL: ${shortsTransformUrl}`);
+            addLog(`🖼️ Thumbnail URL: ${thumbnailUrl}`);
           } catch (e) {
             updateProgress();
-            addLog(`❌ [YouTube] Processing error: ${e}`);
+            addLog(`❌ Processing error: ${e}`);
           }
         })()
       );
@@ -748,8 +840,72 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     addLog(`✅ Video processed for ${connectedCount} platform(s)`);
   }, [youtubeAuth.isAuthenticated, tiktokAuth.isAuthenticated, instagramAuth.isAuthenticated, addLog]);
 
+  // Validate YouTube Shorts file (matching debugger)
+  const validateYouTubeShortsFile = async (file: File): Promise<boolean> => {
+    addLog('🔍 Validating file for YouTube Shorts requirements...');
+    
+    // Check file type
+    if (!file.type.startsWith('video/')) {
+      addLog('❌ File must be a video');
+      return false;
+    }
+
+    // Check file size (YouTube has 128GB limit, but we'll be more reasonable)
+    const maxSizeMB = 1000; // 1GB
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      addLog(`❌ File too large. Max size: ${maxSizeMB}MB`);
+      return false;
+    }
+
+    // Check duration and aspect ratio
+    return new Promise((resolve) => {
+      const videoEl = document.createElement('video');
+      videoEl.preload = 'metadata';
+      videoEl.src = URL.createObjectURL(file);
+      
+      videoEl.onloadedmetadata = () => {
+        const duration = videoEl.duration;
+        const width = videoEl.videoWidth;
+        const height = videoEl.videoHeight;
+        
+        addLog(`📏 Video dimensions: ${width}x${height}`);
+        addLog(`⏱️ Video duration: ${duration.toFixed(2)}s`);
+        
+        // Check duration (max 60 seconds for Shorts)
+        if (duration > 60) {
+          addLog('❌ Video too long. YouTube Shorts must be 60 seconds or less');
+          URL.revokeObjectURL(videoEl.src);
+          resolve(false);
+          return;
+        }
+        
+        // Check aspect ratio (should be 9:16, but we'll be flexible)
+        const aspectRatio = width / height;
+        const expectedRatio = 9 / 16; // 0.5625
+        const tolerance = 0.1; // 10% tolerance
+        
+        if (Math.abs(aspectRatio - expectedRatio) > tolerance) {
+          addLog(`⚠️ Aspect ratio ${aspectRatio.toFixed(3)} is not ideal for Shorts (9:16 = ${expectedRatio.toFixed(3)})`);
+          addLog('📝 Video will be cropped to 9:16 during processing');
+        } else {
+          addLog('✅ Aspect ratio is good for YouTube Shorts');
+        }
+        
+        addLog('✅ File validation passed');
+        URL.revokeObjectURL(videoEl.src);
+        resolve(true);
+      };
+      
+      videoEl.onerror = () => {
+        addLog('❌ Could not load video metadata');
+        URL.revokeObjectURL(videoEl.src);
+        resolve(false);
+      };
+    });
+  };
+
   // Handle file selection
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = async (file: File) => {
     setSelectedFile(file);
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
@@ -760,6 +916,11 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     setIgStoriesUrl(null);
     setIgThumbUrl(null);
     addLog(`Selected file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
+    
+    // Validate for YouTube if authenticated (matching debugger)
+    if (youtubeAuth.isAuthenticated) {
+      await validateYouTubeShortsFile(file);
+    }
   };
 
   // Manual process handler
@@ -1006,27 +1167,59 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       }
     }
 
-    // YouTube upload (send processed video blob to backend)
+    // YouTube upload (send processed video blob to backend - matching debugger exactly)
     if (youtubeAuth.isAuthenticated) {
       uploads.push((async () => {
         try {
-          if (!ytProcessedUrl) throw new Error('Processed video missing');
-          addLog('📥 [YouTube] Downloading processed video...');
-          const rvid = await fetch(ytProcessedUrl);
-          if (!rvid.ok) throw new Error('Failed to download processed video');
-          const blob = await rvid.blob();
+          if (!ytProcessedUrl) throw new Error('No processed video available. Please process a video first.');
+          addLog('Testing YouTube Shorts upload...');
+          addLog(`📹 Using processed video: ${ytProcessedUrl}`);
+          addLog(`📝 Title: ${caption || 'No title'}`);
+          addLog(`📄 Description: ${caption || 'No description'}`);
+          addLog('🏷️ Tags: No tags');
+
+          // Download video from Cloudinary first
+          addLog('📥 Downloading video from Cloudinary...');
+          const videoResponse = await fetch(ytProcessedUrl);
+          if (!videoResponse.ok) {
+            throw new Error('Failed to download video from Cloudinary');
+          }
+          const videoBlob = await videoResponse.blob();
+          addLog('✅ Video downloaded successfully');
+
+          // Create form data for backend upload
           const formData = new FormData();
-          formData.append('file', blob, 'shorts.mp4');
-          formData.append('title', caption);
-          formData.append('description', caption);
+          formData.append('file', videoBlob, 'video.mp4');
+          formData.append('title', caption || '');
+          formData.append('description', caption || '');
           formData.append('user_id', youtubeAuth.userInfo?.id || '');
+
           const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com';
-          addLog('📤 [YouTube] Uploading to backend...');
-          const r = await fetch(`${backendUrl}/api/youtube/upload-short`, { method: 'POST', body: formData });
-          const data: ApiResponse = await r.json().catch(async () => ({ raw: await r.text() }));
-          addLog(`🧾 YouTube response: ${JSON.stringify(data)}`);
-          return { platform: 'YouTube', success: r.ok && !!data.success, message: data.message || data.detail || 'Uploaded' };
+          addLog('📤 Uploading to YouTube via backend...');
+          const response = await fetch(`${backendUrl}/api/youtube/upload-short`, {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Backend upload failed: ${errorData.detail || 'Unknown error'}`);
+          }
+
+          const data = await response.json();
+
+          if (data.success && data.data) {
+            addLog(`🎉 SUCCESS! YouTube Short uploaded with ID: ${data.data.video_id}`);
+            addLog('✅ Your YouTube Short has been uploaded successfully!');
+            addLog(`🔗 Video URL: ${data.data.url || `https://www.youtube.com/watch?v=${data.data.video_id}`}`);
+            return { platform: 'YouTube', success: true, message: `Uploaded with ID: ${data.data.video_id}` };
+          } else {
+            const errorMsg = data.detail || data.message || 'Unknown error';
+            addLog(`❌ Upload failed: ${errorMsg}`);
+            return { platform: 'YouTube', success: false, message: errorMsg };
+          }
         } catch (e) {
+          addLog(`❌ Upload error: ${e}`);
           return { platform: 'YouTube', success: false, message: String(e) };
         }
       })());
