@@ -226,6 +226,10 @@ export default function Home() {
           // Ensure SDK is initialized before calling any FB.* methods
           w.FB?.init?.({ appId: '717044718072411', cookie: true, xfbml: false, version: 'v21.0' });
         } catch {}
+        // FB.getLoginStatus requires HTTPS; skip on http to avoid console errors
+        if (window.location.protocol !== 'https:') {
+          return;
+        }
         w.FB?.getLoginStatus((response) => {
           if (response.status === 'connected') {
             const igInfoRaw = localStorage.getItem('instagram_account_info');
@@ -264,7 +268,10 @@ export default function Home() {
           try {
             w.FB?.init?.({ appId: '717044718072411', cookie: true, xfbml: false, version: 'v21.0' });
           } catch {}
-          initAndCheck();
+          // Only call on HTTPS contexts
+          if (window.location.protocol === 'https:') {
+            initAndCheck();
+          }
         };
       };
       document.head.appendChild(script);
