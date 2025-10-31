@@ -525,6 +525,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     try {
       const w = window as FBWindow;
       if (!w.FB || !fbSdkLoaded) throw new Error('Facebook SDK not loaded yet');
+      if (!INSTAGRAM_CONFIG.appId) throw new Error('Facebook App ID not configured');
       // Check existing login
       const auth = await new Promise<FacebookLoginStatus>((resolve) => w.FB!.getLoginStatus((r) => resolve(r as unknown as FacebookLoginStatus)));
       addLog(`Login status check: ${auth?.status || 'unknown'}`);
