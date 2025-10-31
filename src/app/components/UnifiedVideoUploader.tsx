@@ -859,7 +859,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
             addLog('🎬 [TikTok] Processing video...');
             setProcessingProgress(10);
             const up = await uploadToCloudinary(file, process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_TIKTOK || 'tiktok_uploads', 'tiktok_uploads');
-            const url = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_1080,h_1920,f_mp4,q_auto:best/${up.public_id}.mp4`;
+            // TikTok transformations: crop to 9:16 (1080x1920), MP4 format, trim from start to 60 seconds max
+            const url = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_1080,h_1920,f_mp4,q_auto:best,so_0,eo_60/${up.public_id}.mp4`;
             addLog('🔄 [TikTok] Generating optimized video...');
             setProcessingProgress(50);
             await validateUrl(url, 'TikTok video');

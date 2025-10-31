@@ -367,12 +367,14 @@ export default function TikTokShortsDebugger() {
         addLog(`📏 Video dimensions: ${width}x${height}`);
         addLog(`⏱️ Video duration: ${duration.toFixed(2)}s`);
         
-        // Check duration (max 10 minutes for TikTok)
-        if (duration > 600) {
-          addLog('❌ Video too long. TikTok videos must be 10 minutes or less');
-          URL.revokeObjectURL(videoEl.src);
-          resolve(false);
-          return;
+        // Check duration (max 60 seconds for TikTok Shorts)
+        if (duration > 60) {
+          addLog('❌ Video too long. TikTok Shorts must be 60 seconds or less');
+          addLog(`⚠️ Your video is ${duration.toFixed(2)}s, but TikTok Shorts limit is 60s`);
+          addLog('📝 Video will be trimmed to 60 seconds during processing');
+          // Allow upload but warn - Cloudinary can trim duration if needed
+        } else {
+          addLog('✅ Video duration is within TikTok Shorts limit (≤60s)');
         }
         
         // Check aspect ratio (should be 9:16 for Shorts, but TikTok is flexible)
@@ -434,8 +436,13 @@ export default function TikTokShortsDebugger() {
       addLog('✅ Upload successful');
       setProcessingProgress(60);
 
-      // Generate TikTok-optimized video URL
-      const tiktokTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_1080,h_1920,f_mp4,q_auto:best/${uploadData.public_id}.mp4`;
+      // Generate TikTok-optimized video URL with transformations:
+      // - c_fill: Crop and fill to exact dimensions (9:16 aspect ratio)
+      // - w_1080,h_1920: TikTok optimal resolution (max 1080x1920)
+      // - f_mp4: MP4 format (required by TikTok)
+      // - q_auto:best: Auto quality optimization
+      // - so_0,eo_60: Trim from start (0s) to 60 seconds max (TikTok Shorts limit)
+      const tiktokTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_1080,h_1920,f_mp4,q_auto:best,so_0,eo_60/${uploadData.public_id}.mp4`;
 
       addLog('🔄 Generating TikTok-optimized video...');
       setProcessingProgress(80);
