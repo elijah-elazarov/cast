@@ -2182,7 +2182,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
                 <img src={tiktokAuth.userInfo.avatarUrl} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
               )}
               <div className="text-sm text-gray-600 dark:text-gray-300">
-                <div>@{tiktokAuth.userInfo.username || tiktokAuth.userInfo.displayName}</div>
+                <div>{tiktokAuth.userInfo.username ? `@${tiktokAuth.userInfo.username}` : tiktokAuth.userInfo.displayName}</div>
                 {tiktokAuth.userInfo.followerCount && (
                   <div className="text-xs text-gray-500">{parseInt(tiktokAuth.userInfo.followerCount).toLocaleString()} followers</div>
                 )}
