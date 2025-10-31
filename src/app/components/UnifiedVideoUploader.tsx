@@ -16,6 +16,7 @@ type FacebookSDK = {
     callback: (response: { authResponse?: { accessToken: string } }) => void,
     options: { scope: string; return_scopes: boolean }
   ) => void;
+  logout: (callback: () => void) => void;
 };
 
 type FBWindow = Window & { FB?: FacebookSDK; fbAsyncInit?: () => void };
@@ -596,7 +597,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       addLog('🔍 Validating Instagram access token...');
       // First check if user is connected (prevents "FB.logout() called without an access token" error)
       w.FB.getLoginStatus((response) => {
-        if (response.status === 'connected') {
+        if (response.status === 'connected' && w.FB) {
           // User is connected, token is valid
           addLog('✅ Instagram access token validated (token was active)');
           // Step 2: Revoke token via FB.logout()
