@@ -101,6 +101,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
+  const [instagramReel, setInstagramReel] = useState(true);
   const [instagramStory, setInstagramStory] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
@@ -800,8 +801,9 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         }
       };
       
-      // Upload Reel
-      uploads.push((async () => {
+      // Upload Reel if enabled
+      if (instagramReel) {
+        uploads.push((async () => {
         try {
           if (!igReelsUrl) throw new Error('No processed video available. Please process a video first.');
           addLog('Testing Instagram Reels posting capability...');
@@ -864,6 +866,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           return { platform: 'Instagram Reel', success: false, message: String(e) };
         }
       })());
+      }
 
       // Upload Story if enabled
       if (instagramStory) {
@@ -943,7 +946,11 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         })());
       }
     } else if (instagramAuth.isAuthenticated) {
-      addLog('❌ Instagram missing required auth data (token or page ID)');
+      if (!instagramReel && !instagramStory) {
+        addLog('ℹ️ Instagram Reels and Stories are both unchecked - skipping Instagram upload');
+      } else {
+        addLog('❌ Instagram missing required auth data (token or page ID)');
+      }
     }
 
     // YouTube upload (send processed video blob to backend)
@@ -1251,20 +1258,37 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         />
       </div>
 
-      {/* Instagram Story Toggle */}
+      {/* Instagram Upload Options */}
       {instagramAuth.isAuthenticated && (
         <div className="mb-6">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={instagramStory}
-              onChange={(e) => setInstagramStory(e.target.checked)}
-              className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
-            />
-            <span className="text-sm font-medium text-gray-900 dark:text-white">
-              📱 Also post to Instagram Stories
-            </span>
-          </label>
+          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-3">Instagram Upload Options</label>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={instagramReel}
+                onChange={(e) => setInstagramReel(e.target.checked)}
+                className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
+              />
+              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                📹 Post to Instagram Reels
+              </span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={instagramStory}
+                onChange={(e) => setInstagramStory(e.target.checked)}
+                className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
+              />
+              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                📱 Post to Instagram Stories
+              </span>
+            </label>
+            {!instagramReel && !instagramStory && (
+              <p className="text-xs text-gray-500 mt-1">Select at least one option to upload to Instagram</p>
+            )}
+          </div>
         </div>
       )}
 
