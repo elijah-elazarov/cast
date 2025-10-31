@@ -57,6 +57,7 @@ This document outlines all environment variables used in the Cast application.
 | Variable | Description | Example | Used For |
 |----------|-------------|---------|----------|
 | `BACKEND_URL` | Backend API URL | `https://your-backend.onrender.com` | API calls from frontend to backend |
+| `NEXT_PUBLIC_FACEBOOK_APP_ID` | Facebook App ID for Instagram SDK | `717044718072411` | Instagram Facebook SDK initialization |
 
 ### Variable Details
 
@@ -65,6 +66,13 @@ This document outlines all environment variables used in the Cast application.
 - **Used in:** All API proxy routes (`/api/instagram/*`, `/api/youtube/*`, `/api/tiktok/*`)
 - **Local development:** `http://localhost:8000`
 - **Production:** Your Render deployment URL
+
+#### `NEXT_PUBLIC_FACEBOOK_APP_ID`
+- **Purpose:** Facebook App ID for initializing the Facebook SDK on the frontend
+- **Used in:** Instagram authentication components (`page.tsx`, `UnifiedVideoUploader.tsx`, `InstagramReelsDebugger.tsx`)
+- **Note:** Must match `FACEBOOK_APP_ID` used in the backend
+- **Local development:** Same as production value
+- **Production:** Your Facebook App ID from [Meta for Developers](https://developers.facebook.com/)
 
 ---
 
@@ -132,7 +140,8 @@ This document outlines all environment variables used in the Cast application.
 2. Select your project
 3. Navigate to **Settings** → **Environment Variables**
 4. Add `BACKEND_URL` with your Render URL
-5. Redeploy your application
+5. Add `NEXT_PUBLIC_FACEBOOK_APP_ID` with your Facebook App ID (same value as backend's `FACEBOOK_APP_ID`)
+6. Redeploy your application
 
 ---
 

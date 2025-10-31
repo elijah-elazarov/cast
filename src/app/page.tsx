@@ -219,12 +219,14 @@ export default function Home() {
   useEffect(() => {
     // Only attempt if we don't already consider Instagram connected
     if (connectedAccounts.instagram) return;
+    const facebookAppId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID;
+    if (!facebookAppId) return; // Skip if App ID not configured
     const w = window as unknown as FBWindow;
     const ensureSdkAndCheck = () => {
       const initAndCheck = () => {
         try {
           // Ensure SDK is initialized before calling any FB.* methods
-          w.FB?.init?.({ appId: '717044718072411', cookie: true, xfbml: false, version: 'v21.0' });
+          w.FB?.init?.({ appId: facebookAppId, cookie: true, xfbml: false, version: 'v21.0' });
         } catch {}
         // FB.getLoginStatus requires HTTPS; skip on http to avoid console errors
         if (window.location.protocol !== 'https:') {
@@ -263,16 +265,16 @@ export default function Home() {
       script.src = 'https://connect.facebook.net/en_US/sdk.js';
       script.async = true;
       script.defer = true;
-      script.onload = () => {
-        w.fbAsyncInit = () => {
-          try {
-            w.FB?.init?.({ appId: '717044718072411', cookie: true, xfbml: false, version: 'v21.0' });
-          } catch {}
-          // Only call on HTTPS contexts
-          if (window.location.protocol === 'https:') {
-            initAndCheck();
-          }
-        };
+        script.onload = () => {
+          w.fbAsyncInit = () => {
+            try {
+              w.FB?.init?.({ appId: facebookAppId, cookie: true, xfbml: false, version: 'v21.0' });
+            } catch {}
+            // Only call on HTTPS contexts
+            if (window.location.protocol === 'https:') {
+              initAndCheck();
+            }
+          };
       };
       document.head.appendChild(script);
     };

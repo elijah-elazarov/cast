@@ -32,7 +32,7 @@ interface FacebookAuthResponse {
 
 // Instagram Graph API configuration
 const INSTAGRAM_CONFIG = {
-  appId: '717044718072411',
+  appId: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || '',
   scope: 'instagram_basic,pages_show_list,pages_read_engagement,business_management,instagram_content_publish,instagram_manage_comments,instagram_manage_insights',
   apiVersion: 'v21.0'
 };
