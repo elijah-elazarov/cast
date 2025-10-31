@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Youtube, Music, TestTube, Key } from 'lucide-react';
 // import InstagramConnection from './components/InstagramConnection';
-import InstagramVideoUploader from './components/InstagramVideoUploader';
 import ModernWelcomeFlow from './components/ModernWelcomeFlow';
 // Legacy test tools removed: RealOAuthTest, RealInstagramTest, InstagramTestComponent, InstagramTestPopup, FreshInstagramAuth, EnhancedInstagramAuth, InstagramReelsPoster
 import InstagramReelsDebugger from './components/InstagramReelsDebugger';
@@ -551,16 +550,6 @@ export default function Home() {
         </div>
 
         {/* Platform Cards removed */}
-
-        {/* Video Upload Section */}
-        {connectedAccounts.instagram && (
-          <div className="mb-8">
-            <InstagramVideoUploader 
-              isConnected={connectedAccounts.instagram}
-              accountInfo={JSON.parse(localStorage.getItem('instagram_account_info') || '{}')}
-            />
-          </div>
-        )}
 
         {/* Legacy Instagram test components removed */}
 
