@@ -628,9 +628,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     
     if (userId) {
       try {
-        // Call backend to revoke session (like Instagram does with FB.logout)
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com';
-        await fetch(`${backendUrl}/api/youtube/logout`, {
+        // Use Next.js API proxy to call backend (like YouTubeConnection.tsx does)
+        const response = await fetch('/api/youtube/logout', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -638,7 +637,12 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           },
           body: JSON.stringify({ user_id: userId }),
         });
-        addLog('Backend session revoked successfully');
+        const data = await response.json();
+        if (data.success) {
+          addLog('Backend session revoked successfully');
+        } else {
+          addLog(`⚠️ Backend logout warning: ${data.detail || data.message || 'Unknown error'}`);
+        }
       } catch (err) {
         addLog(`⚠️ Backend logout error: ${err instanceof Error ? err.message : 'Unknown error'}`);
         // Continue with local logout even if backend call fails
