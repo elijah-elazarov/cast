@@ -475,33 +475,23 @@ export default function TikTokShortsDebugger() {
     addLog(`🏷️ Tags: ${videoTags || 'No tags'}`);
 
     try {
-      // Download video from Cloudinary first
-      addLog('📥 Downloading video from Cloudinary...');
-      const videoResponse = await fetch(processedVideoUrl);
-      if (!videoResponse.ok) {
-        throw new Error('Failed to download video from Cloudinary');
-      }
+      // Send video_url directly to backend (backend will download from Cloudinary)
+      // This avoids "Body is disturbed or locked" error and 413 (Payload Too Large) errors
+      addLog('📤 Preparing upload to TikTok via backend...');
+      addLog(`📹 Using processed video URL: ${processedVideoUrl}`);
+      addLog('💡 Backend will download video directly from Cloudinary');
       
-      const videoBlob = await videoResponse.blob();
-      addLog('✅ Video downloaded successfully');
-      
-      // Create form data for backend upload (backend expects 'video' field)
+      // Create form data for backend upload (backend accepts 'video_url' or 'video' file)
       const formData = new FormData();
-      formData.append('video', videoBlob, 'video.mp4');
-      formData.append('title', videoTitle);
-      formData.append('description', videoDescription || '');
+      formData.append('video_url', processedVideoUrl);
+      formData.append('description', videoTitle || videoDescription || '');
       formData.append('user_id', authState.userInfo.userId);
-      
-      // Add tags if provided
-      if (videoTags) {
-        const tagsArray = videoTags.split(',').map(tag => tag.trim()).filter(tag => tag);
-        tagsArray.forEach(tag => formData.append('tags', tag));
-      }
       
       addLog('📤 Uploading to TikTok via backend...');
       const response = await fetch(`/api/tiktok/upload-video`, {
         method: 'POST',
-        body: formData
+        body: formData,
+        headers: { 'ngrok-skip-browser-warning': 'true' }
       });
 
       if (!response.ok) {
