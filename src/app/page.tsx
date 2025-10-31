@@ -46,6 +46,11 @@ export default function Home() {
   const [showUnifiedAdvanced, setShowUnifiedAdvanced] = useState(false);
   const [showTokenManager, setShowTokenManager] = useState(false);
   const TOTAL_COUNTDOWN = 3;
+  
+  // Facebook SDK typings (minimal)
+  type FacebookLoginStatus = { status: 'connected' | 'not_authorized' | 'unknown'; authResponse?: { accessToken: string } };
+  type FacebookSDK = { getLoginStatus: (cb: (res: FacebookLoginStatus) => void) => void };
+  type FBWindow = Window & { FB?: FacebookSDK; fbAsyncInit?: () => void };
 
   // Check localStorage on mount to initialize connected state (no auto-login)
   useEffect(() => {
@@ -209,6 +214,74 @@ export default function Home() {
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
+
+  // Match behavior across platforms: restore Instagram connection on refresh if FB session is active
+  useEffect(() => {
+    // Only attempt if we don't already consider Instagram connected
+    if (connectedAccounts.instagram) return;
+    const w = window as unknown as FBWindow;
+    const ensureSdkAndCheck = () => {
+      if (w.FB) {
+        w.FB.getLoginStatus((response) => {
+          if (response.status === 'connected') {
+            const igInfoRaw = localStorage.getItem('instagram_account_info');
+            const igUsername = localStorage.getItem('instagram_username');
+            if (igInfoRaw || igUsername) {
+              try {
+                const info = igInfoRaw ? JSON.parse(igInfoRaw) : {};
+                setAccountInfo(prev => ({
+                  ...prev,
+                  instagram: {
+                    username: info.username || igUsername || '',
+                    followers_count: info.followers_count,
+                    profile_picture_url: info.profile_picture_url
+                  }
+                }));
+                setConnectedAccounts(prev => ({ ...prev, instagram: true }));
+              } catch {
+                // If parse fails but session exists, at least flip connected on
+                setConnectedAccounts(prev => ({ ...prev, instagram: true }));
+              }
+            }
+          }
+        });
+        return;
+      }
+      // Load SDK once
+      const script = document.createElement('script');
+      script.src = 'https://connect.facebook.net/en_US/sdk.js';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        w.fbAsyncInit = () => {
+          w.FB?.getLoginStatus((response) => {
+            if (response.status === 'connected') {
+              const igInfoRaw = localStorage.getItem('instagram_account_info');
+              const igUsername = localStorage.getItem('instagram_username');
+              if (igInfoRaw || igUsername) {
+                try {
+                  const info = igInfoRaw ? JSON.parse(igInfoRaw) : {};
+                  setAccountInfo(prev => ({
+                    ...prev,
+                    instagram: {
+                      username: info.username || igUsername || '',
+                      followers_count: info.followers_count,
+                      profile_picture_url: info.profile_picture_url
+                    }
+                  }));
+                  setConnectedAccounts(prev => ({ ...prev, instagram: true }));
+                } catch {
+                  setConnectedAccounts(prev => ({ ...prev, instagram: true }));
+                }
+              }
+            }
+          });
+        };
+      };
+      document.head.appendChild(script);
+    };
+    try { ensureSdkAndCheck(); } catch {}
+  }, [connectedAccounts.instagram]);
 
   // Show initial loading state for 2 seconds
   if (!isHydrated) {
