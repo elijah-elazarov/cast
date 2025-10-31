@@ -447,11 +447,11 @@ export default function Home() {
           <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-purple-500">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-purple-500">
                   <path d="M7.5 2.25h9a5.25 5.25 0 0 1 5.25 5.25v9a5.25 5.25 0 0 1-5.25 5.25h-9A5.25 5.25 0 0 1 2.25 16.5v-9A5.25 5.25 0 0 1 7.5 2.25zm0 1.5A3.75 3.75 0 0 0 3.75 7.5v9A3.75 3.75 0 0 0 7.5 20.25h9A3.75 3.75 0 0 0 20.25 16.5v-9A3.75 3.75 0 0 0 16.5 3.75h-9z" />
                   <path d="M12 7.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 1.5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM17.25 6.75a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5z" />
                 </svg>
-                <span className="font-medium text-gray-900 dark:text-white">Instagram</span>
+                <span className="font-semibold text-lg text-gray-900 dark:text-white">Instagram</span>
               </div>
               {connectedAccounts.instagram ? (
                 <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Connected</span>
@@ -481,8 +481,8 @@ export default function Home() {
           <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Youtube className="w-6 h-6 text-red-500" />
-                <span className="font-medium text-gray-900 dark:text-white">YouTube</span>
+                <Youtube className="w-8 h-8 text-red-500" />
+                <span className="font-semibold text-lg text-gray-900 dark:text-white">YouTube</span>
               </div>
               {connectedAccounts.youtube ? (
                 <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Connected</span>
@@ -512,8 +512,8 @@ export default function Home() {
           <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Music className="w-6 h-6" />
-                <span className="font-medium text-gray-900 dark:text-white">TikTok</span>
+                <Music className="w-8 h-8" />
+                <span className="font-semibold text-lg text-gray-900 dark:text-white">TikTok</span>
               </div>
               {connectedAccounts.tiktok ? (
                 <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Connected</span>
@@ -545,11 +545,11 @@ export default function Home() {
           {/* Instagram OAuth Card (match width of YouTube/TikTok) */}
           <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-purple-500 mr-3">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-purple-500 mr-3">
                 <path d="M7.5 2.25h9a5.25 5.25 0 0 1 5.25 5.25v9a5.25 5.25 0 0 1-5.25 5.25h-9A5.25 5.25 0 0 1 2.25 16.5v-9A5.25 5.25 0 0 1 7.5 2.25zm0 1.5A3.75 3.75 0 0 0 3.75 7.5v9A3.75 3.75 0 0 0 7.5 20.25h9A3.75 3.75 0 0 0 20.25 16.5v-9A3.75 3.75 0 0 0 16.5 3.75h-9z" />
                 <path d="M12 7.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 1.5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM17.25 6.75a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5z" />
               </svg>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
                 Instagram
               </h2>
             </div>
@@ -591,8 +591,8 @@ export default function Home() {
           {/* YouTube Card */}
           <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center mb-4">
-              <Youtube className="w-8 h-8 text-red-500 mr-3" />
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <Youtube className="w-10 h-10 text-red-500 mr-3" />
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
                 YouTube
               </h2>
             </div>
@@ -632,8 +632,8 @@ export default function Home() {
           {/* TikTok Card */}
           <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center mb-4">
-              <Music className="w-8 h-8 text-black dark:text-white mr-3" />
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <Music className="w-10 h-10 text-black dark:text-white mr-3" />
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
                 TikTok
               </h2>
             </div>
