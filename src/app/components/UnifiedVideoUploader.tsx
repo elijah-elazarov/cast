@@ -688,6 +688,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
   };
 
   // Check if already authenticated (for TikTok) - from state or localStorage
+  // Note: Only reconnects from localStorage if state is NOT authenticated (prevents reconnection after logout)
   const checkTikTokExistingAuth = (): boolean => {
     // First check if already authenticated in state
     if (tiktokAuth.isAuthenticated && tiktokAuth.userInfo) {
@@ -703,35 +704,38 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       return true;
     }
     
-    // Check localStorage for stored session (like Instagram/YouTube do)
-    const tiktokUserId = localStorage.getItem('tiktok_user_id');
-    const tiktokDisplayName = localStorage.getItem('tiktok_display_name');
-    
-    if (tiktokUserId && tiktokDisplayName) {
-      addLog('Found existing TikTok session in storage, reconnecting...');
-      const storedUserInfo: TikTokAuthState['userInfo'] = {
-        userId: tiktokUserId,
-        displayName: tiktokDisplayName,
-        avatarUrl: localStorage.getItem('tiktok_avatar_url') || undefined,
-        followerCount: localStorage.getItem('tiktok_follower_count') || undefined
-      };
+    // Only check localStorage for reconnection if state is NOT authenticated
+    // This prevents reconnection after explicit logout
+    if (!tiktokAuth.isAuthenticated) {
+      const tiktokUserId = localStorage.getItem('tiktok_user_id');
+      const tiktokDisplayName = localStorage.getItem('tiktok_display_name');
       
-      setTiktokAuth({
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-        userInfo: storedUserInfo
-      });
-      
-      addLog(`✅ Reconnected as: ${tiktokDisplayName}`);
-      if (tiktokUserId) {
-        addLog(`📺 User ID: ${tiktokUserId}`);
+      if (tiktokUserId && tiktokDisplayName) {
+        addLog('Found existing TikTok session in storage, reconnecting...');
+        const storedUserInfo: TikTokAuthState['userInfo'] = {
+          userId: tiktokUserId,
+          displayName: tiktokDisplayName,
+          avatarUrl: localStorage.getItem('tiktok_avatar_url') || undefined,
+          followerCount: localStorage.getItem('tiktok_follower_count') || undefined
+        };
+        
+        setTiktokAuth({
+          isAuthenticated: true,
+          isLoading: false,
+          error: null,
+          userInfo: storedUserInfo
+        });
+        
+        addLog(`✅ Reconnected as: ${tiktokDisplayName}`);
+        if (tiktokUserId) {
+          addLog(`📺 User ID: ${tiktokUserId}`);
+        }
+        if (storedUserInfo.followerCount) {
+          addLog(`👥 Followers: ${storedUserInfo.followerCount}`);
+        }
+        addLog('Session restored successfully!');
+        return true;
       }
-      if (storedUserInfo.followerCount) {
-        addLog(`👥 Followers: ${storedUserInfo.followerCount}`);
-      }
-      addLog('Session restored successfully!');
-      return true;
     }
     
     return false;
@@ -898,19 +902,48 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     }
   };
 
-  // TikTok logout
-  const handleTikTokLogout = () => {
+  // TikTok logout (call backend to revoke session like YouTube does)
+  const handleTikTokLogout = async () => {
     addLog('Logging out from TikTok...');
+    const userId = tiktokAuth.userInfo?.userId || localStorage.getItem('tiktok_user_id');
+    
+    if (userId) {
+      try {
+        // Use Next.js API proxy to call backend (like TikTokConnection.tsx does)
+        const response = await fetch('/api/tiktok/logout', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
+          body: JSON.stringify({ user_id: userId }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          addLog('Backend session revoked successfully');
+        } else {
+          addLog(`⚠️ Backend logout warning: ${data.detail || data.message || data.error || 'Unknown error'}`);
+        }
+      } catch (err) {
+        addLog(`⚠️ Backend logout error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        // Continue with local logout even if backend call fails
+      }
+    }
+    
+    // Clear localStorage (like Instagram/YouTube do)
     localStorage.removeItem('tiktok_user_id');
     localStorage.removeItem('tiktok_display_name');
     localStorage.removeItem('tiktok_avatar_url');
     localStorage.removeItem('tiktok_follower_count');
+    
+    // Reset state immediately to prevent any reconnection attempts
     setTiktokAuth({
       isAuthenticated: false,
       isLoading: false,
       error: null,
       userInfo: null
     });
+    
     addLog('Logged out from TikTok successfully');
   };
 
