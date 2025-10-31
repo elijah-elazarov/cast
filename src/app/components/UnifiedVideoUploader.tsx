@@ -434,21 +434,61 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     }
   };
 
-  // Check if already authenticated (for YouTube)
+  // Check if already authenticated (for YouTube) - from state or localStorage
   const checkYouTubeExistingAuth = (): boolean => {
-    if (!youtubeAuth.isAuthenticated || !youtubeAuth.userInfo) {
-      return false;
+    // First check if already authenticated in state
+    if (youtubeAuth.isAuthenticated && youtubeAuth.userInfo) {
+      addLog('Already authenticated, refreshing auth data...');
+      addLog(`✅ Authenticated as: ${youtubeAuth.userInfo.channelTitle || 'YouTube User'}`);
+      if (youtubeAuth.userInfo.id) {
+        addLog(`📺 Channel ID: ${youtubeAuth.userInfo.id}`);
+      }
+      if (youtubeAuth.userInfo.subscriberCount) {
+        addLog(`👥 Subscribers: ${youtubeAuth.userInfo.subscriberCount}`);
+      }
+      addLog('Authentication refreshed successfully!');
+      return true;
     }
-    addLog('Already authenticated, refreshing auth data...');
-    addLog(`✅ Authenticated as: ${youtubeAuth.userInfo.channelTitle || 'YouTube User'}`);
-    if (youtubeAuth.userInfo.id) {
-      addLog(`📺 Channel ID: ${youtubeAuth.userInfo.id}`);
+    
+    // Check localStorage for stored session (like Instagram does)
+    const youtubeUserId = localStorage.getItem('youtube_user_id');
+    const youtubeChannelTitle = localStorage.getItem('youtube_channel_title');
+    
+    if (youtubeUserId && youtubeChannelTitle) {
+      addLog('Found existing YouTube session in storage, reconnecting...');
+      const storedUserInfo: YouTubeAuthState['userInfo'] = {
+        id: youtubeUserId,
+        channelTitle: youtubeChannelTitle,
+        thumbnailUrl: localStorage.getItem('youtube_thumbnail_url') || undefined,
+        subscriberCount: localStorage.getItem('youtube_subscriber_count') || undefined,
+        channelDescription: localStorage.getItem('youtube_channel_description') || undefined,
+        customUrl: localStorage.getItem('youtube_custom_url') || undefined,
+        publishedAt: localStorage.getItem('youtube_published_at') || undefined,
+        country: localStorage.getItem('youtube_country') || undefined,
+        videoCount: localStorage.getItem('youtube_video_count') || undefined,
+        viewCount: localStorage.getItem('youtube_view_count') || undefined,
+        hiddenSubscriberCount: localStorage.getItem('youtube_hidden_subscriber_count') === 'true' || undefined
+      };
+      
+      setYouTubeAuth({
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        userInfo: storedUserInfo
+      });
+      
+      addLog(`✅ Reconnected as: ${youtubeChannelTitle}`);
+      if (youtubeUserId) {
+        addLog(`📺 Channel ID: ${youtubeUserId}`);
+      }
+      if (storedUserInfo.subscriberCount) {
+        addLog(`👥 Subscribers: ${storedUserInfo.subscriberCount}`);
+      }
+      addLog('Session restored successfully!');
+      return true;
     }
-    if (youtubeAuth.userInfo.subscriberCount) {
-      addLog(`👥 Subscribers: ${youtubeAuth.userInfo.subscriberCount}`);
-    }
-    addLog('Authentication refreshed successfully!');
-    return true;
+    
+    return false;
   };
 
   // YouTube connect (popup OAuth like YouTubeShortsDebugger)
@@ -456,7 +496,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     setYouTubeAuth(prev => ({ ...prev, isLoading: true, error: null }));
     addLog('Starting YouTube Shorts authentication...');
     try {
-      // First check if already authenticated
+      // First check if already authenticated or can reconnect from storage
       const isRefreshed = checkYouTubeExistingAuth();
       if (isRefreshed) {
         setYouTubeAuth(prev => ({ ...prev, isLoading: false }));
@@ -532,24 +572,39 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       const userData = authData.data;
       addLog(`🔍 Debug - Received data: ${JSON.stringify(userData)}`);
       
+      const userInfo: YouTubeAuthState['userInfo'] = {
+        id: userData.user_id,
+        channelTitle: userData.channel_title,
+        channelDescription: userData.channel_description,
+        customUrl: userData.custom_url,
+        publishedAt: userData.published_at,
+        country: userData.country,
+        thumbnailUrl: userData.thumbnail_url,
+        subscriberCount: userData.subscriber_count,
+        videoCount: userData.video_count,
+        viewCount: userData.view_count,
+        hiddenSubscriberCount: userData.hidden_subscriber_count
+      };
+      
       setYouTubeAuth({
         isAuthenticated: true,
         isLoading: false,
         error: null,
-        userInfo: {
-          id: userData.user_id,
-          channelTitle: userData.channel_title,
-          channelDescription: userData.channel_description,
-          customUrl: userData.custom_url,
-          publishedAt: userData.published_at,
-          country: userData.country,
-          thumbnailUrl: userData.thumbnail_url,
-          subscriberCount: userData.subscriber_count,
-          videoCount: userData.video_count,
-          viewCount: userData.view_count,
-          hiddenSubscriberCount: userData.hidden_subscriber_count
-        }
+        userInfo
       });
+      
+      // Store in localStorage for reconnection (like Instagram does)
+      if (userData.user_id) localStorage.setItem('youtube_user_id', userData.user_id);
+      if (userData.channel_title) localStorage.setItem('youtube_channel_title', userData.channel_title);
+      if (userData.channel_description) localStorage.setItem('youtube_channel_description', userData.channel_description);
+      if (userData.custom_url) localStorage.setItem('youtube_custom_url', userData.custom_url);
+      if (userData.published_at) localStorage.setItem('youtube_published_at', userData.published_at);
+      if (userData.country) localStorage.setItem('youtube_country', userData.country);
+      if (userData.thumbnail_url) localStorage.setItem('youtube_thumbnail_url', userData.thumbnail_url);
+      if (userData.subscriber_count) localStorage.setItem('youtube_subscriber_count', userData.subscriber_count);
+      if (userData.video_count) localStorage.setItem('youtube_video_count', userData.video_count);
+      if (userData.view_count) localStorage.setItem('youtube_view_count', userData.view_count);
+      if (userData.hidden_subscriber_count !== undefined) localStorage.setItem('youtube_hidden_subscriber_count', String(userData.hidden_subscriber_count));
 
       addLog(`✅ Authenticated as: ${userData.channel_title || 'YouTube User'}`);
       if (userData.user_id) {
@@ -571,8 +626,17 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     addLog('Logging out from YouTube...');
     localStorage.removeItem('youtube_user_id');
     localStorage.removeItem('youtube_channel_title');
+    localStorage.removeItem('youtube_channel_description');
+    localStorage.removeItem('youtube_custom_url');
+    localStorage.removeItem('youtube_published_at');
+    localStorage.removeItem('youtube_country');
     localStorage.removeItem('youtube_thumbnail_url');
     localStorage.removeItem('youtube_subscriber_count');
+    localStorage.removeItem('youtube_video_count');
+    localStorage.removeItem('youtube_view_count');
+    localStorage.removeItem('youtube_hidden_subscriber_count');
+    localStorage.removeItem('youtube_access_token');
+    localStorage.removeItem('youtube_refresh_token');
     setYouTubeAuth({
       isAuthenticated: false,
       isLoading: false,
