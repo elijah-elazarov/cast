@@ -1151,7 +1151,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         error: null,
         userInfo: {
           userId: userData.user_id,
-          username: (userData as any).username || undefined,
+          username: userData.username || undefined,
           displayName: userData.display_name,
           avatarUrl: userData.avatar_url,
           followerCount: userData.follower_count
@@ -1163,7 +1163,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       
       // Store in localStorage for reconnection (like Instagram/YouTube do)
       if (userData.user_id) localStorage.setItem('tiktok_user_id', userData.user_id);
-      if ((userData as any).username) localStorage.setItem('tiktok_username', (userData as any).username);
+      if (userData.username) localStorage.setItem('tiktok_username', userData.username);
       if (userData.display_name) localStorage.setItem('tiktok_display_name', userData.display_name);
       if (userData.avatar_url) localStorage.setItem('tiktok_avatar_url', userData.avatar_url);
       if (userData.follower_count) localStorage.setItem('tiktok_follower_count', userData.follower_count);
