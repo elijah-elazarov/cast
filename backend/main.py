@@ -1424,18 +1424,60 @@ async def upload_youtube_short(
 @app.post("/api/youtube/logout")
 async def youtube_logout(request: YouTubeLogoutRequest):
     """
-    Logout from YouTube - calls official Google OAuth revoke endpoint to revoke access token
+    Logout from YouTube - validates token first, then calls official Google OAuth revoke endpoint
     """
     try:
         import requests
+        from google.auth.transport.requests import Request as GoogleRequest
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+        
+        token_valid = None
+        access_token = None
         
         if request.user_id in youtube_sessions:
             session = youtube_sessions[request.user_id]
             creds_dict = session.get('credentials', {})
             access_token = creds_dict.get('token')
             
-            # Call Google's official revoke endpoint to invalidate the access token
+            # Step 1: Validate token by attempting to fetch channel info
+            token_valid = False
             if access_token:
+                try:
+                    # Recreate credentials object for validation
+                    credentials = Credentials(
+                        token=creds_dict.get('token'),
+                        refresh_token=creds_dict.get('refresh_token'),
+                        token_uri=creds_dict.get('token_uri'),
+                        client_id=creds_dict.get('client_id'),
+                        client_secret=creds_dict.get('client_secret'),
+                        scopes=creds_dict.get('scopes')
+                    )
+                    
+                    # Refresh token if expired
+                    if credentials.expired:
+                        try:
+                            credentials.refresh(GoogleRequest())
+                        except Exception as refresh_err:
+                            logger.info(f"YouTube token expired and refresh failed: {str(refresh_err)}")
+                    
+                    # Try to validate by fetching channel info (lightweight check)
+                    youtube = build('youtube', 'v3', credentials=credentials)
+                    try:
+                        channel_response = youtube.channels().list(part='id', mine=True).execute()
+                        if channel_response.get('items'):
+                            token_valid = True
+                            logger.info(f"YouTube token validated successfully for user: {request.user_id}")
+                        else:
+                            logger.info(f"YouTube token validation failed: No channel found for user: {request.user_id}")
+                    except Exception as validate_err:
+                        logger.info(f"YouTube token validation failed: {str(validate_err)}")
+                        
+                except Exception as validation_error:
+                    logger.info(f"YouTube token validation error: {str(validation_error)}")
+            
+            # Step 2: Revoke token only if it was valid
+            if access_token and token_valid:
                 try:
                     revoke_url = "https://oauth2.googleapis.com/revoke"
                     revoke_params = {"token": access_token}
@@ -1450,6 +1492,8 @@ async def youtube_logout(request: YouTubeLogoutRequest):
                 except Exception as revoke_error:
                     logger.error(f"Error calling Google revoke endpoint: {str(revoke_error)}")
                     # Continue with local logout even if revoke fails
+            elif access_token and not token_valid:
+                logger.info(f"YouTube token was already invalid, skipping revoke for user: {request.user_id}")
             
             # Delete local session
             del youtube_sessions[request.user_id]
@@ -1457,7 +1501,8 @@ async def youtube_logout(request: YouTubeLogoutRequest):
         
         return JSONResponse({
             "success": True,
-            "message": "Successfully logged out from YouTube"
+            "message": "Successfully logged out from YouTube",
+            "token_valid": token_valid if access_token else None
         })
     except Exception as e:
         logger.error(f"YouTube logout error: {str(e)}")
@@ -1827,17 +1872,44 @@ async def upload_tiktok_video(
 @app.post("/api/tiktok/logout")
 async def tiktok_logout(request: TikTokLogoutRequest):
     """
-    Logout from TikTok - calls official /oauth/revoke/ endpoint to revoke access token
+    Logout from TikTok - validates token first, then calls official /oauth/revoke/ endpoint
     """
     try:
         import requests
+        
+        token_valid = None
+        access_token = None
         
         if request.user_id in tiktok_sessions:
             session = tiktok_sessions[request.user_id]
             access_token = session.get("access_token")
             
-            # Call TikTok's official revoke endpoint to invalidate the access token
+            # Step 1: Validate token by attempting to fetch user info
+            token_valid = False
             if access_token:
+                try:
+                    token_info_url = "https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url"
+                    token_headers = {
+                        "Authorization": f"Bearer {access_token}",
+                        "Content-Type": "application/json"
+                    }
+                    logger.info(f"Validating TikTok access token for user: {request.user_id}")
+                    token_response = requests.get(token_info_url, headers=token_headers)
+                    
+                    if token_response.status_code == 200:
+                        token_data = token_response.json()
+                        if token_data.get("data", {}).get("user"):
+                            token_valid = True
+                            logger.info(f"TikTok token validated successfully for user: {request.user_id}")
+                        else:
+                            logger.info(f"TikTok token validation failed: Invalid response structure for user: {request.user_id}")
+                    else:
+                        logger.info(f"TikTok token validation failed: {token_response.status_code} - {token_response.text}")
+                except Exception as validation_error:
+                    logger.info(f"TikTok token validation error: {str(validation_error)}")
+            
+            # Step 2: Revoke token only if it was valid
+            if access_token and token_valid:
                 try:
                     revoke_url = "https://open.tiktokapis.com/v2/oauth/revoke/"
                     revoke_data = {
@@ -1860,6 +1932,8 @@ async def tiktok_logout(request: TikTokLogoutRequest):
                 except Exception as revoke_error:
                     logger.error(f"Error calling TikTok revoke endpoint: {str(revoke_error)}")
                     # Continue with local logout even if revoke fails
+            elif access_token and not token_valid:
+                logger.info(f"TikTok token was already invalid, skipping revoke for user: {request.user_id}")
             
             # Delete local session
             del tiktok_sessions[request.user_id]
@@ -1867,7 +1941,8 @@ async def tiktok_logout(request: TikTokLogoutRequest):
         
         return JSONResponse({
             "success": True,
-            "message": "Successfully logged out from TikTok"
+            "message": "Successfully logged out from TikTok",
+            "token_valid": token_valid if access_token else None
         })
     except Exception as e:
         logger.error(f"TikTok logout error: {str(e)}")

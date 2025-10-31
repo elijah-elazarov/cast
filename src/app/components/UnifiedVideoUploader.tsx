@@ -409,10 +409,14 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     addLog('Logging out from Instagram...');
     const w = window as FBWindow;
     if (w.FB) {
+      // Step 1: Validate token by checking login status (similar to YouTube/TikTok validation)
+      addLog('🔍 Validating Instagram access token...');
       // First check if user is connected (prevents "FB.logout() called without an access token" error)
       w.FB.getLoginStatus((response) => {
         if (response.status === 'connected') {
-          // User is connected, safe to call FB.logout()
+          // User is connected, token is valid
+          addLog('✅ Instagram access token validated (token was active)');
+          // Step 2: Revoke token via FB.logout()
           w.FB.logout(() => {
             localStorage.removeItem('instagram_user_id');
             localStorage.removeItem('instagram_username');
@@ -429,12 +433,14 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
               instagramPageId: null,
               facebookUserId: null
             });
-            addLog('✅ Instagram session revoked via FB.logout()');
+            addLog('✅ Instagram access token revoked on Facebook servers via FB.logout()');
+            addLog('✅ Local session cleared - logout complete');
             addLog('Logged out from Instagram successfully');
           });
         } else {
-          // User not connected or no access token, just clear local state
-          addLog('⚠️ No active Facebook session found, clearing local state only');
+          // User not connected or no access token, token was invalid
+          addLog('⚠️ Instagram access token was already invalid/expired (skipping revoke)');
+          // Just clear local state
           localStorage.removeItem('instagram_user_id');
           localStorage.removeItem('instagram_username');
           localStorage.removeItem('instagram_long_lived_token');
@@ -450,6 +456,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
             instagramPageId: null,
             facebookUserId: null
           });
+          addLog('✅ Local session cleared - logout complete');
           addLog('Logged out from Instagram successfully');
         }
       });
@@ -662,12 +669,44 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
   };
 
   // YouTube logout (call backend to revoke session - backend calls Google's official revoke endpoint)
+  // Note: We check local auth state (similar to FB.getLoginStatus() for Instagram)
+  // Google's revoke endpoint handles invalid tokens gracefully, so no pre-check needed
   const handleYouTubeLogout = async () => {
     addLog('Logging out from YouTube...');
+    
+    // Check if user is authenticated (similar to FB.getLoginStatus() check)
+    if (!youtubeAuth.isAuthenticated && !localStorage.getItem('youtube_user_id')) {
+      addLog('⚠️ No active YouTube session found, clearing local state only');
+      // Clear any remaining state
+      localStorage.removeItem('youtube_user_id');
+      localStorage.removeItem('youtube_channel_title');
+      localStorage.removeItem('youtube_channel_description');
+      localStorage.removeItem('youtube_custom_url');
+      localStorage.removeItem('youtube_published_at');
+      localStorage.removeItem('youtube_country');
+      localStorage.removeItem('youtube_thumbnail_url');
+      localStorage.removeItem('youtube_subscriber_count');
+      localStorage.removeItem('youtube_video_count');
+      localStorage.removeItem('youtube_view_count');
+      localStorage.removeItem('youtube_hidden_subscriber_count');
+      localStorage.removeItem('youtube_access_token');
+      localStorage.removeItem('youtube_refresh_token');
+      setYouTubeAuth({
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+        userInfo: null
+      });
+      addLog('Logged out from YouTube successfully');
+      return;
+    }
+    
+    // User is authenticated, validate token then revoke
     const userId = youtubeAuth.userInfo?.id || localStorage.getItem('youtube_user_id');
     
     if (userId) {
       try {
+        addLog('🔍 Validating YouTube access token...');
         // Use Next.js API proxy to call backend (like YouTubeConnection.tsx does)
         const response = await fetch('/api/youtube/logout', {
           method: 'POST',
@@ -679,7 +718,14 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         });
         const data = await response.json();
         if (data.success) {
-          addLog('✅ YouTube access token revoked on Google servers via /revoke endpoint');
+          if (data.token_valid === true) {
+            addLog('✅ YouTube access token validated (token was active)');
+            addLog('✅ YouTube access token revoked on Google servers via /revoke endpoint');
+          } else if (data.token_valid === false) {
+            addLog('⚠️ YouTube access token was already invalid/expired (skipping revoke)');
+          } else {
+            addLog('✅ YouTube logout processed');
+          }
           addLog('✅ Local session cleared - logout complete');
         } else {
           addLog(`⚠️ Backend logout warning: ${data.detail || data.message || 'Unknown error'}`);
@@ -951,13 +997,36 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
 
   // TikTok logout (call backend to revoke session like YouTube does)
   // Note: Backend calls TikTok's official /oauth/revoke/ endpoint (v2 API) to invalidate the access token
+  // We check local auth state (similar to FB.getLoginStatus() for Instagram)
+  // TikTok's revoke endpoint handles invalid tokens gracefully, so no pre-check needed
   // We also use sessionStorage flag as an additional safeguard to prevent auto-reconnection after explicit logout
   const handleTikTokLogout = async () => {
     addLog('Logging out from TikTok...');
+    
+    // Check if user is authenticated (similar to FB.getLoginStatus() check)
+    if (!tiktokAuth.isAuthenticated && !localStorage.getItem('tiktok_user_id')) {
+      addLog('⚠️ No active TikTok session found, clearing local state only');
+      // Clear any remaining state
+      localStorage.removeItem('tiktok_user_id');
+      localStorage.removeItem('tiktok_display_name');
+      localStorage.removeItem('tiktok_avatar_url');
+      localStorage.removeItem('tiktok_follower_count');
+      setTiktokAuth({
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+        userInfo: null
+      });
+      addLog('Logged out from TikTok successfully');
+      return;
+    }
+    
+    // User is authenticated, validate token then revoke
     const userId = tiktokAuth.userInfo?.userId || localStorage.getItem('tiktok_user_id');
     
     if (userId) {
       try {
+        addLog('🔍 Validating TikTok access token...');
         // Use Next.js API proxy to call backend (like TikTokConnection.tsx does)
         const response = await fetch('/api/tiktok/logout', {
           method: 'POST',
@@ -969,7 +1038,15 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         });
         const data = await response.json();
         if (data.success) {
-          addLog('Backend session revoked successfully');
+          if (data.token_valid === true) {
+            addLog('✅ TikTok access token validated (token was active)');
+            addLog('✅ TikTok access token revoked on TikTok servers via /oauth/revoke/ endpoint');
+          } else if (data.token_valid === false) {
+            addLog('⚠️ TikTok access token was already invalid/expired (skipping revoke)');
+          } else {
+            addLog('✅ TikTok logout processed');
+          }
+          addLog('✅ Local session cleared - logout complete');
         } else {
           addLog(`⚠️ Backend logout warning: ${data.detail || data.message || data.error || 'Unknown error'}`);
         }
@@ -982,8 +1059,6 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     // Set explicit logout flag in sessionStorage (prevents auto-reconnection)
     // This persists only for this tab session, ensuring logout applies until tab is closed
     sessionStorage.setItem('tiktok_explicit_logout', 'true');
-    addLog('✅ TikTok access token revoked on TikTok servers via /oauth/revoke/ endpoint');
-    addLog('✅ Local session cleared - logout complete');
     
     // Clear localStorage (like Instagram/YouTube do)
     localStorage.removeItem('tiktok_user_id');
