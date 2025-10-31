@@ -31,6 +31,8 @@ interface InstagramAuthState {
     id: string;
     username: string;
     account_type?: string;
+    avatarUrl?: string;
+    followerCount?: string;
   } | null;
   longLivedToken?: string | null;
   instagramPageId?: string | null;
@@ -452,7 +454,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
   };
 
   // Helper: find IG business account via FB pages (returns all needed fields)
-  const resolveInstagramAccount = async (accessToken: string): Promise<{ id: string; username: string; pageId: string }> => {
+  const resolveInstagramAccount = async (accessToken: string): Promise<{ id: string; username: string; pageId: string; avatarUrl?: string; followerCount?: string }> => {
     addLog('Getting Instagram Business Account from Facebook Pages...');
     const pagesUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${accessToken}`;
     const pagesRes = await fetch(pagesUrl);
@@ -469,7 +471,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         const igId = page.instagram_business_account.id;
         addLog(`Found Instagram Business Account: ${igId}`);
         addLog(`Page ID: ${page.id}, Page Access Token: ${page.access_token ? 'Present' : 'Missing'}`);
-        const igUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${igId}?fields=id,username,name&access_token=${accessToken}`;
+        const igUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${igId}?fields=id,username,name,profile_picture_url,followers_count&access_token=${accessToken}`;
         const igRes = await fetch(igUrl);
         if (!igRes.ok) {
           const errorData = await igRes.json();
@@ -503,7 +505,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           addLog(`Instagram account found: ${ig.username} (${ig.id})`);
           addLog(`Instagram Page ID: ${igId}`);
           addLog('Authentication completed successfully!');
-          return { id: ig.id, username: ig.username, pageId: igId };
+          return { id: ig.id, username: ig.username, pageId: igId, avatarUrl: ig.profile_picture_url, followerCount: ig.followers_count ? String(ig.followers_count) : undefined };
         }
       } else {
         addLog(`Page ${page.name} has no Instagram Business Account`);
@@ -565,7 +567,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         isAuthenticated: true, 
         isLoading: false, 
         error: null, 
-        userInfo: { id: ig.id, username: ig.username },
+        userInfo: { id: ig.id, username: ig.username, avatarUrl: ig.avatarUrl, followerCount: ig.followerCount },
         longLivedToken: longLived,
         instagramPageId: ig.pageId,
         facebookUserId: fbUserId
@@ -2056,11 +2058,17 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           </div>
           
           {instagramAuth.isAuthenticated && instagramAuth.userInfo && (
-            <div className="mb-3 text-sm text-gray-600 dark:text-gray-300">
-              <div>@{instagramAuth.userInfo.username}</div>
-              {instagramAuth.userInfo.account_type && (
-                <div className="text-xs text-gray-500">{instagramAuth.userInfo.account_type}</div>
+            <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
+              {instagramAuth.userInfo.avatarUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={instagramAuth.userInfo.avatarUrl} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
               )}
+              <div className="text-sm text-gray-600 dark:text-gray-300">
+                <div>@{instagramAuth.userInfo.username}</div>
+                {instagramAuth.userInfo.followerCount && (
+                  <div className="text-xs text-gray-500">{parseInt(instagramAuth.userInfo.followerCount).toLocaleString()} followers</div>
+                )}
+              </div>
             </div>
           )}
           
@@ -2111,11 +2119,17 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           </div>
           
           {youtubeAuth.isAuthenticated && youtubeAuth.userInfo && (
-            <div className="mb-3 text-sm text-gray-600 dark:text-gray-300">
-              <div>{youtubeAuth.userInfo.channelTitle}</div>
-              {youtubeAuth.userInfo.subscriberCount && (
-                <div className="text-xs text-gray-500">{parseInt(youtubeAuth.userInfo.subscriberCount).toLocaleString()} subscribers</div>
+            <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
+              {youtubeAuth.userInfo.thumbnailUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={youtubeAuth.userInfo.thumbnailUrl} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
               )}
+              <div className="text-sm text-gray-600 dark:text-gray-300">
+                <div>{youtubeAuth.userInfo.channelTitle}</div>
+                {youtubeAuth.userInfo.subscriberCount && (
+                  <div className="text-xs text-gray-500">{parseInt(youtubeAuth.userInfo.subscriberCount).toLocaleString()} subscribers</div>
+                )}
+              </div>
             </div>
           )}
           
