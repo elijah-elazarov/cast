@@ -131,6 +131,18 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     console.log(`[UNIFIED UPLOAD] ${message}`);
   }, []);
 
+  // Add initial TikTok configuration logs (matching TikTokShortsDebugger)
+  useEffect(() => {
+    const tiktokClientKey = process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY || 'your-client-key';
+    const tiktokUploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_TIKTOK || 'tiktok_uploads';
+    addLog('🎵 TikTok Shorts Debugger initialized');
+    addLog('📋 Configuration loaded');
+    addLog(`🔑 Client Key: ${tiktokClientKey.substring(0, 8)}...`);
+    addLog(`📦 Upload Preset: ${tiktokUploadPreset}`);
+    addLog('✅ Ready to connect and upload videos to TikTok');
+    addLog('👆 Click "Connect TikTok" to begin authentication');
+  }, [addLog]);
+
   // Check existing connections on mount and handle OAuth callbacks
   useEffect(() => {
     // Load Facebook SDK (for Instagram)
@@ -675,51 +687,123 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     addLog('Logged out from YouTube successfully');
   };
 
-  // TikTok connect (using popup OAuth like TikTokShortsDebugger)
+  // Check if already authenticated (for TikTok) - from state or localStorage
+  const checkTikTokExistingAuth = (): boolean => {
+    // First check if already authenticated in state
+    if (tiktokAuth.isAuthenticated && tiktokAuth.userInfo) {
+      addLog('Already authenticated, refreshing auth data...');
+      addLog(`✅ Authenticated as: ${tiktokAuth.userInfo.displayName || 'TikTok User'}`);
+      if (tiktokAuth.userInfo.userId) {
+        addLog(`📺 User ID: ${tiktokAuth.userInfo.userId}`);
+      }
+      if (tiktokAuth.userInfo.followerCount) {
+        addLog(`👥 Followers: ${tiktokAuth.userInfo.followerCount}`);
+      }
+      addLog('Authentication refreshed successfully!');
+      return true;
+    }
+    
+    // Check localStorage for stored session (like Instagram/YouTube do)
+    const tiktokUserId = localStorage.getItem('tiktok_user_id');
+    const tiktokDisplayName = localStorage.getItem('tiktok_display_name');
+    
+    if (tiktokUserId && tiktokDisplayName) {
+      addLog('Found existing TikTok session in storage, reconnecting...');
+      const storedUserInfo: TikTokAuthState['userInfo'] = {
+        userId: tiktokUserId,
+        displayName: tiktokDisplayName,
+        avatarUrl: localStorage.getItem('tiktok_avatar_url') || undefined,
+        followerCount: localStorage.getItem('tiktok_follower_count') || undefined
+      };
+      
+      setTiktokAuth({
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        userInfo: storedUserInfo
+      });
+      
+      addLog(`✅ Reconnected as: ${tiktokDisplayName}`);
+      if (tiktokUserId) {
+        addLog(`📺 User ID: ${tiktokUserId}`);
+      }
+      if (storedUserInfo.followerCount) {
+        addLog(`👥 Followers: ${storedUserInfo.followerCount}`);
+      }
+      addLog('Session restored successfully!');
+      return true;
+    }
+    
+    return false;
+  };
+
+  // TikTok connect (matching TikTokShortsDebugger exactly)
   const handleTikTokConnect = async () => {
     setTiktokAuth(prev => ({ ...prev, isLoading: true, error: null }));
-    addLog('Starting TikTok authentication...');
+    addLog('— New TikTok authentication session —');
+    addLog('Initializing TikTok authentication...');
     
     try {
+      addLog('Starting TikTok Shorts authentication...');
+      
+      // First check if already authenticated
+      const isRefreshed = checkTikTokExistingAuth();
+      if (isRefreshed) {
+        setTiktokAuth(prev => ({ ...prev, isLoading: false }));
+        return;
+      }
+      
+      addLog('Creating authentication popup...');
+      
       const popupWidth = 640;
       const popupHeight = 655;
-      const popup = window.open('', 'tiktok-oauth', `width=${popupWidth},height=${popupHeight}`);
-      if (!popup) throw new Error('Popup blocked');
+      const features = `width=${popupWidth},height=${popupHeight},scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no`;
       
+      const popup = window.open('', 'tiktok-oauth', features);
+      if (!popup) {
+        throw new Error('Popup blocked. Please allow popups for this site.');
+      }
+      try {
+        popup.document.title = 'Connecting to TikTok…';
+      } catch {}
+      try {
+        popup.focus();
+      } catch {}
+      addLog(`Popup metrics -> width:${popupWidth}, height:${popupHeight} (browser-positioned)`);
+      
+      // Get auth URL from backend
       const response = await fetch('/api/tiktok/auth-url', { headers: { 'ngrok-skip-browser-warning': 'true' } });
       const data = await response.json();
       
-      if (!data.success) throw new Error(data.error || 'Failed to get auth URL');
+      if (!data.success) {
+        popup.close();
+        throw new Error(data.error || 'Failed to get auth URL');
+      }
       
+      addLog('Opening TikTok authentication popup...');
       popup.location.href = data.auth_url;
+      
+      let completed = false;
+      let checkClosedInterval: NodeJS.Timeout | null = null;
       
       const messageHandler = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
         
         if (event.data.type === 'TIKTOK_AUTH_SUCCESS') {
-          const authData = event.data.authData?.data;
-          if (authData) {
-            setTiktokAuth({
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              userInfo: {
-                userId: authData.user_id,
-                displayName: authData.display_name,
-                avatarUrl: authData.avatar_url,
-                followerCount: authData.follower_count
-              }
-            });
-            localStorage.setItem('tiktok_user_id', authData.user_id);
-            localStorage.setItem('tiktok_display_name', authData.display_name);
-            if (authData.avatar_url) localStorage.setItem('tiktok_avatar_url', authData.avatar_url);
-            addLog(`TikTok connected: ${authData.display_name}`);
-          }
+          completed = true;
+          if (checkClosedInterval) clearInterval(checkClosedInterval);
+          handleTikTokAuthSuccess(event.data.authData);
           popup.close();
           window.removeEventListener('message', messageHandler);
         } else if (event.data.type === 'TIKTOK_AUTH_ERROR') {
-          addLog(`TikTok authentication error: ${event.data.error}`);
-          setTiktokAuth(prev => ({ ...prev, isLoading: false, error: event.data.error }));
+          completed = true;
+          if (checkClosedInterval) clearInterval(checkClosedInterval);
+          addLog(`TikTok authentication failed: ${event.data.error}`);
+          setTiktokAuth(prev => ({
+            ...prev,
+            isLoading: false,
+            error: `TikTok authorization failed: ${event.data.error}`
+          }));
           popup.close();
           window.removeEventListener('message', messageHandler);
         }
@@ -727,17 +811,90 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       
       window.addEventListener('message', messageHandler);
       
-      // Cleanup if popup closes
-      const checkClosed = setInterval(() => {
+      checkClosedInterval = setInterval(() => {
         if (popup.closed) {
-          clearInterval(checkClosed);
+          if (checkClosedInterval) clearInterval(checkClosedInterval);
           window.removeEventListener('message', messageHandler);
-          setTiktokAuth(prev => ({ ...prev, isLoading: false }));
+          setTiktokAuth(prev => ({
+            ...prev,
+            isLoading: false,
+            error: completed ? prev.error : 'Login cancelled or window closed before completing authentication'
+          }));
         }
       }, 1000);
+      
+      // Failsafe timeout
+      setTimeout(() => {
+        if (!completed && !popup.closed) {
+          if (checkClosedInterval) clearInterval(checkClosedInterval);
+          try { popup.close(); } catch {}
+          window.removeEventListener('message', messageHandler);
+          setTiktokAuth(prev => ({
+            ...prev,
+            isLoading: false,
+            error: 'Authentication timed out. Please try again.'
+          }));
+        }
+      }, 2 * 60 * 1000); // 2 minutes
+      
     } catch (error) {
-      addLog(`TikTok authentication error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      setTiktokAuth(prev => ({ ...prev, isLoading: false, error: String(error) }));
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      addLog(`Authentication error: ${errorMessage}`);
+      setTiktokAuth(prev => ({
+        ...prev,
+        isLoading: false,
+        error: errorMessage
+      }));
+    }
+  };
+
+  // Handle successful TikTok authentication (matching TikTokShortsDebugger)
+  const handleTikTokAuthSuccess = async (authData: { success: boolean; data?: { user_id?: string; display_name?: string; avatar_url?: string; follower_count?: string; following_count?: string; video_count?: string; like_count?: string }; message?: string }) => {
+    try {
+      addLog('Processing authentication data...');
+      
+      if (!authData || !authData.data) {
+        throw new Error('Invalid authentication data');
+      }
+      
+      const userData = authData.data;
+      addLog(`🔍 Debug - Received data: ${JSON.stringify(userData)}`);
+      
+      setTiktokAuth({
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        userInfo: {
+          userId: userData.user_id,
+          displayName: userData.display_name,
+          avatarUrl: userData.avatar_url,
+          followerCount: userData.follower_count
+        }
+      });
+      
+      // Store in localStorage for reconnection (like Instagram/YouTube do)
+      if (userData.user_id) localStorage.setItem('tiktok_user_id', userData.user_id);
+      if (userData.display_name) localStorage.setItem('tiktok_display_name', userData.display_name);
+      if (userData.avatar_url) localStorage.setItem('tiktok_avatar_url', userData.avatar_url);
+      if (userData.follower_count) localStorage.setItem('tiktok_follower_count', userData.follower_count);
+      
+      addLog(`✅ Authenticated as: ${userData.display_name || 'TikTok User'}`);
+      if (userData.user_id) {
+        addLog(`📺 User ID: ${userData.user_id}`);
+      }
+      if (userData.follower_count) {
+        addLog(`👥 Followers: ${userData.follower_count}`);
+      }
+      addLog('Authentication completed successfully!');
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      addLog(`❌ Auth success processing error: ${errorMessage}`);
+      setTiktokAuth(prev => ({
+        ...prev,
+        isLoading: false,
+        error: `Authentication processing failed: ${errorMessage}`
+      }));
     }
   };
 
@@ -856,21 +1013,60 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       processingPromises.push(
         (async () => {
           try {
-            addLog('🎬 [TikTok] Processing video...');
+            addLog('🎬 Processing video for TikTok Shorts...');
             setProcessingProgress(10);
-            const up = await uploadToCloudinary(file, process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_TIKTOK || 'tiktok_uploads', 'tiktok_uploads');
-            // TikTok transformations: crop to 9:16 (1080x1920), MP4 format, trim from start to 60 seconds max
-            const url = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_1080,h_1920,f_mp4,q_auto:best,so_0,eo_60/${up.public_id}.mp4`;
-            addLog('🔄 [TikTok] Generating optimized video...');
-            setProcessingProgress(50);
-            await validateUrl(url, 'TikTok video');
-            setTtProcessedUrl(url);
+            
+            // Upload to Cloudinary with TikTok-specific transformations
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_TIKTOK || 'tiktok_uploads');
+            formData.append('folder', 'tiktok_uploads');
+            
+            addLog('📤 Uploading to Cloudinary...');
+            setProcessingProgress(30);
+            
+            const uploadResponse = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, {
+              method: 'POST',
+              body: formData
+            });
+            
+            if (!uploadResponse.ok) {
+              throw new Error('Cloudinary upload failed');
+            }
+            
+            const uploadData = await uploadResponse.json();
+            addLog('✅ Upload successful');
+            setProcessingProgress(60);
+            
+            // Generate TikTok-optimized video URL with transformations:
+            // - c_fill: Crop and fill to exact dimensions (9:16 aspect ratio)
+            // - w_1080,h_1920: TikTok optimal resolution (max 1080x1920)
+            // - f_mp4: MP4 format (required by TikTok)
+            // - q_auto:best: Auto quality optimization
+            // - so_0,eo_60: Trim from start (0s) to 60 seconds max (TikTok Shorts limit)
+            const tiktokTransformUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_1080,h_1920,f_mp4,q_auto:best,so_0,eo_60/${uploadData.public_id}.mp4`;
+            
+            addLog('🔄 Generating TikTok-optimized video...');
+            setProcessingProgress(80);
+            
+            // Validate the transformed video (best-effort; Cloudinary may delay availability)
+            let ready = false;
+            for (let i = 0; i < 3; i++) {
+              const resp = await fetch(tiktokTransformUrl, { method: 'HEAD' });
+              if (resp.ok) { ready = true; break; }
+              await new Promise(r => setTimeout(r, 600));
+            }
+            if (!ready) addLog('⚠️ Proceeding even though HEAD validation did not pass yet');
+            
+            setTtProcessedUrl(tiktokTransformUrl);
             updateProgress();
-            addLog('🎉 [TikTok] Processing complete');
-            addLog(`📹 [TikTok] URL: ${url}`);
+            setProcessingProgress(100);
+            
+            addLog('🎉 Video processing complete! Ready for TikTok upload');
+            addLog(`📹 TikTok URL: ${tiktokTransformUrl}`);
           } catch (e) {
             updateProgress();
-            addLog(`❌ [TikTok] Processing error: ${e}`);
+            addLog(`❌ Processing error: ${e}`);
           }
         })()
       );
@@ -998,6 +1194,56 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     });
   };
 
+  // Validate TikTok file (matching TikTokShortsDebugger)
+  const validateTikTokFile = async (file: File): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const videoEl = document.createElement('video');
+      videoEl.preload = 'metadata';
+      videoEl.src = URL.createObjectURL(file);
+      
+      videoEl.onloadedmetadata = () => {
+        const duration = videoEl.duration;
+        const width = videoEl.videoWidth;
+        const height = videoEl.videoHeight;
+        
+        addLog(`📏 Video dimensions: ${width}x${height}`);
+        addLog(`⏱️ Video duration: ${duration.toFixed(2)}s`);
+        
+        // Check duration (max 60 seconds for TikTok Shorts)
+        if (duration > 60) {
+          addLog('❌ Video too long. TikTok Shorts must be 60 seconds or less');
+          addLog(`⚠️ Your video is ${duration.toFixed(2)}s, but TikTok Shorts limit is 60s`);
+          addLog('📝 Video will be trimmed to 60 seconds during processing');
+          // Allow upload but warn - Cloudinary can trim duration if needed
+        } else {
+          addLog('✅ Video duration is within TikTok Shorts limit (≤60s)');
+        }
+        
+        // Check aspect ratio (should be 9:16 for Shorts, but TikTok is flexible)
+        const aspectRatio = width / height;
+        const expectedRatio = 9 / 16; // 0.5625
+        const tolerance = 0.2; // 20% tolerance
+        
+        if (Math.abs(aspectRatio - expectedRatio) > tolerance) {
+          addLog(`⚠️ Aspect ratio ${aspectRatio.toFixed(3)} is not ideal for TikTok Shorts (9:16 = ${expectedRatio.toFixed(3)})`);
+          addLog('📝 Video will be cropped to 9:16 during processing');
+        } else {
+          addLog('✅ Aspect ratio is good for TikTok Shorts');
+        }
+        
+        addLog('✅ File validation passed');
+        URL.revokeObjectURL(videoEl.src);
+        resolve(true);
+      };
+      
+      videoEl.onerror = () => {
+        addLog('❌ Could not load video metadata');
+        URL.revokeObjectURL(videoEl.src);
+        resolve(false);
+      };
+    });
+  };
+
   // Handle file selection
   const handleFileSelect = async (file: File) => {
     setSelectedFile(file);
@@ -1011,9 +1257,27 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     setIgThumbUrl(null);
     addLog(`Selected file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
     
+    // Validate file type
+    if (!file.type.startsWith('video/')) {
+      addLog('❌ Please select a video file');
+      return;
+    }
+    
+    // Validate file size (TikTok has 128MB limit)
+    const maxSizeMB = 128;
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      addLog(`❌ File too large. Max size: ${maxSizeMB}MB`);
+      return;
+    }
+    
     // Validate for YouTube if authenticated (matching debugger)
     if (youtubeAuth.isAuthenticated) {
       await validateYouTubeShortsFile(file);
+    }
+    
+    // Validate for TikTok if authenticated (matching debugger)
+    if (tiktokAuth.isAuthenticated) {
+      await validateTikTokFile(file);
     }
   };
 
@@ -1320,20 +1584,77 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     }
 
     // TikTok upload (prefer video_url so backend pulls it)
+    // TikTok upload (matching TikTokShortsDebugger exactly)
     if (tiktokAuth.isAuthenticated) {
-      const formData = new FormData();
-      if (ttProcessedUrl) {
-        formData.append('video_url', ttProcessedUrl);
-      } else {
-        formData.append('video', selectedFile);
-      }
-      formData.append('description', caption);
-      formData.append('user_id', tiktokAuth.userInfo?.userId || '');
-      uploads.push(
-        fetch('/api/tiktok/upload-video', { method: 'POST', body: formData, headers: { 'ngrok-skip-browser-warning': 'true' } })
-          .then(async r => { const data: ApiResponse = await r.json().catch(async () => ({ raw: await r.text() })); addLog(`🧾 TikTok response: ${JSON.stringify(data)}`); return { platform: 'TikTok', success: r.ok && !!data.success, message: data.message || 'Uploaded' }; })
-          .catch(e => ({ platform: 'TikTok', success: false, message: String(e) }))
-      );
+      uploads.push((async () => {
+        try {
+          if (!ttProcessedUrl) throw new Error('No processed video available. Please process a video first.');
+          addLog('Testing TikTok Shorts upload...');
+          addLog(`📹 Using processed video: ${ttProcessedUrl}`);
+          addLog(`📝 Title: ${caption || 'No title'}`);
+          addLog(`📄 Description: ${caption || 'No description'}`);
+          addLog(`🏷️ Tags: No tags`);
+          
+          // Send video_url directly to backend (backend will download from Cloudinary)
+          // This avoids "Body is disturbed or locked" error and 413 (Payload Too Large) errors
+          addLog('📤 Preparing upload to TikTok via backend...');
+          addLog(`📹 Using processed video URL: ${ttProcessedUrl}`);
+          addLog('💡 Backend will download video directly from Cloudinary');
+          
+          // Create form data for backend upload (backend accepts 'video_url' or 'video' file)
+          const formData = new FormData();
+          formData.append('video_url', ttProcessedUrl);
+          formData.append('description', caption || '');
+          formData.append('user_id', tiktokAuth.userInfo?.userId || '');
+          
+          addLog('📤 Uploading to TikTok via backend...');
+          const response = await fetch('/api/tiktok/upload-video', {
+            method: 'POST',
+            body: formData,
+            headers: { 'ngrok-skip-browser-warning': 'true' }
+          });
+
+          if (!response.ok) {
+            let detail = 'Unknown error';
+            try {
+              const errorData = await response.json();
+              detail = errorData.detail || errorData.error || JSON.stringify(errorData);
+            } catch {
+              const text = await response.text();
+              detail = text || detail;
+            }
+            throw new Error(`Backend upload failed: ${detail}`);
+          }
+
+          const data = await response.json();
+          // Always show raw backend response for debugging
+          addLog(`🧾 Backend response: ${JSON.stringify(data)}`);
+
+          // Treat inbox-ready message as success and surface publish_id when present
+          if (data.success) {
+            const publishId = data.publish_id || (data.data && data.data.publish_id);
+            if (publishId) addLog(`📨 TikTok inbox publish_id: ${publishId}`);
+            addLog('✅ Upload sent to TikTok. Open the TikTok app to finish posting.');
+            return { platform: 'TikTok', success: true, message: 'Uploaded to inbox' };
+          } else {
+            // Extract error message from detail or message
+            const errorMsg = data.detail || data.message || data.error || 'Unknown error';
+            
+            // Check for specific TikTok errors and provide helpful guidance
+            if (errorMsg.includes('spam_risk_too_many_pending_share')) {
+              addLog('❌ TikTok inbox limit reached: Too many pending posts');
+              addLog('💡 Solution: Go to TikTok app → Inbox → Publish or delete pending posts, then try again');
+              return { platform: 'TikTok', success: false, message: 'Too many pending posts in inbox' };
+            }
+            
+            addLog(`❌ Upload failed: ${errorMsg}`);
+            return { platform: 'TikTok', success: false, message: errorMsg };
+          }
+        } catch (e) {
+          addLog(`❌ Upload error: ${e}`);
+          return { platform: 'TikTok', success: false, message: String(e) };
+        }
+      })());
     }
 
     const results = await Promise.all(uploads);
