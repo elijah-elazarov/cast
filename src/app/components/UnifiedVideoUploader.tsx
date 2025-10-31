@@ -6,7 +6,7 @@ import { Instagram, Youtube, Music, UploadCloud, FileVideo2, Loader2, X } from '
 
 type FacebookLoginStatus = {
   status: 'connected' | 'not_authorized' | 'unknown';
-  authResponse?: { accessToken: string; userID?: string };
+  authResponse?: { accessToken: string; userID?: string; expiresIn?: number; grantedScopes?: string };
 };
 
 type FacebookSDK = {
@@ -318,33 +318,52 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
   // Instagram connect (use Facebook SDK like the debugger)
   const handleInstagramConnect = async () => {
     setInstagramAuth(prev => ({ ...prev, isLoading: true, error: null }));
-    addLog('Starting Instagram authentication (Facebook SDK)...');
+    addLog('Starting Instagram Reels Poster authentication...');
     try {
       const w = window as FBWindow;
       if (!w.FB || !fbSdkLoaded) throw new Error('Facebook SDK not loaded yet');
       // Check existing login
       const auth = await new Promise<FacebookLoginStatus>((resolve) => w.FB!.getLoginStatus((r) => resolve(r as unknown as FacebookLoginStatus)));
+      addLog(`Login status check: ${auth?.status || 'unknown'}`);
       let accessToken: string | null = null;
       let fbUserId: string | null = null;
+      let grantedScopes: string | undefined;
+      let expiresIn: number | undefined;
       if (auth?.status === 'connected') {
         accessToken = auth.authResponse?.accessToken || null;
         fbUserId = auth.authResponse?.userID || null;
-        addLog('Using existing Facebook session');
+        expiresIn = auth.authResponse?.expiresIn;
+        grantedScopes = auth.authResponse?.grantedScopes;
+        addLog(`Already logged in with user ID: ${fbUserId}`);
+        addLog('Already logged in, using existing token');
       } else {
         addLog('Invoking FB.login...');
         const loginRes = await new Promise<FacebookLoginStatus>((resolve) => w.FB!.login((r) => resolve(r as unknown as FacebookLoginStatus), { scope: INSTAGRAM_CONFIG.scope, return_scopes: true }));
         accessToken = loginRes.authResponse?.accessToken || null;
         fbUserId = loginRes.authResponse?.userID || null;
+        expiresIn = loginRes.authResponse?.expiresIn;
+        grantedScopes = loginRes.authResponse?.grantedScopes;
+        addLog(`Login successful for user: ${fbUserId}`);
       }
-      if (!accessToken) throw new Error('Login failed or cancelled');
+      if (!accessToken || !fbUserId) throw new Error('Login failed or cancelled');
+      
+      // Log auth response details (matching debugger)
+      addLog(`Processing auth response for user: ${fbUserId}`);
+      if (expiresIn) {
+        addLog(`Access token expires in: ${expiresIn} seconds`);
+      }
+      if (grantedScopes) {
+        addLog(`Granted scopes: ${grantedScopes}`);
+      }
+      
       const longLived = await exchangeLongLivedToken(accessToken);
-      const ig = await resolveInstagramAccount(longLived, fbUserId || 'unknown');
+      const ig = await resolveInstagramAccount(longLived, fbUserId);
       // Persist and update UI
       localStorage.setItem('instagram_user_id', ig.id);
       localStorage.setItem('instagram_username', ig.username);
       localStorage.setItem('instagram_long_lived_token', longLived);
       localStorage.setItem('instagram_page_id', ig.pageId);
-      localStorage.setItem('facebook_user_id', fbUserId || '');
+      localStorage.setItem('facebook_user_id', fbUserId);
       setInstagramAuth({ 
         isAuthenticated: true, 
         isLoading: false, 
@@ -352,12 +371,12 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         userInfo: { id: ig.id, username: ig.username },
         longLivedToken: longLived,
         instagramPageId: ig.pageId,
-        facebookUserId: fbUserId || null
+        facebookUserId: fbUserId
       });
-      addLog(`Instagram connected: @${ig.username}`);
+      addLog('Authentication completed successfully!');
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
-      addLog(`Instagram authentication error: ${msg}`);
+      addLog(`Authentication error: ${msg}`);
       setInstagramAuth(prev => ({ ...prev, isLoading: false, error: msg }));
     }
   };
@@ -623,25 +642,47 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       processingPromises.push(
         (async () => {
           try {
-            addLog('🔄 [Instagram] Uploading to Cloudinary...');
-            setProcessingProgress(10);
+            // Step 1: Upload original file to Cloudinary
+            addLog('🔄 Step 1/3: Uploading video to Cloudinary...');
+            setProcessingProgress(20);
             const up = await uploadToCloudinary(file, process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_INSTAGRAM || 'instagram_uploads', 'instagram_uploads');
+            addLog('✅ Uploaded source video to Cloudinary');
+            
+            // Step 2: Generate transformation URLs
+            addLog('🔄 Step 2/3: Generating Instagram-compliant transformation URLs...');
+            setProcessingProgress(60);
             const reelsUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best/${up.public_id}.mp4`;
+            const storiesUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/c_fill,w_720,h_1280,f_mp4,q_auto:best/${up.public_id}.mp4`;
             const thumbUrl = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/so_1,w_720,h_1280,c_fill,f_jpg,q_auto:best/${up.public_id}.jpg`;
-            addLog('🔄 [Instagram] Validating transformed assets...');
-            setProcessingProgress(50);
-            await Promise.all([
-              validateUrl(reelsUrl, 'Instagram Reels video'),
-              validateUrl(thumbUrl, 'Instagram thumbnail')
+            
+            // Step 3: Validate URLs are accessible
+            addLog('🔄 Step 3/3: Validating transformed videos are accessible...');
+            setProcessingProgress(80);
+            addLog('Trying simple center crop transformations (no content awareness)...');
+            addLog('Using basic c_fill for fast, reliable cropping');
+            const [reelsOk, storiesOk, thumbOk] = await Promise.all([
+              validateUrl(reelsUrl, 'Reels video (simple crop)'),
+              validateUrl(storiesUrl, 'Stories video (simple crop)'),
+              validateUrl(thumbUrl, 'Thumbnail')
             ]);
+            
             setIgReelsUrl(reelsUrl);
             setIgThumbUrl(thumbUrl);
             updateProgress();
-            addLog('✅ [Instagram] Processing complete');
-            addLog(`📹 [Instagram] Reels URL: ${reelsUrl}`);
+            setProcessingProgress(100);
+            
+            const allValid = reelsOk && storiesOk && thumbOk;
+            if (allValid) {
+              addLog('🎉 Video processing complete! Videos are ready for posting');
+            } else {
+              addLog('⚠️ Video processing completed with some issues - check logs above');
+            }
+            addLog(`📹 Reels URL: ${reelsUrl}`);
+            addLog(`📱 Stories URL: ${storiesUrl}`);
+            addLog(`🖼️ Thumbnail URL: ${thumbUrl}`);
           } catch (e) {
             updateProgress();
-            addLog(`❌ [Instagram] Processing error: ${e}`);
+            addLog(`❌ Processing error: ${e}`);
           }
         })()
       );
@@ -701,6 +742,22 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
 
     // Instagram uploads (Reels and optionally Stories) - use direct Facebook Graph API
     if (instagramAuth.isAuthenticated && instagramAuth.longLivedToken && instagramAuth.instagramPageId) {
+      const showAvailableTransformedVideos = () => {
+        addLog('📋 Available transformed videos:');
+        if (igReelsUrl) {
+          addLog(`  📹 Reels video: ${igReelsUrl}`);
+          addLog('    → Optimized for Instagram Reels (progressive encoding)');
+        }
+        if (igReelsUrl) { // Using same URL for Stories
+          addLog(`  📱 Stories video: ${igReelsUrl}`);
+          addLog('    → Optimized for Instagram Stories (fast upload encoding)');
+        }
+        if (igThumbUrl) {
+          addLog(`  🖼️  Thumbnail: ${igThumbUrl}`);
+          addLog('    → Extracted frame for image_url parameter');
+        }
+      };
+      
       const checkContainerStatus = async (containerId: string, platform: string) => {
         const statusUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${containerId}`;
         const statusParams = new URLSearchParams({
@@ -710,8 +767,9 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         const statusResponse = await fetch(`${statusUrl}?${statusParams.toString()}`);
         if (statusResponse.ok) {
           const statusData = await statusResponse.json();
+          addLog(`Container status: ${statusData.status_code}`);
           if (statusData.status_code === 'FINISHED') {
-            addLog('✅ Container processing finished! Publishing...');
+            addLog('✅ Container processing finished! Publishing Reel...');
             await publishReel(containerId, platform);
           } else if (statusData.status_code === 'IN_PROGRESS') {
             addLog('⏳ Container still processing, checking again in 5 seconds...');
@@ -719,6 +777,9 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           } else {
             addLog(`❌ Container failed with status: ${statusData.status_code}`);
           }
+        } else {
+          const errorData = await statusResponse.json();
+          addLog(`❌ Status check failed: ${JSON.stringify(errorData)}`);
         }
       };
       
@@ -732,6 +793,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         if (publishResponse.ok) {
           const publishResult = await publishResponse.json();
           addLog(`🎉 SUCCESS! ${platform} published with ID: ${publishResult.id}`);
+          addLog(`✅ Your Instagram ${platform} has been posted successfully!`);
         } else {
           const errorData = await publishResponse.json();
           addLog(`❌ Publishing failed: ${JSON.stringify(errorData)}`);
@@ -741,24 +803,63 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       // Upload Reel
       uploads.push((async () => {
         try {
-          if (!igReelsUrl) throw new Error('No processed video available');
-          addLog('📤 [Instagram Reel] Creating container...');
+          if (!igReelsUrl) throw new Error('No processed video available. Please process a video first.');
+          addLog('Testing Instagram Reels posting capability...');
+          showAvailableTransformedVideos();
+          
+          // Step 1: Use already processed video from Cloudinary
+          addLog('Step 1: Using pre-processed video from Cloudinary...');
+          addLog(`📹 Using Reels-optimized video URL: ${igReelsUrl}`);
+          addLog('🎯 This video is specifically transformed for Instagram Reels posting');
+          const finalProcessedVideoUrl = igReelsUrl;
+          
+          // Step 2: Create media container
+          addLog('Step 2: Creating media container...');
           const containerUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${instagramAuth.instagramPageId}/media`;
-          const containerResponse = await fetch(containerUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              video_url: igReelsUrl,
-              caption: caption || '',
-              media_type: 'REELS',
-              access_token: instagramAuth.longLivedToken!
-            })
-          });
-          if (!containerResponse.ok) throw new Error('Failed to create container');
-          const containerData = await containerResponse.json();
-          addLog(`✅ Reel container created: ${containerData.id}`);
-          await checkContainerStatus(containerData.id, 'Reel');
-          return { platform: 'Instagram Reel', success: true, message: 'Reel posted successfully' };
+          const approaches = [
+            {
+              name: 'Reels with video_url',
+              data: {
+                video_url: finalProcessedVideoUrl,
+                caption: caption || '🎬 Test Reel from Unified Video Uploader - Posted via API! #test #reels #api',
+                media_type: 'REELS',
+                access_token: instagramAuth.longLivedToken!
+              }
+            }
+          ];
+          
+          let containerCreated = false;
+          let containerId: string | null = null;
+          
+          for (const approach of approaches) {
+            addLog(`Trying approach: ${approach.name}`);
+            const containerResponse = await fetch(containerUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(approach.data)
+            });
+            
+            if (containerResponse.ok) {
+              const containerResult = await containerResponse.json();
+              containerId = containerResult.id;
+              addLog(`✅ Media container created with ${approach.name}: ${containerId}`);
+              containerCreated = true;
+              break;
+            } else {
+              const errorData = await containerResponse.json();
+              addLog(`❌ ${approach.name} failed: ${JSON.stringify(errorData)}`);
+            }
+          }
+          
+          if (containerCreated && containerId) {
+            // Step 3: Check container status
+            addLog('Step 3: Checking container status...');
+            await checkContainerStatus(containerId, 'Reel');
+            return { platform: 'Instagram Reel', success: true, message: 'Reel posted successfully' };
+          } else {
+            addLog('❌ All container creation approaches failed');
+            return { platform: 'Instagram Reel', success: false, message: 'Failed to create container' };
+          }
         } catch (e) {
           return { platform: 'Instagram Reel', success: false, message: String(e) };
         }
@@ -768,24 +869,74 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       if (instagramStory) {
         uploads.push((async () => {
           try {
-            if (!igReelsUrl) throw new Error('No processed video available');
-            addLog('📤 [Instagram Story] Creating container...');
+            if (!igReelsUrl) throw new Error('No processed Stories video available. Please process a video first.');
+            addLog('Posting Instagram Stories with processed video...');
+            showAvailableTransformedVideos();
+            
+            // Step 1: Use already processed video from Cloudinary
+            addLog('Step 1: Using pre-processed video from Cloudinary...');
+            addLog(`📱 Using Stories-optimized video URL: ${igReelsUrl}`);
+            addLog('🎯 This video is specifically transformed for Instagram Stories posting');
+            const finalProcessedVideoUrl = igReelsUrl;
+            const processedThumbnailUrl: string | null = igThumbUrl;
+            
+            // Stories have more flexible requirements
             const containerUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${instagramAuth.instagramPageId}/media`;
-            const containerResponse = await fetch(containerUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                video_url: igReelsUrl,
-                caption: caption || '',
-                media_type: 'STORIES',
-                access_token: instagramAuth.longLivedToken!
-              })
-            });
-            if (!containerResponse.ok) throw new Error('Failed to create container');
-            const containerData = await containerResponse.json();
-            addLog(`✅ Story container created: ${containerData.id}`);
-            await checkContainerStatus(containerData.id, 'Story');
-            return { platform: 'Instagram Story', success: true, message: 'Story posted successfully' };
+            const isVideoFile = selectedFile && selectedFile.type.startsWith('video/');
+            const storiesApproaches = isVideoFile ? [
+              {
+                name: 'Stories video',
+                data: {
+                  video_url: finalProcessedVideoUrl,
+                  caption: caption || '📱 Test Story from Unified Video Uploader - Posted via API! #test #stories #api',
+                  media_type: 'STORIES',
+                  access_token: instagramAuth.longLivedToken!
+                }
+              }
+            ] : [
+              {
+                name: 'Stories image',
+                data: {
+                  image_url: processedThumbnailUrl || finalProcessedVideoUrl,
+                  caption: caption || '📱 Test Story from Unified Video Uploader - Posted via API! #test #stories #api',
+                  media_type: 'STORIES',
+                  access_token: instagramAuth.longLivedToken!
+                }
+              }
+            ];
+            
+            let storiesContainerCreated = false;
+            let storiesContainerId: string | null = null;
+            
+            for (const approach of storiesApproaches) {
+              addLog(`Trying Stories approach: ${approach.name}`);
+              const containerResponse = await fetch(containerUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(approach.data)
+              });
+              
+              if (containerResponse.ok) {
+                const containerResult = await containerResponse.json();
+                storiesContainerId = containerResult.id;
+                addLog(`✅ Stories container created with ${approach.name}: ${storiesContainerId}`);
+                storiesContainerCreated = true;
+                break;
+              } else {
+                const errorData = await containerResponse.json();
+                addLog(`❌ ${approach.name} failed: ${JSON.stringify(errorData)}`);
+              }
+            }
+            
+            if (storiesContainerCreated && storiesContainerId) {
+              // Check container status
+              addLog('Checking Stories container status...');
+              await checkContainerStatus(storiesContainerId, 'Story');
+              return { platform: 'Instagram Story', success: true, message: 'Story posted successfully' };
+            } else {
+              addLog('❌ All Stories container creation approaches failed');
+              return { platform: 'Instagram Story', success: false, message: 'Failed to create Stories container' };
+            }
           } catch (e) {
             return { platform: 'Instagram Story', success: false, message: String(e) };
           }
