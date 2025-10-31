@@ -397,28 +397,25 @@ export default function InstagramReelsDebugger() {
   // Get long-lived token using our backend (secure approach)
   const getLongLivedToken = async (shortLivedToken: string): Promise<string> => {
     addLog('Getting long-lived token from backend...');
-
     try {
-      const response = await fetch('/api/instagram/graph/long-lived-token', {
+      const res = await fetch('/api/instagram/graph/long-lived-token', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          access_token: shortLivedToken
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token: shortLivedToken })
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!res.ok) {
+        const errorData = await res.json();
         addLog(`Long-lived token failed: ${JSON.stringify(errorData)}`);
         throw new Error(`Long-lived token failed: ${errorData.error || 'Unknown error'}`);
       }
-
-      const data = await response.json();
-      addLog(`Long-lived token successful: ${data.success}`);
-      addLog(`Token expires in: ${data.data.expires_in} seconds`);
-      return data.data.access_token;
+      const json = await res.json();
+      addLog(`Long-lived token successful: ${json.success}`);
+      if (json.data?.expires_in) {
+        addLog(`Token expires in: ${json.data.expires_in} seconds`);
+      }
+      const longLivedToken = json.data.access_token as string;
+      addLog(`Long-lived token obtained: ${longLivedToken.substring(0, 20)}...`);
+      return longLivedToken;
     } catch (error) {
       addLog(`Long-lived token error: ${error}`);
       throw error;
