@@ -6,7 +6,7 @@ import { Instagram, Youtube, Music, UploadCloud, FileVideo2, Loader2, X } from '
 
 type FacebookLoginStatus = {
   status: 'connected' | 'not_authorized' | 'unknown';
-  authResponse?: { accessToken: string };
+  authResponse?: { accessToken: string; userID?: string };
 };
 
 type FacebookSDK = {
@@ -40,6 +40,9 @@ interface InstagramAuthState {
     username: string;
     account_type?: string;
   } | null;
+  longLivedToken?: string | null;
+  instagramPageId?: string | null;
+  facebookUserId?: string | null;
 }
 
 // YouTube auth (from YouTubeShortsDebugger)
@@ -156,6 +159,9 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     if (instagramConnected === 'true') {
       const instagramUserId = localStorage.getItem('instagram_user_id');
       const instagramUsername = localStorage.getItem('instagram_username');
+      const longLivedToken = localStorage.getItem('instagram_long_lived_token');
+      const pageId = localStorage.getItem('instagram_page_id');
+      const fbUserId = localStorage.getItem('facebook_user_id');
       if (instagramUserId && instagramUsername) {
         setInstagramAuth({
           isAuthenticated: true,
@@ -165,11 +171,36 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
             id: instagramUserId,
             username: instagramUsername,
             account_type: localStorage.getItem('instagram_account_type') || undefined
-          }
+          },
+          longLivedToken: longLivedToken || null,
+          instagramPageId: pageId || null,
+          facebookUserId: fbUserId || null
         });
         addLog(`Instagram connected: ${instagramUsername}`);
       }
       window.history.replaceState({}, '', window.location.pathname);
+    }
+    
+    // Also check on load for existing auth
+    const existingUserId = localStorage.getItem('instagram_user_id');
+    const existingUsername = localStorage.getItem('instagram_username');
+    const existingToken = localStorage.getItem('instagram_long_lived_token');
+    const existingPageId = localStorage.getItem('instagram_page_id');
+    const existingFbUserId = localStorage.getItem('facebook_user_id');
+    if (existingUserId && existingUsername && !instagramAuth.isAuthenticated) {
+      setInstagramAuth({
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        userInfo: {
+          id: existingUserId,
+          username: existingUsername,
+          account_type: localStorage.getItem('instagram_account_type') || undefined
+        },
+        longLivedToken: existingToken || null,
+        instagramPageId: existingPageId || null,
+        facebookUserId: existingFbUserId || null
+      });
     }
 
     // Check YouTube callback
@@ -307,8 +338,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     }
   };
 
-  // Helper: find IG business account via FB pages
-  const resolveInstagramAccount = async (accessToken: string): Promise<{ id: string; username: string }> => {
+  // Helper: find IG business account via FB pages (returns all needed fields)
+  const resolveInstagramAccount = async (accessToken: string, fbUserId: string): Promise<{ id: string; username: string; pageId: string }> => {
     addLog('Getting Instagram Business Account from Facebook Pages...');
     const pagesUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${accessToken}`;
     const pagesRes = await fetch(pagesUrl);
@@ -359,7 +390,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           addLog(`Instagram account found: ${ig.username} (${ig.id})`);
           addLog(`Instagram Page ID: ${igId}`);
           addLog('Authentication completed successfully!');
-          return { id: ig.id, username: ig.username };
+          return { id: ig.id, username: ig.username, pageId: igId };
         }
       } else {
         addLog(`Page ${page.name} has no Instagram Business Account`);
@@ -378,21 +409,35 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       // Check existing login
       const auth = await new Promise<FacebookLoginStatus>((resolve) => w.FB!.getLoginStatus((r) => resolve(r as unknown as FacebookLoginStatus)));
       let accessToken: string | null = null;
+      let fbUserId: string | null = null;
       if (auth?.status === 'connected') {
         accessToken = auth.authResponse?.accessToken || null;
+        fbUserId = auth.authResponse?.userID || null;
         addLog('Using existing Facebook session');
       } else {
         addLog('Invoking FB.login...');
-        const loginRes = await new Promise<{ authResponse?: { accessToken: string } }>((resolve) => w.FB!.login((r) => resolve(r as unknown as { authResponse?: { accessToken: string } }), { scope: INSTAGRAM_CONFIG.scope, return_scopes: true }));
+        const loginRes = await new Promise<FacebookLoginStatus>((resolve) => w.FB!.login((r) => resolve(r as unknown as FacebookLoginStatus), { scope: INSTAGRAM_CONFIG.scope, return_scopes: true }));
         accessToken = loginRes.authResponse?.accessToken || null;
+        fbUserId = loginRes.authResponse?.userID || null;
       }
       if (!accessToken) throw new Error('Login failed or cancelled');
       const longLived = await exchangeLongLivedToken(accessToken);
-      const ig = await resolveInstagramAccount(longLived);
+      const ig = await resolveInstagramAccount(longLived, fbUserId || 'unknown');
       // Persist and update UI
       localStorage.setItem('instagram_user_id', ig.id);
       localStorage.setItem('instagram_username', ig.username);
-      setInstagramAuth({ isAuthenticated: true, isLoading: false, error: null, userInfo: { id: ig.id, username: ig.username } });
+      localStorage.setItem('instagram_long_lived_token', longLived);
+      localStorage.setItem('instagram_page_id', ig.pageId);
+      localStorage.setItem('facebook_user_id', fbUserId || '');
+      setInstagramAuth({ 
+        isAuthenticated: true, 
+        isLoading: false, 
+        error: null, 
+        userInfo: { id: ig.id, username: ig.username },
+        longLivedToken: longLived,
+        instagramPageId: ig.pageId,
+        facebookUserId: fbUserId || null
+      });
       addLog(`Instagram connected: @${ig.username}`);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
@@ -738,37 +783,66 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
 
     const uploads: Promise<{ platform: string; success: boolean; message: string }>[] = [];
 
-    // Instagram uploads (Reels and optionally Stories)
-    if (instagramAuth.isAuthenticated) {
+    // Instagram uploads (Reels and optionally Stories) - use direct Facebook Graph API
+    if (instagramAuth.isAuthenticated && instagramAuth.longLivedToken && instagramAuth.instagramPageId) {
+      const checkContainerStatus = async (containerId: string, platform: string) => {
+        const statusUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${containerId}`;
+        const statusParams = new URLSearchParams({
+          fields: 'status_code',
+          access_token: instagramAuth.longLivedToken!
+        });
+        const statusResponse = await fetch(`${statusUrl}?${statusParams.toString()}`);
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          if (statusData.status_code === 'FINISHED') {
+            addLog('✅ Container processing finished! Publishing...');
+            await publishReel(containerId, platform);
+          } else if (statusData.status_code === 'IN_PROGRESS') {
+            addLog('⏳ Container still processing, checking again in 5 seconds...');
+            setTimeout(() => checkContainerStatus(containerId, platform), 5000);
+          } else {
+            addLog(`❌ Container failed with status: ${statusData.status_code}`);
+          }
+        }
+      };
+      
+      const publishReel = async (containerId: string, platform: string) => {
+        const publishUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${instagramAuth.instagramPageId}/media_publish`;
+        const publishResponse = await fetch(publishUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ creation_id: containerId, access_token: instagramAuth.longLivedToken })
+        });
+        if (publishResponse.ok) {
+          const publishResult = await publishResponse.json();
+          addLog(`🎉 SUCCESS! ${platform} published with ID: ${publishResult.id}`);
+        } else {
+          const errorData = await publishResponse.json();
+          addLog(`❌ Publishing failed: ${JSON.stringify(errorData)}`);
+        }
+      };
+      
       // Upload Reel
       uploads.push((async () => {
         try {
-          const formData = new FormData();
-          if (igReelsUrl) {
-            addLog('📥 [Instagram Reel] Downloading processed video...');
-            const rvid = await fetch(igReelsUrl);
-            if (!rvid.ok) throw new Error('Failed to download processed video');
-            const blob = await rvid.blob();
-            formData.append('file', blob, 'reel.mp4');
-          } else {
-            if (!selectedFile) throw new Error('No file available');
-            formData.append('file', selectedFile);
-          }
-          formData.append('caption', caption);
-          formData.append('user_id', instagramAuth.userInfo?.id || '');
-          addLog('📤 [Instagram Reel] Uploading to backend...');
-          const r = await fetch('/api/instagram/upload-reel', {
+          if (!igReelsUrl) throw new Error('No processed video available');
+          addLog('📤 [Instagram Reel] Creating container...');
+          const containerUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${instagramAuth.instagramPageId}/media`;
+          const containerResponse = await fetch(containerUrl, {
             method: 'POST',
-            body: formData,
-            headers: { 'ngrok-skip-browser-warning': 'true' }
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              video_url: igReelsUrl,
+              caption: caption || '',
+              media_type: 'REELS',
+              access_token: instagramAuth.longLivedToken!
+            })
           });
-          const data: ApiResponse = await r.json().catch(async () => ({ raw: await r.text() }));
-          addLog(`🧾 Instagram Reel response: ${JSON.stringify(data)}`);
-          return {
-            platform: 'Instagram Reel',
-            success: r.ok && !!data.success,
-            message: data.message || data.detail || 'Uploaded'
-          };
+          if (!containerResponse.ok) throw new Error('Failed to create container');
+          const containerData = await containerResponse.json();
+          addLog(`✅ Reel container created: ${containerData.id}`);
+          await checkContainerStatus(containerData.id, 'Reel');
+          return { platform: 'Instagram Reel', success: true, message: 'Reel posted successfully' };
         } catch (e) {
           return { platform: 'Instagram Reel', success: false, message: String(e) };
         }
@@ -778,37 +852,31 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       if (instagramStory) {
         uploads.push((async () => {
           try {
-            const formData = new FormData();
-            if (igReelsUrl) {
-              addLog('📥 [Instagram Story] Downloading processed video...');
-              const rvid = await fetch(igReelsUrl);
-              if (!rvid.ok) throw new Error('Failed to download processed video');
-              const blob = await rvid.blob();
-              formData.append('file', blob, 'story.mp4');
-            } else {
-              if (!selectedFile) throw new Error('No file available');
-              formData.append('file', selectedFile);
-            }
-            formData.append('caption', caption);
-            formData.append('user_id', instagramAuth.userInfo?.id || '');
-            addLog('📤 [Instagram Story] Uploading to backend...');
-            const r = await fetch('/api/instagram/graph/upload-story', {
+            if (!igReelsUrl) throw new Error('No processed video available');
+            addLog('📤 [Instagram Story] Creating container...');
+            const containerUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/${instagramAuth.instagramPageId}/media`;
+            const containerResponse = await fetch(containerUrl, {
               method: 'POST',
-              body: formData,
-              headers: { 'ngrok-skip-browser-warning': 'true' }
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                video_url: igReelsUrl,
+                caption: caption || '',
+                media_type: 'STORIES',
+                access_token: instagramAuth.longLivedToken!
+              })
             });
-            const data: ApiResponse = await r.json().catch(async () => ({ raw: await r.text() }));
-            addLog(`🧾 Instagram Story response: ${JSON.stringify(data)}`);
-            return {
-              platform: 'Instagram Story',
-              success: r.ok && !!data.success,
-              message: data.message || data.detail || 'Uploaded'
-            };
+            if (!containerResponse.ok) throw new Error('Failed to create container');
+            const containerData = await containerResponse.json();
+            addLog(`✅ Story container created: ${containerData.id}`);
+            await checkContainerStatus(containerData.id, 'Story');
+            return { platform: 'Instagram Story', success: true, message: 'Story posted successfully' };
           } catch (e) {
             return { platform: 'Instagram Story', success: false, message: String(e) };
           }
         })());
       }
+    } else if (instagramAuth.isAuthenticated) {
+      addLog('❌ Instagram missing required auth data (token or page ID)');
     }
 
     // YouTube upload (send processed video blob to backend)
