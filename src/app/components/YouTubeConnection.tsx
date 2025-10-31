@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Check, X, YoutubeIcon, AlertTriangle } from 'lucide-react';
 
 interface YouTubeConnectionProps {
-  onConnect: (connected: boolean) => void;
+  onConnect: (connected: boolean, channelInfo?: ChannelInfo) => void;
 }
 
 interface ChannelInfo {
@@ -104,13 +104,14 @@ export default function YouTubeConnection({ onConnect }: YouTubeConnectionProps)
       const channelTitle = localStorage.getItem('youtube_channel_title');
       
       if (userId && channelTitle) {
-        setChannelInfo({
+        const info = {
           user_id: userId,
           channel_title: channelTitle,
           subscriber_count: 0, // Can be fetched later if needed
-        });
+        };
+        setChannelInfo(info);
         setIsConnected(true);
-        onConnect(true);
+        onConnect(true, info);
       }
       
       // Clean up URL

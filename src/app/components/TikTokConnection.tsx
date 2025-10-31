@@ -6,7 +6,7 @@ import { Check, X, Music, AlertTriangle } from 'lucide-react';
 // Use native img for TikTok avatars to avoid Next/Image domain restrictions and signed-URL issues
 
 interface TikTokConnectionProps {
-  onConnect: (connected: boolean) => void;
+  onConnect: (connected: boolean, accountInfo?: { user_id: string; display_name: string; avatar_url?: string }) => void;
 }
 
 interface UserInfo {
@@ -121,13 +121,14 @@ export default function TikTokConnection({ onConnect }: TikTokConnectionProps) {
     const avatarUrl = params.get('tiktok_avatar_url');
 
     if (tiktokConnected === 'true' && userId) {
-      setIsConnected(true);
-      setUserInfo({
+      const info = {
         user_id: userId,
         display_name: decodeURIComponent(displayName || 'TikTok User'),
         avatar_url: decodeURIComponent(avatarUrl || '')
-      });
-      onConnect(true);
+      };
+      setIsConnected(true);
+      setUserInfo(info);
+      onConnect(true, info);
       
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);

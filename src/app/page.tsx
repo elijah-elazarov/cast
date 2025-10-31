@@ -473,10 +473,10 @@ export default function Home() {
                 />
               </div>
             ) : (
-              <InstagramOAuthConnection 
+            <InstagramOAuthConnection 
                 onConnect={(connected, info) => handleAccountConnect('instagram', connected, info)}
                 embedded
-              />
+            />
             )}
           </div>
 
@@ -509,9 +509,9 @@ export default function Home() {
                     )}
                   </div>
                 </div>
-                <YouTubeConnection 
-                  onConnect={(connected) => handleAccountConnect('youtube', connected)}
-                />
+            <YouTubeConnection 
+              onConnect={(connected, info) => handleAccountConnect('youtube', connected, info)}
+            />
               </div>
             ) : (
               <YouTubeConnection 
@@ -549,9 +549,9 @@ export default function Home() {
                     )}
                   </div>
                 </div>
-                <TikTokConnection 
-                  onConnect={(connected) => handleAccountConnect('tiktok', connected)}
-                />
+            <TikTokConnection 
+              onConnect={(connected, info) => handleAccountConnect('tiktok', connected, info)}
+            />
               </div>
             ) : (
               <TikTokConnection 
@@ -666,23 +666,23 @@ export default function Home() {
       {/* Token Manager */}
       {showTokenManager && (
         <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               🔑 Token Manager
-            </h2>
-            <button
+        </h2>
+        <button
               onClick={() => setShowTokenManager(false)}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              ✕
-            </button>
-          </div>
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          ✕
+        </button>
+      </div>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
             Manage and validate authentication tokens for all platforms.
           </p>
           <TokenManager />
-        </div>
-      )}
+          </div>
+        )}
     </div>
   );
 }
