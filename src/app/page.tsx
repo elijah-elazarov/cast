@@ -3,10 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Youtube, Music, TestTube, Key } from 'lucide-react';
 // import InstagramConnection from './components/InstagramConnection';
-import InstagramOAuthConnection from './components/InstagramOAuthConnection';
 import InstagramVideoUploader from './components/InstagramVideoUploader';
-import YouTubeConnection from './components/YouTubeConnection';
-import TikTokConnection from './components/TikTokConnection';
 import ModernWelcomeFlow from './components/ModernWelcomeFlow';
 // Legacy test tools removed: RealOAuthTest, RealInstagramTest, InstagramTestComponent, InstagramTestPopup, FreshInstagramAuth, EnhancedInstagramAuth, InstagramReelsPoster
 import InstagramReelsDebugger from './components/InstagramReelsDebugger';
@@ -143,69 +140,7 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  const handleAccountConnect = (
-    platform: 'instagram' | 'youtube' | 'tiktok',
-    connected: boolean,
-    info?: InstagramAccountSummary | YouTubeChannelSummary | TikTokAccountSummary
-  ) => {
-    setConnectedAccounts(prev => ({
-      ...prev,
-      [platform]: connected
-    }));
-    
-    // Update account info when connected
-    if (connected && info) {
-      if (platform === 'instagram' && (info as InstagramAccountSummary).username) {
-        setAccountInfo(prev => ({
-          ...prev,
-          instagram: {
-            username: (info as InstagramAccountSummary).username,
-            followers_count: (info as InstagramAccountSummary).followers_count,
-            profile_picture_url: (info as InstagramAccountSummary).profile_picture_url
-          }
-        }));
-      } else if (platform === 'youtube') {
-        // YouTube info comes from localStorage
-        const channelTitle = localStorage.getItem('youtube_channel_title');
-        const subscriberCount = localStorage.getItem('youtube_subscriber_count');
-        const thumbnailUrl = localStorage.getItem('youtube_thumbnail_url');
-        if (channelTitle) {
-          setAccountInfo(prev => ({
-            ...prev,
-            youtube: {
-              channel_title: channelTitle,
-              subscriber_count: subscriberCount || undefined,
-              thumbnail_url: thumbnailUrl || undefined
-            }
-          }));
-        }
-      } else if (platform === 'tiktok') {
-        // TikTok info comes from localStorage
-        const username = localStorage.getItem('tiktok_username');
-        const displayName = localStorage.getItem('tiktok_display_name');
-        const followerCount = localStorage.getItem('tiktok_follower_count');
-        const avatarUrl = localStorage.getItem('tiktok_avatar_url');
-        if (displayName || username) {
-          setAccountInfo(prev => ({
-            ...prev,
-            tiktok: {
-              username: username || undefined,
-              display_name: displayName || undefined,
-              follower_count: followerCount || undefined,
-              avatar_url: avatarUrl || undefined
-            }
-          }));
-        }
-      }
-    } else if (!connected) {
-      // Clear account info when disconnected
-      setAccountInfo(prev => {
-        const updated = { ...prev };
-        delete updated[platform as keyof typeof updated];
-        return updated;
-      });
-    }
-  };
+  // Removed per-card connect handlers since connection actions are not displayed here
 
   // Sync account info from localStorage on mount and when storage changes
   useEffect(() => {
@@ -441,136 +376,106 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Platform Cards */}
+        {/* Connected Accounts - Unified Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 justify-items-center">
-          {/* Instagram OAuth Card (match width of YouTube/TikTok) */}
+          {/* Instagram Connected Card */}
           <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-purple-500 mr-3">
-                <path d="M7.5 2.25h9a5.25 5.25 0 0 1 5.25 5.25v9a5.25 5.25 0 0 1-5.25 5.25h-9A5.25 5.25 0 0 1 2.25 16.5v-9A5.25 5.25 0 0 1 7.5 2.25zm0 1.5A3.75 3.75 0 0 0 3.75 7.5v9A3.75 3.75 0 0 0 7.5 20.25h9A3.75 3.75 0 0 0 20.25 16.5v-9A3.75 3.75 0 0 0 16.5 3.75h-9z" />
-                <path d="M12 7.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 1.5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM17.25 6.75a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5z" />
-              </svg>
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                Instagram
-              </h2>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-purple-500">
+                  <path d="M7.5 2.25h9a5.25 5.25 0 0 1 5.25 5.25v9a5.25 5.25 0 0 1-5.25 5.25h-9A5.25 5.25 0 0 1 2.25 16.5v-9A5.25 5.25 0 0 1 7.5 2.25zm0 1.5A3.75 3.75 0 0 0 3.75 7.5v9A3.75 3.75 0 0 0 7.5 20.25h9A3.75 3.75 0 0 0 20.25 16.5v-9A3.75 3.75 0 0 0 16.5 3.75h-9z" />
+                  <path d="M12 7.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 1.5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM17.25 6.75a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5z" />
+                </svg>
+                <span className="font-semibold text-lg text-gray-900 dark:text-white">Instagram</span>
+              </div>
+              {connectedAccounts.instagram ? (
+                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Connected</span>
+              ) : (
+                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">Not Connected</span>
+              )}
             </div>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Connect your Instagram (Meta) account to publish Reels and Stories
-            </p>
             {connectedAccounts.instagram && accountInfo.instagram ? (
-              <div className="space-y-3">
-                <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
-                  {accountInfo.instagram.profile_picture_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img 
-                      src={accountInfo.instagram.profile_picture_url} 
-                      alt="" 
-                      className="w-8 h-8 rounded-full" 
-                      referrerPolicy="no-referrer"
-                    />
+              <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
+                {accountInfo.instagram.profile_picture_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={accountInfo.instagram.profile_picture_url} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
+                )}
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  <div>@{accountInfo.instagram.username}</div>
+                  {accountInfo.instagram.followers_count !== undefined && (
+                    <div className="text-xs text-gray-500">{accountInfo.instagram.followers_count.toLocaleString()} followers</div>
                   )}
-                  <div className="text-sm text-gray-600 dark:text-gray-300">
-                    <div>@{accountInfo.instagram.username}</div>
-                    {accountInfo.instagram.followers_count !== undefined && (
-                      <div className="text-xs text-gray-500">{accountInfo.instagram.followers_count.toLocaleString()} followers</div>
-                    )}
-                  </div>
                 </div>
-                <InstagramOAuthConnection 
-                  onConnect={(connected, info) => handleAccountConnect('instagram', connected, info)}
-                  embedded
-                />
               </div>
             ) : (
-            <InstagramOAuthConnection 
-                onConnect={(connected, info) => handleAccountConnect('instagram', connected, info)}
-                embedded
-            />
+              <p className="text-sm text-gray-500 dark:text-gray-400">No account connected.</p>
             )}
           </div>
 
-          {/* YouTube Card */}
+          {/* YouTube Connected Card */}
           <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center mb-4">
-              <Youtube className="w-10 h-10 text-red-500 mr-3" />
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                YouTube
-              </h2>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Youtube className="w-8 h-8 text-red-500" />
+                <span className="font-semibold text-lg text-gray-900 dark:text-white">YouTube</span>
+              </div>
+              {connectedAccounts.youtube ? (
+                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Connected</span>
+              ) : (
+                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">Not Connected</span>
+              )}
             </div>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Connect your YouTube channel to publish Shorts
-            </p>
             {connectedAccounts.youtube && accountInfo.youtube ? (
-              <div className="space-y-3">
-                <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
-                  {accountInfo.youtube.thumbnail_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img 
-                      src={accountInfo.youtube.thumbnail_url} 
-                      alt="" 
-                      className="w-8 h-8 rounded-full" 
-                      referrerPolicy="no-referrer"
-                    />
+              <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
+                {accountInfo.youtube.thumbnail_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={accountInfo.youtube.thumbnail_url} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
+                )}
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  <div>{accountInfo.youtube.channel_title}</div>
+                  {accountInfo.youtube.subscriber_count !== undefined && (
+                    <div className="text-xs text-gray-500">{Number(accountInfo.youtube.subscriber_count).toLocaleString()} subscribers</div>
                   )}
-                  <div className="text-sm text-gray-600 dark:text-gray-300">
-                    <div>{accountInfo.youtube.channel_title}</div>
-                    {accountInfo.youtube.subscriber_count !== undefined && (
-                      <div className="text-xs text-gray-500">{Number(accountInfo.youtube.subscriber_count).toLocaleString()} subscribers</div>
-                    )}
-                  </div>
                 </div>
-            <YouTubeConnection 
-              onConnect={(connected, info) => handleAccountConnect('youtube', connected, info)}
-            />
               </div>
             ) : (
-              <YouTubeConnection 
-                onConnect={(connected) => handleAccountConnect('youtube', connected)}
-              />
+              <p className="text-sm text-gray-500 dark:text-gray-400">No channel connected.</p>
             )}
           </div>
 
-          {/* TikTok Card */}
+          {/* TikTok Connected Card */}
           <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center mb-4">
-              <Music className="w-10 h-10 text-black dark:text-white mr-3" />
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                TikTok
-              </h2>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Music className="w-8 h-8" />
+                <span className="font-semibold text-lg text-gray-900 dark:text-white">TikTok</span>
+              </div>
+              {connectedAccounts.tiktok ? (
+                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Connected</span>
+              ) : (
+                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">Not Connected</span>
+              )}
             </div>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Connect your TikTok account to publish videos
-            </p>
             {connectedAccounts.tiktok && accountInfo.tiktok ? (
-              <div className="space-y-3">
-                <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
-                  {accountInfo.tiktok.avatar_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img 
-                      src={accountInfo.tiktok.avatar_url} 
-                      alt="" 
-                      className="w-8 h-8 rounded-full" 
-                      referrerPolicy="no-referrer"
-                    />
+              <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
+                {accountInfo.tiktok.avatar_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={accountInfo.tiktok.avatar_url} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
+                )}
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  <div>{accountInfo.tiktok.username || accountInfo.tiktok.display_name}</div>
+                  {accountInfo.tiktok.follower_count && (
+                    <div className="text-xs text-gray-500">{parseInt(accountInfo.tiktok.follower_count).toLocaleString()} followers</div>
                   )}
-                  <div className="text-sm text-gray-600 dark:text-gray-300">
-                    <div>{accountInfo.tiktok.username || accountInfo.tiktok.display_name}</div>
-                    {accountInfo.tiktok.follower_count && (
-                      <div className="text-xs text-gray-500">{parseInt(accountInfo.tiktok.follower_count).toLocaleString()} followers</div>
-                    )}
-                  </div>
                 </div>
-            <TikTokConnection 
-              onConnect={(connected, info) => handleAccountConnect('tiktok', connected, info)}
-            />
               </div>
             ) : (
-              <TikTokConnection 
-                onConnect={(connected) => handleAccountConnect('tiktok', connected)}
-              />
+              <p className="text-sm text-gray-500 dark:text-gray-400">No account connected.</p>
             )}
           </div>
         </div>
+
+        {/* Platform Cards removed */}
 
         {/* Video Upload Section */}
         {connectedAccounts.instagram && (
