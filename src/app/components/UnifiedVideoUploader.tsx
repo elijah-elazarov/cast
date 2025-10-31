@@ -320,7 +320,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
   // Instagram connect (use Facebook SDK like the debugger)
   const handleInstagramConnect = async () => {
     setInstagramAuth(prev => ({ ...prev, isLoading: true, error: null }));
-    addLog('Starting Instagram Reels Poster authentication...');
+    addLog('Starting Instagram authentication...');
     try {
       const w = window as FBWindow;
       if (!w.FB || !fbSdkLoaded) throw new Error('Facebook SDK not loaded yet');
@@ -823,7 +823,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           const statusData = await statusResponse.json();
           addLog(`Container status: ${statusData.status_code}`);
           if (statusData.status_code === 'FINISHED') {
-            addLog('✅ Container processing finished! Publishing Reel...');
+            addLog(`✅ Container processing finished! Publishing ${platform}...`);
             await publishReel(containerId, platform);
           } else if (statusData.status_code === 'IN_PROGRESS') {
             addLog('⏳ Container still processing, checking again in 5 seconds...');
