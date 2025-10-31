@@ -1134,7 +1134,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
   };
 
   // Handle successful TikTok authentication (matching TikTokShortsDebugger)
-  const handleTikTokAuthSuccess = async (authData: { success: boolean; data?: { user_id?: string; display_name?: string; avatar_url?: string; follower_count?: string; following_count?: string; video_count?: string; like_count?: string }; message?: string }) => {
+  const handleTikTokAuthSuccess = async (authData: { success: boolean; data?: { user_id?: string; username?: string; display_name?: string; avatar_url?: string; follower_count?: string; following_count?: string; video_count?: string; like_count?: string }; message?: string }) => {
     try {
       addLog('Processing authentication data...');
       
@@ -2065,7 +2065,6 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           {instagramAuth.isAuthenticated && instagramAuth.userInfo && (
             <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
               {instagramAuth.userInfo.avatarUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img src={instagramAuth.userInfo.avatarUrl} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
               )}
               <div className="text-sm text-gray-600 dark:text-gray-300">
@@ -2126,7 +2125,6 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           {youtubeAuth.isAuthenticated && youtubeAuth.userInfo && (
             <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
               {youtubeAuth.userInfo.thumbnailUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img src={youtubeAuth.userInfo.thumbnailUrl} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
               )}
               <div className="text-sm text-gray-600 dark:text-gray-300">
