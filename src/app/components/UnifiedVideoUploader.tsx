@@ -469,21 +469,6 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
               userInfo: { id: authData.user_id, channelTitle: authData.channel_title }
             });
             addLog(`YouTube connected (postMessage): ${authData.channel_title}`);
-          } else {
-            // Fallback to localStorage populated by callback
-            const userId = localStorage.getItem('youtube_user_id');
-            const channelTitle = localStorage.getItem('youtube_channel_title');
-            if (userId && channelTitle) {
-            setYouTubeAuth({
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              userInfo: { id: userId, channelTitle }
-            });
-            addLog(`YouTube connected (localStorage): ${channelTitle}`);
-          } else {
-              setYouTubeAuth(prev => ({ ...prev, isLoading: false }));
-            }
           }
           popup.close();
           window.removeEventListener('message', messageHandler);
@@ -502,20 +487,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           clearInterval(interval);
           window.removeEventListener('message', messageHandler);
           if (!completed) {
-            // Fallback: check localStorage (backend callback may have populated it)
-            const userId = localStorage.getItem('youtube_user_id');
-            const channelTitle = localStorage.getItem('youtube_channel_title');
-            if (userId && channelTitle) {
-              setYouTubeAuth({
-                isAuthenticated: true,
-                isLoading: false,
-                error: null,
-                userInfo: { id: userId, channelTitle }
-              });
-              addLog(`YouTube connected (fallback): ${channelTitle}`);
-            } else {
-              setYouTubeAuth(prev => ({ ...prev, isLoading: false, error: 'Login cancelled' }));
-            }
+            // No fallback to localStorage - require explicit postMessage or URL callback
+            setYouTubeAuth(prev => ({ ...prev, isLoading: false, error: 'Login cancelled or failed' }));
           }
         }
       }, 800);
