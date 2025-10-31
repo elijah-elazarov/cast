@@ -35,26 +35,26 @@ export default function InstagramConnection({ onConnect }: InstagramConnectionPr
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [justConnectedUsername, setJustConnectedUsername] = useState('');
 
-  // Check if user is already connected on component mount
-  useEffect(() => {
-    const checkConnection = () => {
-      const storedUsername = localStorage.getItem('instagram_username');
-      const storedAccountType = localStorage.getItem('instagram_account_type') as 'meta' | 'instagrapi' | null;
-      
-      if (storedUsername) {
-        setIsConnected(true);
-        setConnectionMethod(storedAccountType || 'instagrapi');
-        onConnect(true);
-        // Fetch account info for connected users (only for instagrapi)
-        if (storedAccountType !== 'meta') {
-          fetchAccountInfo(storedUsername);
-        }
-      }
-    };
+  // Don't auto-connect on mount - require manual connection
+  // useEffect(() => {
+  //   const checkConnection = () => {
+  //     const storedUsername = localStorage.getItem('instagram_username');
+  //     const storedAccountType = localStorage.getItem('instagram_account_type') as 'meta' | 'instagrapi' | null;
+  //     
+  //     if (storedUsername) {
+  //       setIsConnected(true);
+  //       setConnectionMethod(storedAccountType || 'instagrapi');
+  //       onConnect(true);
+  //       // Fetch account info for connected users (only for instagrapi)
+  //       if (storedAccountType !== 'meta') {
+  //         fetchAccountInfo(storedUsername);
+  //       }
+  //     }
+  //   };
 
-    checkConnection();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  //   checkConnection();
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []); // Only run once on mount
 
   // Check for OAuth callback success/error from query params
   useEffect(() => {

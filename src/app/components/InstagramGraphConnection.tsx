@@ -21,31 +21,31 @@ export default function InstagramGraphConnection({ onConnect }: InstagramGraphCo
   const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
-  // Check if user is already connected on component mount
-  useEffect(() => {
-    const checkConnection = () => {
-      const storedUsername = localStorage.getItem('instagram_username');
-      const storedAccountType = localStorage.getItem('instagram_account_type');
-      
-      if (storedUsername && storedAccountType === 'graph') {
-        setIsConnected(true);
-        onConnect(true);
-        
-        // Get stored account info
-        const followersCount = localStorage.getItem('instagram_followers_count');
-        const mediaCount = localStorage.getItem('instagram_media_count');
-        
-        setAccountInfo({
-          username: storedUsername,
-          followers_count: followersCount ? parseInt(followersCount) : 0,
-          media_count: mediaCount ? parseInt(mediaCount) : 0,
-          account_type: 'BUSINESS'
-        });
-      }
-    };
+  // Don't auto-connect on mount - require manual connection
+  // useEffect(() => {
+  //   const checkConnection = () => {
+  //     const storedUsername = localStorage.getItem('instagram_username');
+  //     const storedAccountType = localStorage.getItem('instagram_account_type');
+  //     
+  //     if (storedUsername && storedAccountType === 'graph') {
+  //       setIsConnected(true);
+  //       onConnect(true);
+  //       
+  //       // Get stored account info
+  //       const followersCount = localStorage.getItem('instagram_followers_count');
+  //       const mediaCount = localStorage.getItem('instagram_media_count');
+  //       
+  //       setAccountInfo({
+  //         username: storedUsername,
+  //         followers_count: followersCount ? parseInt(followersCount) : 0,
+  //         media_count: mediaCount ? parseInt(mediaCount) : 0,
+  //         account_type: 'BUSINESS'
+  //       });
+  //     }
+  //   };
 
-    checkConnection();
-  }, [onConnect]);
+  //   checkConnection();
+  // }, [onConnect]);
 
   // Check for OAuth callback success/error from query params
   useEffect(() => {

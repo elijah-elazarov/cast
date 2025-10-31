@@ -23,10 +23,10 @@ export default function InstagramOAuthConnection({ onConnect }: InstagramOAuthCo
   const [error, setError] = useState<string | null>(null);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
-  // Check if user is already connected on component mount
-  useEffect(() => {
-    checkExistingConnection();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Don't auto-connect on mount - require manual connection
+  // useEffect(() => {
+  //   checkExistingConnection();
+  // }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle OAuth callback when component mounts
   useEffect(() => {

@@ -39,26 +39,27 @@ export default function Home() {
   const [showUnifiedAdvanced, setShowUnifiedAdvanced] = useState(false);
   const TOTAL_COUNTDOWN = 3;
 
-  // Check localStorage on mount to initialize connected state
+  // Check localStorage on mount to initialize connected state (no auto-login)
   useEffect(() => {
-    const instagramUsername = localStorage.getItem('instagram_username');
-    const youtubeUserId = localStorage.getItem('youtube_user_id');
-    const tiktokUserId = localStorage.getItem('tiktok_user_id');
+    // Don't auto-connect from localStorage - require manual connection
+    // const instagramUsername = localStorage.getItem('instagram_username');
+    // const youtubeUserId = localStorage.getItem('youtube_user_id');
+    // const tiktokUserId = localStorage.getItem('tiktok_user_id');
     const hasSeenOnboarding = localStorage.getItem('has_seen_onboarding');
     
     // Check for Instagram OAuth errors in URL
     
     const initialConnectedAccounts = {
-      instagram: !!instagramUsername,
-      youtube: !!youtubeUserId,
-      tiktok: !!tiktokUserId,
+      instagram: false, // Don't auto-connect Instagram
+      youtube: false, // Don't auto-connect YouTube
+      tiktok: false, // Don't auto-connect TikTok
     };
     
     console.log('Initializing connected accounts:', initialConnectedAccounts);
     setConnectedAccounts(initialConnectedAccounts);
     
-    // Show welcome flow for first-time users
-    if (!hasSeenOnboarding && !instagramUsername && !youtubeUserId && !tiktokUserId) {
+    // Show welcome flow for first-time users (no auto-connect check needed)
+    if (!hasSeenOnboarding) {
       // Show welcome flow after loading sequence
       setTimeout(() => {
         setShowWelcomeFlow(true);
