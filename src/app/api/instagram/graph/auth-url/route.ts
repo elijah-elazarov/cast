@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+    const backendUrl = process.env.BACKEND_URL;
+    if (!backendUrl) throw new Error('BACKEND_URL environment variable is required');
     
     const response = await fetch(`${backendUrl}/api/instagram/graph/auth-url`, {
       method: 'GET',

@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const backendUrl = 'http://localhost:8000/api/tiktok/logout';
+    const base = process.env.NEXT_PUBLIC_BACKEND_URL;
+    if (!base) throw new Error('NEXT_PUBLIC_BACKEND_URL environment variable is required');
+    const backendUrl = `${base}/api/tiktok/logout`;
     
     const response = await fetch(backendUrl, {
       method: 'POST',

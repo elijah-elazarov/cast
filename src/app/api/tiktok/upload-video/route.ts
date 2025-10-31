@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    const base = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+    const base = process.env.NEXT_PUBLIC_BACKEND_URL;
+    if (!base) throw new Error('NEXT_PUBLIC_BACKEND_URL environment variable is required');
     const backendUrl = `${base}/api/tiktok/upload-video`;
     
     const response = await fetch(backendUrl, {

@@ -24,7 +24,9 @@ class InstagramBasicDisplayAPI:
         # Instagram Basic Display API Configuration
         self.app_id = os.getenv("INSTAGRAM_APP_ID")
         self.app_secret = os.getenv("INSTAGRAM_APP_SECRET")
-        self.redirect_uri = os.getenv("INSTAGRAM_REDIRECT_URI", "http://localhost:3000/auth/instagram/callback")
+        self.redirect_uri = os.getenv("INSTAGRAM_REDIRECT_URI")
+        if not self.redirect_uri:
+            raise ValueError("INSTAGRAM_REDIRECT_URI environment variable is required")
         
         if not self.app_id or not self.app_secret:
             logger.warning("Instagram Basic Display API: Missing INSTAGRAM_APP_ID or INSTAGRAM_APP_SECRET")

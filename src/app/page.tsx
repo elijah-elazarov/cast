@@ -308,16 +308,29 @@ export default function Home() {
         </div>
 
         {/* Platform Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Instagram OAuth Card */}
-          <div className="md:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 justify-items-center">
+          {/* Instagram OAuth Card (match width of YouTube/TikTok) */}
+          <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-purple-500 mr-3">
+                <path d="M7.5 2.25h9a5.25 5.25 0 0 1 5.25 5.25v9a5.25 5.25 0 0 1-5.25 5.25h-9A5.25 5.25 0 0 1 2.25 16.5v-9A5.25 5.25 0 0 1 7.5 2.25zm0 1.5A3.75 3.75 0 0 0 3.75 7.5v9A3.75 3.75 0 0 0 7.5 20.25h9A3.75 3.75 0 0 0 20.25 16.5v-9A3.75 3.75 0 0 0 16.5 3.75h-9z" />
+                <path d="M12 7.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 1.5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM17.25 6.75a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5z" />
+              </svg>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Instagram
+              </h2>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Connect your Instagram (Meta) account to publish Reels and Stories
+            </p>
             <InstagramOAuthConnection 
               onConnect={(connected) => handleAccountConnect('instagram', connected)}
+              embedded
             />
           </div>
 
           {/* YouTube Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+          <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center mb-4">
               <Youtube className="w-8 h-8 text-red-500 mr-3" />
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -333,7 +346,7 @@ export default function Home() {
           </div>
 
           {/* TikTok Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+          <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center mb-4">
               <Music className="w-8 h-8 text-black dark:text-white mr-3" />
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">

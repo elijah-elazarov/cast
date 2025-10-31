@@ -5,7 +5,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Proxy request to backend
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+    const backendUrl = process.env.BACKEND_URL;
+    if (!backendUrl) throw new Error('BACKEND_URL environment variable is required');
     
     // Set custom User-Agent for ngrok bypass and app identification
     const headers: HeadersInit = {

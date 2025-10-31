@@ -62,8 +62,6 @@ app = FastAPI(title="Social Media API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
         "https://cast-five.vercel.app",
         "https://cast-git-main-eliyahuelazarov-8580s-projects.vercel.app",
         "https://*.vercel.app"  # Allow all Vercel preview deployments
@@ -693,7 +691,9 @@ async def instagram_meta_oauth_callback(code: str = None, state: str = None, err
     Handle Instagram Meta OAuth callback - redirect to frontend
     """
     try:
-        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        frontend_url = os.getenv('FRONTEND_URL')
+        if not frontend_url:
+            raise ValueError('FRONTEND_URL environment variable is required')
         
         if error:
             error_msg = error_description or error
@@ -719,7 +719,9 @@ async def instagram_meta_oauth_callback(code: str = None, state: str = None, err
     except Exception as e:
         social_logger.error(f"INSTAGRAM_META_OAUTH_CALLBACK_ERROR - Error: {str(e)}")
         logger.error(f"Instagram Meta OAuth callback error: {str(e)}")
-        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        frontend_url = os.getenv('FRONTEND_URL')
+        if not frontend_url:
+            raise ValueError('FRONTEND_URL environment variable is required')
         return RedirectResponse(url=f"{frontend_url}/?instagram_error=callback_failed")
 
 
@@ -1188,7 +1190,9 @@ async def youtube_oauth_callback(code: str = None, state: str = None, error: str
     """
     try:
         # Get frontend URL from environment or use a default
-        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        frontend_url = os.getenv('FRONTEND_URL')
+        if not frontend_url:
+            raise ValueError('FRONTEND_URL environment variable is required')
         
         if error:
             social_logger.error(f"YOUTUBE_OAUTH_ERROR - Error: {error}")
@@ -1216,7 +1220,9 @@ async def youtube_oauth_callback(code: str = None, state: str = None, error: str
         social_logger.error(f"YOUTUBE_OAUTH_CALLBACK_ERROR - Error: {str(e)}")
         logger.error(f"YouTube OAuth callback error: {str(e)}")
         # Redirect to frontend with error
-        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        frontend_url = os.getenv('FRONTEND_URL')
+        if not frontend_url:
+            raise ValueError('FRONTEND_URL environment variable is required')
         return RedirectResponse(url=f"{frontend_url}/?youtube_error=callback_failed")
 
 
@@ -1545,7 +1551,9 @@ async def tiktok_oauth_callback(code: str = None, state: str = None, error: str 
     """
     try:
         # Get frontend URL from environment or use a default
-        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        frontend_url = os.getenv('FRONTEND_URL')
+        if not frontend_url:
+            raise ValueError('FRONTEND_URL environment variable is required')
         
         if error:
             social_logger.error(f"TIKTOK_OAUTH_ERROR - Error: {error}")
@@ -1573,7 +1581,9 @@ async def tiktok_oauth_callback(code: str = None, state: str = None, error: str 
         social_logger.error(f"TIKTOK_OAUTH_CALLBACK_ERROR - Error: {str(e)}")
         logger.error(f"TikTok OAuth callback error: {str(e)}")
         # Redirect to frontend with error
-        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        frontend_url = os.getenv('FRONTEND_URL')
+        if not frontend_url:
+            raise ValueError('FRONTEND_URL environment variable is required')
         return RedirectResponse(url=f"{frontend_url}/?tiktok_error=callback_failed")
 
 

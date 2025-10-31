@@ -93,11 +93,16 @@ export default function TokenManager() {
       status.platform === 'instagram' 
         ? { 
             ...status, 
-            isAuthenticated: !!instagramToken, 
+            // Consider authenticated if any session identifiers exist (user or token)
+            isAuthenticated: !!(instagramUserId || instagramUsername || instagramToken), 
             userId: instagramUserId || undefined, 
             username: instagramUsername || undefined,
-            // Store additional info in a custom field we can show
-            error: !instagramToken ? 'No token found in localStorage' : instagramPageId ? `Page ID: ${instagramPageId}` : undefined
+            // Prefer backend/session info; show token presence secondarily
+            error: !instagramToken && (instagramUserId || instagramUsername) 
+              ? 'No local token (session present)'
+              : instagramPageId 
+                ? `Page ID: ${instagramPageId}` 
+                : undefined
           }
         : status
     ));
@@ -116,10 +121,13 @@ export default function TokenManager() {
       status.platform === 'youtube' 
         ? { 
             ...status, 
-            isAuthenticated: !!youtubeUserId, 
+            // Authenticate by presence of user/channel (backend session), not token
+            isAuthenticated: !!(youtubeUserId || youtubeChannelTitle), 
             userId: youtubeUserId || undefined,
             username: youtubeChannelTitle || undefined,
-            error: !youtubeUserId ? 'No session found in localStorage' : youtubeAccessToken ? 'Token present' : 'No access token'
+            error: (youtubeUserId || youtubeChannelTitle)
+              ? (!youtubeAccessToken ? 'No local token (session present)' : undefined)
+              : 'No session found in localStorage'
           }
         : status
     ));
@@ -137,16 +145,21 @@ export default function TokenManager() {
       status.platform === 'tiktok' 
         ? { 
             ...status, 
-            isAuthenticated: !!tiktokUserId, 
+            // Authenticate by presence of user id/display name (backend session), not token
+            isAuthenticated: !!(tiktokUserId || tiktokDisplayName), 
             userId: tiktokUserId || undefined, 
             username: tiktokDisplayName || undefined,
-            error: !tiktokUserId ? 'No session found in localStorage' : tiktokAvatarUrl ? 'Avatar URL available' : undefined
+            error: (tiktokUserId || tiktokDisplayName) ? (tiktokAvatarUrl ? 'Avatar URL available' : undefined) : 'No session found in localStorage'
           }
         : status
     ));
 
     if (!silent) {
-      const authenticatedCount = [!!instagramToken, !!youtubeUserId, !!tiktokUserId].filter(Boolean).length;
+      const authenticatedCount = [
+        !!(instagramUserId || instagramUsername || instagramToken),
+        !!(youtubeUserId || youtubeChannelTitle),
+        !!(tiktokUserId || tiktokDisplayName)
+      ].filter(Boolean).length;
       addLog(`✅ Status check complete: ${authenticatedCount} platform(s) authenticated`);
     }
   }, [addLog, setTokenStatus]);

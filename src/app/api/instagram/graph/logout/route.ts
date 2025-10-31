@@ -11,7 +11,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+    const backendUrl = process.env.BACKEND_URL;
+    if (!backendUrl) throw new Error('BACKEND_URL environment variable is required');
     
     const response = await fetch(`${backendUrl}/api/instagram/graph/logout`, {
       method: 'POST',

@@ -6,7 +6,8 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     
     // Proxy request to backend
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+    const backendUrl = process.env.BACKEND_URL;
+    if (!backendUrl) throw new Error('BACKEND_URL environment variable is required');
     
     // Set custom User-Agent for ngrok bypass and app identification
     // Note: We can't set Content-Type for FormData, but we can set User-Agent

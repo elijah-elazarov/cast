@@ -5,6 +5,7 @@ import { Check, X, Instagram, Facebook, Loader2, AlertTriangle, ExternalLink } f
 
 interface InstagramOAuthConnectionProps {
   onConnect: (connected: boolean, accountInfo?: AccountInfo) => void;
+  embedded?: boolean; // render without outer card styling and headings
 }
 
 interface AccountInfo {
@@ -16,7 +17,7 @@ interface AccountInfo {
   account_type: string;
 }
 
-export default function InstagramOAuthConnection({ onConnect }: InstagramOAuthConnectionProps) {
+export default function InstagramOAuthConnection({ onConnect, embedded = false }: InstagramOAuthConnectionProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null);
@@ -148,7 +149,7 @@ export default function InstagramOAuthConnection({ onConnect }: InstagramOAuthCo
 
   if (isConnecting) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className={embedded ? '' : 'bg-white rounded-lg border border-gray-200 p-6'}>
         <div className="flex items-center justify-center space-x-3">
           <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
           <div className="text-center">
@@ -172,7 +173,7 @@ export default function InstagramOAuthConnection({ onConnect }: InstagramOAuthCo
 
   if (isConnected && accountInfo) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className={embedded ? '' : 'bg-white rounded-lg border border-gray-200 p-6'}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full">
@@ -215,16 +216,19 @@ export default function InstagramOAuthConnection({ onConnect }: InstagramOAuthCo
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <div className="text-center">
-        <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mx-auto mb-4">
-          <Instagram className="h-8 w-8 text-white" />
-        </div>
-        
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">Connect Instagram</h3>
-        <p className="text-gray-600 mb-6">
-          Connect your Instagram Business account to post Reels and Stories directly from Cast.
-        </p>
+    <div className={embedded ? '' : 'bg-white rounded-lg border border-gray-200 p-6'}>
+      <div className={embedded ? '' : 'text-center'}>
+        {!embedded && (
+          <>
+            <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mx-auto mb-4">
+              <Instagram className="h-8 w-8 text-white" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Connect Instagram</h3>
+            <p className="text-gray-600 mb-6">
+              Connect your Instagram Business account to post Reels and Stories directly from Cast.
+            </p>
+          </>
+        )}
 
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
@@ -235,7 +239,7 @@ export default function InstagramOAuthConnection({ onConnect }: InstagramOAuthCo
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className={embedded ? '' : 'space-y-4'}>
           <button
             onClick={initiateOAuth}
             disabled={isConnecting}
@@ -246,12 +250,14 @@ export default function InstagramOAuthConnection({ onConnect }: InstagramOAuthCo
             <ExternalLink className="h-4 w-4" />
           </button>
 
-          <div className="text-xs text-gray-500">
-            <div className="flex items-center justify-center space-x-1 mb-2">
-              <Facebook className="h-4 w-4" />
-              <span>Powered by Facebook OAuth</span>
-            </div>
-            <p>Requires Instagram Business account connected to Facebook Page</p>
+          {/* Info alert (platform-colored) */}
+          <div className={`flex items-center p-3 bg-violet-50 dark:bg-violet-900/20 rounded-lg ${embedded ? 'mt-2' : ''}`}>
+            <Facebook className="w-4 h-4 text-violet-600 dark:text-violet-400 mr-2 flex-shrink-0" />
+            <p className="text-xs text-violet-800 dark:text-violet-300">Powered by Facebook OAuth</p>
+          </div>
+          {/* Requirements bullets (match other cards) */}
+          <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 mt-2">
+            <p>• Requires Instagram Business account connected to Facebook Page</p>
           </div>
         </div>
       </div>

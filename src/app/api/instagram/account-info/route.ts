@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
     }
     
     // Proxy request to backend
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+    const backendUrl = process.env.BACKEND_URL;
+    if (!backendUrl) throw new Error('BACKEND_URL environment variable is required');
     
     // Set custom User-Agent for ngrok bypass and app identification
     const headers: HeadersInit = {
