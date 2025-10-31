@@ -382,6 +382,50 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     }
   };
 
+  // Instagram logout (use Facebook SDK)
+  const handleInstagramLogout = () => {
+    addLog('Logging out from Instagram...');
+    const w = window as FBWindow;
+    if (w.FB) {
+      w.FB.logout(() => {
+        localStorage.removeItem('instagram_user_id');
+        localStorage.removeItem('instagram_username');
+        localStorage.removeItem('instagram_long_lived_token');
+        localStorage.removeItem('instagram_page_id');
+        localStorage.removeItem('facebook_user_id');
+        localStorage.removeItem('instagram_account_type');
+        setInstagramAuth({
+          isAuthenticated: false,
+          isLoading: false,
+          error: null,
+          userInfo: null,
+          longLivedToken: null,
+          instagramPageId: null,
+          facebookUserId: null
+        });
+        addLog('Logged out from Instagram successfully');
+      });
+    } else {
+      // If SDK not loaded, just clear state and localStorage
+      localStorage.removeItem('instagram_user_id');
+      localStorage.removeItem('instagram_username');
+      localStorage.removeItem('instagram_long_lived_token');
+      localStorage.removeItem('instagram_page_id');
+      localStorage.removeItem('facebook_user_id');
+      localStorage.removeItem('instagram_account_type');
+      setInstagramAuth({
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+        userInfo: null,
+        longLivedToken: null,
+        instagramPageId: null,
+        facebookUserId: null
+      });
+      addLog('Logged out from Instagram successfully');
+    }
+  };
+
   // YouTube connect (popup OAuth like YouTubeShortsDebugger)
   const handleYouTubeConnect = async () => {
     setYouTubeAuth(prev => ({ ...prev, isLoading: true, error: null }));
@@ -481,6 +525,22 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     }
   };
 
+  // YouTube logout
+  const handleYouTubeLogout = () => {
+    addLog('Logging out from YouTube...');
+    localStorage.removeItem('youtube_user_id');
+    localStorage.removeItem('youtube_channel_title');
+    localStorage.removeItem('youtube_thumbnail_url');
+    localStorage.removeItem('youtube_subscriber_count');
+    setYouTubeAuth({
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      userInfo: null
+    });
+    addLog('Logged out from YouTube successfully');
+  };
+
   // TikTok connect (using popup OAuth like TikTokShortsDebugger)
   const handleTikTokConnect = async () => {
     setTiktokAuth(prev => ({ ...prev, isLoading: true, error: null }));
@@ -545,6 +605,22 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       addLog(`TikTok authentication error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setTiktokAuth(prev => ({ ...prev, isLoading: false, error: String(error) }));
     }
+  };
+
+  // TikTok logout
+  const handleTikTokLogout = () => {
+    addLog('Logging out from TikTok...');
+    localStorage.removeItem('tiktok_user_id');
+    localStorage.removeItem('tiktok_display_name');
+    localStorage.removeItem('tiktok_avatar_url');
+    localStorage.removeItem('tiktok_follower_count');
+    setTiktokAuth({
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      userInfo: null
+    });
+    addLog('Logged out from TikTok successfully');
   };
 
   // Cloudinary helpers (mirrors debuggers)
@@ -1056,20 +1132,30 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
             </div>
           )}
           
-          <button
-            onClick={handleInstagramConnect}
-            disabled={instagramAuth.isLoading}
-            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {instagramAuth.isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <Instagram className="w-4 h-4" />
-                Connect Instagram
-              </>
-            )}
-          </button>
+          {instagramAuth.isAuthenticated ? (
+            <button
+              onClick={handleInstagramLogout}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <X className="w-4 h-4" />
+              Logout Instagram
+            </button>
+          ) : (
+            <button
+              onClick={handleInstagramConnect}
+              disabled={instagramAuth.isLoading}
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {instagramAuth.isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Instagram className="w-4 h-4" />
+                  Connect Instagram
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {/* YouTube */}
@@ -1095,20 +1181,30 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
             </div>
           )}
           
-          <button
-            onClick={handleYouTubeConnect}
-            disabled={youtubeAuth.isLoading}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {youtubeAuth.isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <Youtube className="w-4 h-4" />
-                Connect YouTube
-              </>
-            )}
-          </button>
+          {youtubeAuth.isAuthenticated ? (
+            <button
+              onClick={handleYouTubeLogout}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <X className="w-4 h-4" />
+              Logout YouTube
+            </button>
+          ) : (
+            <button
+              onClick={handleYouTubeConnect}
+              disabled={youtubeAuth.isLoading}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {youtubeAuth.isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Youtube className="w-4 h-4" />
+                  Connect YouTube
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {/* TikTok */}
@@ -1139,20 +1235,30 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
             </div>
           )}
           
-          <button
-            onClick={handleTikTokConnect}
-            disabled={tiktokAuth.isLoading}
-            className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {tiktokAuth.isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <Music className="w-4 h-4" />
-                Connect TikTok
-              </>
-            )}
-          </button>
+          {tiktokAuth.isAuthenticated ? (
+            <button
+              onClick={handleTikTokLogout}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <X className="w-4 h-4" />
+              Logout TikTok
+            </button>
+          ) : (
+            <button
+              onClick={handleTikTokConnect}
+              disabled={tiktokAuth.isLoading}
+              className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {tiktokAuth.isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Music className="w-4 h-4" />
+                  Connect TikTok
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
