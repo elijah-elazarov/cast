@@ -20,19 +20,20 @@ export default function YouTubeConnection({ onConnect }: YouTubeConnectionProps)
   const [error, setError] = useState<string | null>(null);
 
   // Check if user is already connected on component mount
-  useEffect(() => {
-    const checkConnection = () => {
-      const storedUserId = localStorage.getItem('youtube_user_id');
-      
-      if (storedUserId) {
-        setIsConnected(true);
-        onConnect(true);
-      }
-    };
-
-    checkConnection();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  // DISABLED: Auto-login removed - users must manually click "Connect" button
+  // useEffect(() => {
+  //   const checkConnection = () => {
+  //     const storedUserId = localStorage.getItem('youtube_user_id');
+  //     
+  //     if (storedUserId) {
+  //       setIsConnected(true);
+  //       onConnect(true);
+  //     }
+  //   };
+  //
+  //   checkConnection();
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []); // Only run once on mount
 
   const handleConnect = async () => {
     setIsConnecting(true);

@@ -22,25 +22,26 @@ export default function TikTokConnection({ onConnect }: TikTokConnectionProps) {
   const [error, setError] = useState<string | null>(null);
 
   // Check if user is already connected on component mount
-  useEffect(() => {
-    const checkConnection = () => {
-      const storedUserId = localStorage.getItem('tiktok_user_id');
-      const storedDisplayName = localStorage.getItem('tiktok_display_name');
-      
-      if (storedUserId) {
-        setIsConnected(true);
-        setUserInfo({
-          user_id: storedUserId,
-          display_name: storedDisplayName || 'TikTok User',
-          avatar_url: localStorage.getItem('tiktok_avatar_url') || ''
-        });
-        onConnect(true);
-      }
-    };
-
-    checkConnection();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  // DISABLED: Auto-login removed - users must manually click "Connect" button
+  // useEffect(() => {
+  //   const checkConnection = () => {
+  //     const storedUserId = localStorage.getItem('tiktok_user_id');
+  //     const storedDisplayName = localStorage.getItem('tiktok_display_name');
+  //     
+  //     if (storedUserId) {
+  //       setIsConnected(true);
+  //       setUserInfo({
+  //         user_id: storedUserId,
+  //         display_name: storedDisplayName || 'TikTok User',
+  //         avatar_url: localStorage.getItem('tiktok_avatar_url') || ''
+  //       });
+  //       onConnect(true);
+  //     }
+  //   };
+  //
+  //   checkConnection();
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []); // Only run once on mount
 
   const handleConnect = async () => {
     setIsConnecting(true);
