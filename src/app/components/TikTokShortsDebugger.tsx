@@ -734,7 +734,7 @@ export default function TikTokShortsDebugger() {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [authState.isAuthenticated]); // Only re-run when auth state changes
+  }, [authState.isAuthenticated, addLog]); // Only re-run when auth state changes
 
   // Check for OAuth callback success/error from URL query parameters
   useEffect(() => {

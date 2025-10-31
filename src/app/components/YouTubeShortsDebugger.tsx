@@ -141,7 +141,7 @@ export default function YouTubeShortsDebugger() {
     addLog(`🔗 Redirect URI: ${YOUTUBE_CONFIG.redirectUri}`);
     addLog('✅ Ready to connect and upload videos to YouTube');
     addLog('👆 Click "Connect YouTube" to begin authentication');
-  }, [addLog]);
+  }, [addLog, UPLOAD_PRESET]);
 
   // Check for OAuth callback success/error from query params (same as original YouTubeConnection)
   useEffect(() => {
@@ -184,7 +184,7 @@ export default function YouTubeShortsDebugger() {
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, []);
+  }, [addLog]);
 
   // Sync auth state with localStorage changes from other components
   useEffect(() => {
@@ -238,7 +238,7 @@ export default function YouTubeShortsDebugger() {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [authState.isAuthenticated]); // Only re-run when auth state changes
+  }, [authState.isAuthenticated, addLog]); // Only re-run when auth state changes
 
   // Validate a Cloudinary video URL becoming available
   const validateVideoUrl = async (url: string, label: string, maxAttempts = 6): Promise<boolean> => {

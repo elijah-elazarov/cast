@@ -20,15 +20,7 @@ type FacebookSDK = {
 
 type FBWindow = Window & { FB?: FacebookSDK; fbAsyncInit?: () => void };
 
-// API response type
-type ApiResponse = {
-  success?: boolean;
-  message?: string;
-  detail?: string;
-  error?: string;
-  raw?: string;
-  data?: unknown;
-};
+// (Removed unused ApiResponse type)
 
 // Instagram auth (from InstagramReelsDebugger)
 interface InstagramAuthState {
@@ -192,7 +184,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     addLog(`🔗 Redirect URI: ${YOUTUBE_CONFIG.redirectUri}`);
     addLog('✅ Ready to connect and upload videos to YouTube');
     addLog('👆 Click "Connect YouTube" to begin authentication');
-  }, [addLog]);
+  }, [addLog, YOUTUBE_CONFIG.apiVersion, YOUTUBE_CONFIG.clientId, YOUTUBE_CONFIG.redirectUri, YOUTUBE_CONFIG.scope]);
 
   // Add initial TikTok configuration logs (guarded for React Strict Mode)
   useEffect(() => {
@@ -325,7 +317,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [instagramAuth.isAuthenticated, youtubeAuth.isAuthenticated, tiktokAuth.isAuthenticated]);
+  }, [instagramAuth.isAuthenticated, youtubeAuth.isAuthenticated, tiktokAuth.isAuthenticated, addLog]);
 
   // Check existing connections on mount and handle OAuth callbacks
   useEffect(() => {
@@ -460,7 +452,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
   };
 
   // Helper: find IG business account via FB pages (returns all needed fields)
-  const resolveInstagramAccount = async (accessToken: string, fbUserId: string): Promise<{ id: string; username: string; pageId: string }> => {
+  const resolveInstagramAccount = async (accessToken: string): Promise<{ id: string; username: string; pageId: string }> => {
     addLog('Getting Instagram Business Account from Facebook Pages...');
     const pagesUrl = `https://graph.facebook.com/${INSTAGRAM_CONFIG.apiVersion}/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${accessToken}`;
     const pagesRes = await fetch(pagesUrl);
@@ -562,7 +554,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       }
       
       const longLived = await exchangeLongLivedToken(accessToken);
-      const ig = await resolveInstagramAccount(longLived, fbUserId);
+      const ig = await resolveInstagramAccount(longLived);
       // Persist and update UI
       localStorage.setItem('instagram_user_id', ig.id);
       localStorage.setItem('instagram_username', ig.username);
@@ -1277,7 +1269,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
 
   // Cloudinary helpers (mirrors debuggers)
   const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dkzbmeto1';
-  const uploadToCloudinary = async (file: File, preset: string, folder: string) => {
+  const uploadToCloudinary = useCallback(async (file: File, preset: string, folder: string) => {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('upload_preset', preset);
@@ -1285,8 +1277,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, { method: 'POST', body: fd });
     if (!res.ok) throw new Error('Cloudinary upload failed');
     return res.json() as Promise<{ public_id: string }>; 
-  };
-  const validateUrl = async (url: string, label: string, tries = 3) => {
+  }, [CLOUD_NAME]);
+  const validateUrl = useCallback(async (url: string, label: string, tries = 3) => {
     for (let i = 0; i < tries; i++) {
       const r = await fetch(url, { method: 'HEAD' });
       if (r.ok) return true;
@@ -1294,7 +1286,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     }
     addLog(`⚠️ ${label} not confirmed yet; proceeding`);
     return false;
-  };
+  }, [addLog]);
 
   // Process video for all connected platforms
   const processVideoForAllPlatforms = useCallback(async (file: File) => {
@@ -1489,7 +1481,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     setVideosReady(true);
     setProcessingProgress(100);
     addLog(`✅ Video processed for ${connectedCount} platform(s)`);
-  }, [youtubeAuth.isAuthenticated, tiktokAuth.isAuthenticated, instagramAuth.isAuthenticated, addLog]);
+  }, [youtubeAuth.isAuthenticated, tiktokAuth.isAuthenticated, instagramAuth.isAuthenticated, addLog, CLOUD_NAME, uploadToCloudinary, validateUrl]);
 
   // Validate YouTube Shorts file (matching debugger)
   const validateYouTubeShortsFile = async (file: File): Promise<boolean> => {

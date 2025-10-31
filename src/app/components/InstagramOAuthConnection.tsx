@@ -47,19 +47,7 @@ export default function InstagramOAuthConnection({ onConnect }: InstagramOAuthCo
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const checkExistingConnection = async () => {
-    try {
-      const storedAccountInfo = localStorage.getItem('instagram_account_info');
-      if (storedAccountInfo) {
-        const account = JSON.parse(storedAccountInfo);
-        setAccountInfo(account);
-        setIsConnected(true);
-        onConnect(true, account);
-      }
-    } catch (error) {
-      console.error('Error checking existing connection:', error);
-    }
-  };
+  // Removed unused helper: checkExistingConnection
 
   const handleOAuthCallback = async (code: string) => {
     setIsConnecting(true);

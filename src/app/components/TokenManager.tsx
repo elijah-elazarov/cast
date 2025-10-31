@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Key, Instagram, Youtube, Music, CheckCircle, XCircle, Loader2, RefreshCw, LogOut, AlertCircle, Clock, Database, Trash2, Eye, EyeOff } from 'lucide-react';
 
 interface TokenStatus {
@@ -26,10 +26,10 @@ export default function TokenManager() {
   const [showTokenValues, setShowTokenValues] = useState(false);
   const hasInitialized = useRef(false);
 
-  const addLog = (message: string) => {
+  const addLog = useCallback((message: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs(prev => [...prev, `[${timestamp}] ${message}`]);
-  };
+  }, []);
 
   // Derive platform/category/level styling for logs
   const getLogMeta = (line: string) => {
@@ -72,7 +72,7 @@ export default function TokenManager() {
     return { platform, category, level, platformColor, levelColor, categoryColor };
   };
 
-  const checkAllStatuses = (silent = false) => {
+  const checkAllStatuses = useCallback((silent = false) => {
     if (!silent) {
       addLog('🔍 Checking token status for all platforms...');
       addLog('📦 Reading localStorage items...');
@@ -149,7 +149,7 @@ export default function TokenManager() {
       const authenticatedCount = [!!instagramToken, !!youtubeUserId, !!tiktokUserId].filter(Boolean).length;
       addLog(`✅ Status check complete: ${authenticatedCount} platform(s) authenticated`);
     }
-  };
+  }, [addLog, setTokenStatus]);
 
   // Initialize: Check which platforms are authenticated (only once, even in React Strict Mode)
   useEffect(() => {
@@ -157,7 +157,7 @@ export default function TokenManager() {
       hasInitialized.current = true;
       checkAllStatuses();
     }
-  }, []);
+  }, [checkAllStatuses]);
 
   // Monitor localStorage changes (for debugging)
   useEffect(() => {
@@ -231,8 +231,10 @@ export default function TokenManager() {
       status.platform === 'instagram' ? { ...status, isValidating: true } : status
     ));
 
-    const w = window as any;
-    if (!w.FB) {
+    type FacebookAuthResponse = { accessToken: string; expiresIn?: number; grantedScopes?: string };
+    type FacebookSDK = { getLoginStatus: (cb: (res: { status: string; authResponse: FacebookAuthResponse }) => void) => void; logout: (cb: () => void) => void };
+    const FB = (window as unknown as { FB?: FacebookSDK }).FB;
+    if (!FB) {
       addLog('❌ Facebook SDK not loaded');
       setTokenStatus(prev => prev.map(status => 
         status.platform === 'instagram' ? { ...status, isValid: false, isValidating: false, error: 'Facebook SDK not loaded' } : status
@@ -241,10 +243,10 @@ export default function TokenManager() {
     }
 
     try {
-      await new Promise<void>((resolve, reject) => {
-        w.FB.getLoginStatus((response: any) => {
+      await new Promise<void>((resolve) => {
+        FB.getLoginStatus((response: { status: string; authResponse: FacebookAuthResponse }) => {
           if (response.status === 'connected') {
-            const accessToken = response.authResponse.accessToken;
+            // accessToken not required here; only logging status and scopes
             const expiresIn = response.authResponse.expiresIn;
             const scopes = response.authResponse.grantedScopes?.split(',') || [];
             const expiresAt = expiresIn ? Date.now() + (expiresIn * 1000) : undefined;
@@ -396,12 +398,14 @@ export default function TokenManager() {
 
   const logoutInstagram = async () => {
     addLog('🚪 Logging out from Instagram...');
-    const w = window as any;
-    if (w.FB) {
+    type FacebookAuthResponse = { accessToken: string };
+    type FacebookSDK = { getLoginStatus: (cb: (res: { status: string; authResponse: FacebookAuthResponse }) => void) => void; logout: (cb: () => void) => void };
+    const FB = (window as unknown as { FB?: FacebookSDK }).FB;
+    if (FB) {
       await new Promise<void>((resolve) => {
-        w.FB.getLoginStatus((response: any) => {
+        FB.getLoginStatus((response: { status: string; authResponse: FacebookAuthResponse }) => {
           if (response.status === 'connected') {
-            w.FB.logout(() => {
+            FB.logout(() => {
               localStorage.removeItem('instagram_user_id');
               localStorage.removeItem('instagram_username');
               localStorage.removeItem('instagram_long_lived_token');
@@ -910,7 +914,7 @@ export default function TokenManager() {
           </div>
           <div className="bg-black rounded p-3 h-64 overflow-y-auto font-mono text-sm space-y-1">
             {logs.length === 0 ? (
-              <div className="text-gray-500">No logs yet. Click "Refresh Status" to start...</div>
+              <div className="text-gray-500">No logs yet. Click &quot;Refresh Status&quot; to start...</div>
             ) : (
               logs.map((log, index) => {
                 const { platform, category, platformColor, levelColor, categoryColor } = getLogMeta(log);
