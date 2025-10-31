@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Key, Instagram, Youtube, Music, CheckCircle, XCircle, Loader2, RefreshCw, LogOut, AlertCircle, Clock } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Key, Instagram, Youtube, Music, CheckCircle, XCircle, Loader2, RefreshCw, LogOut, AlertCircle, Clock, Database, Trash2, Eye, EyeOff } from 'lucide-react';
 
 interface TokenStatus {
   platform: 'instagram' | 'youtube' | 'tiktok';
@@ -22,53 +22,148 @@ export default function TokenManager() {
     { platform: 'youtube', isAuthenticated: false, isValid: null, isValidating: false },
     { platform: 'tiktok', isAuthenticated: false, isValid: null, isValidating: false },
   ]);
+  const [showLocalStorage, setShowLocalStorage] = useState(false);
+  const [showTokenValues, setShowTokenValues] = useState(false);
+  const hasInitialized = useRef(false);
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs(prev => [...prev, `[${timestamp}] ${message}`]);
   };
 
-  // Initialize: Check which platforms are authenticated
-  useEffect(() => {
-    checkAllStatuses();
-  }, []);
-
-  const checkAllStatuses = () => {
-    addLog('🔍 Checking token status for all platforms...');
+  const checkAllStatuses = (silent = false) => {
+    if (!silent) {
+      addLog('🔍 Checking token status for all platforms...');
+      addLog('📦 Reading localStorage items...');
+    }
     
     // Instagram
+    if (!silent) addLog('  📱 Checking Instagram localStorage...');
     const instagramToken = localStorage.getItem('instagram_long_lived_token');
     const instagramUserId = localStorage.getItem('instagram_user_id');
     const instagramUsername = localStorage.getItem('instagram_username');
+    const instagramPageId = localStorage.getItem('instagram_page_id');
+    const facebookUserId = localStorage.getItem('facebook_user_id');
+    if (!silent) {
+      addLog(`    ✅ Found: ${[!!instagramToken && 'token', !!instagramUserId && 'user_id', !!instagramUsername && 'username', !!instagramPageId && 'page_id', !!facebookUserId && 'facebook_user_id'].filter(Boolean).join(', ') || 'none'}`);
+    }
     
     setTokenStatus(prev => prev.map(status => 
       status.platform === 'instagram' 
-        ? { ...status, isAuthenticated: !!instagramToken, userId: instagramUserId || undefined, username: instagramUsername || undefined }
+        ? { 
+            ...status, 
+            isAuthenticated: !!instagramToken, 
+            userId: instagramUserId || undefined, 
+            username: instagramUsername || undefined,
+            // Store additional info in a custom field we can show
+            error: !instagramToken ? 'No token found in localStorage' : instagramPageId ? `Page ID: ${instagramPageId}` : undefined
+          }
         : status
     ));
 
     // YouTube
+    if (!silent) addLog('  📺 Checking YouTube localStorage...');
     const youtubeUserId = localStorage.getItem('youtube_user_id');
+    const youtubeChannelTitle = localStorage.getItem('youtube_channel_title');
     const youtubeAccessToken = localStorage.getItem('youtube_access_token');
+    const youtubeRefreshToken = localStorage.getItem('youtube_refresh_token');
+    if (!silent) {
+      addLog(`    ✅ Found: ${[!!youtubeUserId && 'user_id', !!youtubeChannelTitle && 'channel_title', !!youtubeAccessToken && 'access_token', !!youtubeRefreshToken && 'refresh_token'].filter(Boolean).join(', ') || 'none'}`);
+    }
     
     setTokenStatus(prev => prev.map(status => 
       status.platform === 'youtube' 
-        ? { ...status, isAuthenticated: !!youtubeUserId, userId: youtubeUserId || undefined }
+        ? { 
+            ...status, 
+            isAuthenticated: !!youtubeUserId, 
+            userId: youtubeUserId || undefined,
+            username: youtubeChannelTitle || undefined,
+            error: !youtubeUserId ? 'No session found in localStorage' : youtubeAccessToken ? 'Token present' : 'No access token'
+          }
         : status
     ));
 
     // TikTok
+    if (!silent) addLog('  🎵 Checking TikTok localStorage...');
     const tiktokUserId = localStorage.getItem('tiktok_user_id');
     const tiktokDisplayName = localStorage.getItem('tiktok_display_name');
+    const tiktokAvatarUrl = localStorage.getItem('tiktok_avatar_url');
+    if (!silent) {
+      addLog(`    ✅ Found: ${[!!tiktokUserId && 'user_id', !!tiktokDisplayName && 'display_name', !!tiktokAvatarUrl && 'avatar_url'].filter(Boolean).join(', ') || 'none'}`);
+    }
     
     setTokenStatus(prev => prev.map(status => 
       status.platform === 'tiktok' 
-        ? { ...status, isAuthenticated: !!tiktokUserId, userId: tiktokUserId || undefined, username: tiktokDisplayName || undefined }
+        ? { 
+            ...status, 
+            isAuthenticated: !!tiktokUserId, 
+            userId: tiktokUserId || undefined, 
+            username: tiktokDisplayName || undefined,
+            error: !tiktokUserId ? 'No session found in localStorage' : tiktokAvatarUrl ? 'Avatar URL available' : undefined
+          }
         : status
     ));
 
-    addLog('✅ Status check complete');
+    if (!silent) {
+      const authenticatedCount = [!!instagramToken, !!youtubeUserId, !!tiktokUserId].filter(Boolean).length;
+      addLog(`✅ Status check complete: ${authenticatedCount} platform(s) authenticated`);
+    }
   };
+
+  // Initialize: Check which platforms are authenticated (only once, even in React Strict Mode)
+  useEffect(() => {
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      checkAllStatuses();
+    }
+  }, []);
+
+  // Monitor localStorage changes (for debugging)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key && (e.key.startsWith('instagram_') || e.key.startsWith('facebook_') || e.key.startsWith('youtube_') || e.key.startsWith('tiktok_'))) {
+        if (e.newValue === null) {
+          addLog(`🗑️ localStorage removed: ${e.key} (old value: ${e.oldValue ? `${e.oldValue.substring(0, 30)}...` : 'null'})`);
+        } else if (e.oldValue === null) {
+          const isToken = e.key.includes('token') || e.key.includes('access') || e.key.includes('refresh');
+          addLog(`➕ localStorage set: ${e.key} = ${isToken ? '***token***' : e.newValue.substring(0, 50)}${e.newValue.length > 50 ? '...' : ''}`);
+        } else {
+          const isToken = e.key.includes('token') || e.key.includes('access') || e.key.includes('refresh');
+          addLog(`🔄 localStorage updated: ${e.key} = ${isToken ? '***token***' : e.newValue.substring(0, 50)}${e.newValue.length > 50 ? '...' : ''}`);
+        }
+        // Refresh status after localStorage change
+        setTimeout(() => checkAllStatuses(true), 100);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also intercept localStorage.setItem/removeItem calls (works for same-origin)
+    const originalSetItem = Storage.prototype.setItem;
+    const originalRemoveItem = Storage.prototype.removeItem;
+    
+    Storage.prototype.setItem = function(key: string, value: string) {
+      if (key && (key.startsWith('instagram_') || key.startsWith('facebook_') || key.startsWith('youtube_') || key.startsWith('tiktok_'))) {
+        const isToken = key.includes('token') || key.includes('access') || key.includes('refresh');
+        addLog(`➕ localStorage.setItem: ${key} = ${isToken ? '***token***' : value.substring(0, 50)}${value.length > 50 ? '...' : ''}`);
+      }
+      return originalSetItem.call(this, key, value);
+    };
+    
+    Storage.prototype.removeItem = function(key: string) {
+      if (key && (key.startsWith('instagram_') || key.startsWith('facebook_') || key.startsWith('youtube_') || key.startsWith('tiktok_'))) {
+        const oldValue = this.getItem(key);
+        addLog(`🗑️ localStorage.removeItem: ${key}${oldValue ? ` (was: ${oldValue.substring(0, 30)}...)` : ''}`);
+      }
+      return originalRemoveItem.call(this, key);
+    };
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      Storage.prototype.setItem = originalSetItem;
+      Storage.prototype.removeItem = originalRemoveItem;
+    };
+  }, [addLog]);
 
   const validateInstagramToken = async () => {
     addLog('🔍 Validating Instagram token...');
@@ -383,6 +478,48 @@ export default function TokenManager() {
     setLogs([]);
   };
 
+  // Get all localStorage items related to auth for a platform
+  const getLocalStorageItems = (platform: string): Array<{ key: string; value: string }> => {
+    const allKeys: string[] = [];
+    const items: Array<{ key: string; value: string }> = [];
+    
+    // Get all keys from localStorage
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) allKeys.push(key);
+    }
+    
+    // Filter by platform prefix
+    const platformPrefixes: { [key: string]: string[] } = {
+      instagram: ['instagram_', 'facebook_'],
+      youtube: ['youtube_'],
+      tiktok: ['tiktok_']
+    };
+    
+    const prefixes = platformPrefixes[platform] || [];
+    allKeys.forEach(key => {
+      if (prefixes.some(prefix => key.startsWith(prefix))) {
+        const value = localStorage.getItem(key) || '';
+        items.push({ key, value });
+      }
+    });
+    
+    return items.sort((a, b) => a.key.localeCompare(b.key));
+  };
+
+  const clearLocalStorageItem = (key: string) => {
+    localStorage.removeItem(key);
+    addLog(`🗑️ Cleared localStorage key: ${key}`);
+    checkAllStatuses(true); // Silent refresh
+  };
+
+  const clearPlatformLocalStorage = (platform: string) => {
+    const items = getLocalStorageItems(platform);
+    items.forEach(item => localStorage.removeItem(item.key));
+    addLog(`🗑️ Cleared all ${platform} localStorage items (${items.length} items)`);
+    checkAllStatuses(true); // Silent refresh
+  };
+
   const getStatusIcon = (status: TokenStatus) => {
     if (status.isValidating) {
       return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />;
@@ -430,24 +567,36 @@ export default function TokenManager() {
         <div className="flex items-center justify-end mb-6">
           <div className="flex gap-2">
             <button
-              onClick={checkAllStatuses}
+              onClick={() => checkAllStatuses()}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
             >
               <RefreshCw className="w-4 h-4" />
               Refresh Status
             </button>
             <button
-              onClick={validateAllTokens}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-2"
-              disabled={tokenStatus.every(s => !s.isAuthenticated)}
+              onClick={() => {
+                const authenticatedCount = tokenStatus.filter(s => s.isAuthenticated).length;
+                if (authenticatedCount === 0) {
+                  addLog('ℹ️ No platforms are authenticated. Connect platforms first to validate tokens.');
+                } else {
+                  validateAllTokens();
+                }
+              }}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
             >
               <CheckCircle className="w-4 h-4" />
               Validate All
             </button>
             <button
-              onClick={logoutAll}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
-              disabled={tokenStatus.every(s => !s.isAuthenticated)}
+              onClick={() => {
+                const authenticatedCount = tokenStatus.filter(s => s.isAuthenticated).length;
+                if (authenticatedCount === 0) {
+                  addLog('ℹ️ No platforms are authenticated. Nothing to logout.');
+                } else {
+                  logoutAll();
+                }
+              }}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
             >
               <LogOut className="w-4 h-4" />
               Logout All
@@ -493,8 +642,10 @@ export default function TokenManager() {
 
                 {status.username && (
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Username:</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                    <span className="text-gray-600 dark:text-gray-400">
+                      {status.platform === 'youtube' ? 'Channel:' : 'Username:'}
+                    </span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300 truncate max-w-[140px]">
                       {status.username}
                     </span>
                   </div>
@@ -521,8 +672,30 @@ export default function TokenManager() {
                   </div>
                 )}
 
+                {status.scopes && status.scopes.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-400 text-xs">Scopes:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {status.scopes.slice(0, 3).map((scope, idx) => (
+                        <span key={idx} className="text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
+                          {scope}
+                        </span>
+                      ))}
+                      {status.scopes.length > 3 && (
+                        <span className="text-xs text-gray-500">+{status.scopes.length - 3} more</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {status.error && (
-                  <div className="text-xs text-red-600 dark:text-red-400 truncate">
+                  <div className={`text-xs truncate ${
+                    status.error.includes('No') || status.error.includes('not found') 
+                      ? 'text-gray-500 dark:text-gray-400' 
+                      : status.error.includes('Token') || status.error.includes('Page ID') || status.error.includes('present') || status.error.includes('available')
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-red-600 dark:text-red-400'
+                  }`}>
                     {status.error}
                   </div>
                 )}
@@ -563,6 +736,106 @@ export default function TokenManager() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* localStorage Info */}
+        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Database className="w-5 h-5 text-blue-500" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">localStorage Info</h3>
+            </div>
+            <button
+              onClick={() => setShowLocalStorage(!showLocalStorage)}
+              className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded transition-colors flex items-center gap-2"
+            >
+              {showLocalStorage ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showLocalStorage ? 'Hide' : 'Show'} localStorage
+            </button>
+          </div>
+
+          {showLocalStorage && (
+            <div className="space-y-4">
+              {(['instagram', 'youtube', 'tiktok'] as const).map((platform) => {
+                const items = getLocalStorageItems(platform);
+                return (
+                  <div key={platform} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        {getPlatformIcon(platform)}
+                        <span className="font-medium text-gray-900 dark:text-white capitalize">{platform}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">({items.length} items)</span>
+                      </div>
+                      {items.length > 0 && (
+                        <button
+                          onClick={() => clearPlatformLocalStorage(platform)}
+                          className="px-2 py-1 bg-red-100 dark:bg-red-900 hover:bg-red-200 dark:hover:bg-red-800 text-red-700 dark:text-red-300 text-xs rounded transition-colors flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Clear All
+                        </button>
+                      )}
+                    </div>
+                    {items.length === 0 ? (
+                      <div className="text-sm text-gray-500 dark:text-gray-400 italic">No localStorage items found</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {items.map((item) => {
+                          const isToken = item.key.includes('token') || item.key.includes('access') || item.key.includes('refresh');
+                          const displayValue = showTokenValues || !isToken
+                            ? item.value.length > 50 
+                              ? `${item.value.substring(0, 50)}...` 
+                              : item.value
+                            : '••••••••';
+                          
+                          return (
+                            <div key={item.key} className="flex items-start justify-between gap-2 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-mono text-gray-600 dark:text-gray-400 mb-1">
+                                  {item.key}
+                                </div>
+                                <div className="text-xs font-mono text-gray-700 dark:text-gray-300 break-all">
+                                  {isToken && !showTokenValues ? (
+                                    <button
+                                      onClick={() => setShowTokenValues(true)}
+                                      className="text-blue-600 dark:text-blue-400 hover:underline"
+                                    >
+                                      {displayValue} (click to reveal)
+                                    </button>
+                                  ) : (
+                                    <span>{displayValue}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => clearLocalStorageItem(item.key)}
+                                className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1"
+                                title="Clear this item"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              
+              {showTokenValues && (
+                <div className="mt-2">
+                  <button
+                    onClick={() => setShowTokenValues(false)}
+                    className="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 flex items-center gap-1"
+                  >
+                    <EyeOff className="w-3 h-3" />
+                    Hide token values
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Logs */}
