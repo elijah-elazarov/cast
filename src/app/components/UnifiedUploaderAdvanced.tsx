@@ -24,7 +24,7 @@ export default function UnifiedUploaderAdvanced({ onClose }: { onClose?: () => v
           <div className="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
             <button onClick={() => setTab('instagram')} className={`px-4 py-2 text-sm ${tab==='instagram' ? 'bg-purple-600 text-white' : 'bg-transparent text-gray-700 dark:text-gray-300'}`}>Instagram</button>
             <button onClick={() => setTab('youtube')} className={`px-4 py-2 text-sm ${tab==='youtube' ? 'bg-red-600 text-white' : 'bg-transparent text-gray-700 dark:text-gray-300'}`}>YouTube</button>
-            <button onClick={() => setTab('tiktok')} className={`px-4 py-2 text-sm ${tab==='tiktok' ? 'bg-pink-600 text-white' : 'bg-transparent text-gray-700 dark:text-gray-300'}`}>TikTok</button>
+            <button onClick={() => setTab('tiktok')} className={`px-4 py-2 text-sm ${tab==='tiktok' ? 'bg-yellow-600 text-white' : 'bg-transparent text-gray-700 dark:text-gray-300'}`}>TikTok</button>
           </div>
         </div>
 

@@ -76,9 +76,12 @@ export default function TikTokShortsDebugger() {
   const [fileDetails, setFileDetails] = useState<{
     name: string;
     size: string;
+    sizeMB: number;
     type: string;
     duration?: number;
-    dimensions?: string;
+    width?: number;
+    height?: number;
+    previewUrl?: string;
   } | null>(null);
 
   // OAuth countdown state
@@ -91,6 +94,38 @@ export default function TikTokShortsDebugger() {
     const logEntry = `[${timestamp}] ${message}`;
     setDebugLogs(prev => [...prev, logEntry]);
     console.log(`[TIKTOK SHORTS DEBUG] ${message}`);
+  }, []);
+
+  // Derive category/level styling for logs
+  const getLogMeta = useCallback((line: string) => {
+    const lower = line.toLowerCase();
+    
+    let category: 'auth' | 'process' | 'upload' | 'validate' | 'logout' | 'config' | 'other' = 'other';
+    if (lower.includes('auth') || lower.includes('login') || lower.includes('token') || lower.includes('oauth')) category = 'auth';
+    else if (lower.includes('process') || lower.includes('generating') || lower.includes('cloudinary')) category = 'process';
+    else if (lower.includes('upload') || lower.includes('publish') || lower.includes('posting')) category = 'upload';
+    else if (lower.includes('validate') || lower.includes('status') || lower.includes('checking')) category = 'validate';
+    else if (lower.includes('logout')) category = 'logout';
+    else if (lower.includes('initialized') || lower.includes('configuration') || lower.includes('ready')) category = 'config';
+
+    let level: 'ok' | 'warn' | 'error' | 'info' = 'info';
+    if (lower.includes('❌') || lower.includes('error') || lower.includes('failed')) level = 'error';
+    else if (lower.includes('⚠️') || lower.includes('warning')) level = 'warn';
+    else if (lower.includes('✅') || lower.includes('success')) level = 'ok';
+
+    const levelColor =
+      level === 'ok' ? 'text-green-400' : level === 'warn' ? 'text-yellow-300' : level === 'error' ? 'text-red-400' : 'text-gray-200';
+    
+    const categoryColor =
+      category === 'auth' ? 'bg-blue-600' :
+      category === 'process' ? 'bg-cyan-600' :
+      category === 'upload' ? 'bg-green-600' :
+      category === 'validate' ? 'bg-orange-600' :
+      category === 'logout' ? 'bg-slate-600' :
+      category === 'config' ? 'bg-indigo-600' :
+      'bg-gray-600';
+
+    return { category, level, levelColor, categoryColor };
   }, []);
 
   // Check if already authenticated (for silent refresh)
@@ -418,11 +453,38 @@ export default function TikTokShortsDebugger() {
     }
 
     setSelectedFile(file);
-    setFileDetails({
+    
+    // Build initial details
+    const sizeMB = +(file.size / (1024 * 1024)).toFixed(2);
+    const details = {
       name: file.name,
-      size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-      type: file.type
-    });
+      size: `${sizeMB} MB`,
+      sizeMB,
+      type: file.type || 'video/mp4',
+    } as {
+      name: string; size: string; sizeMB: number; type: string; width?: number; height?: number; duration?: number; previewUrl?: string;
+    };
+
+    // Create a preview URL and read metadata for resolution/duration
+    try {
+      const url = URL.createObjectURL(file);
+      details.previewUrl = url;
+      const videoEl = document.createElement('video');
+      videoEl.preload = 'metadata';
+      videoEl.src = url;
+      videoEl.onloadedmetadata = () => {
+        details.width = (videoEl.videoWidth || undefined);
+        details.height = (videoEl.videoHeight || undefined);
+        details.duration = +(videoEl.duration || 0).toFixed(2);
+        setFileDetails({ ...details });
+        // We keep the preview URL for inline preview; do not revoke yet
+      };
+      videoEl.onerror = () => {
+        setFileDetails({ ...details });
+      };
+    } catch {
+      setFileDetails({ ...details });
+    }
 
     // Validate video for TikTok Shorts
     validateVideoForTikTok(file);
@@ -713,7 +775,7 @@ export default function TikTokShortsDebugger() {
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">TikTok Shorts Debugger</h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">🎵 TikTok Shorts Debugger</h2>
         <p className="text-gray-600">Debug component to test TikTok Shorts upload authentication and video processing.</p>
       </div>
 
@@ -741,43 +803,57 @@ export default function TikTokShortsDebugger() {
       </div>
 
       {/* File Selection */}
-      <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <h3 className="text-lg font-semibold mb-3 text-blue-800">Select Video</h3>
-        <div className="space-y-4">
-          <div>
-            <input
-              type="file"
-              accept="video/*"
-              onChange={handleFileSelect}
-              disabled={!authState.isAuthenticated}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-          </div>
-          {selectedFile && (
-            <div className="p-3 bg-white rounded border">
-              <h4 className="font-medium text-gray-900 mb-2">Selected File:</h4>
-              <div className="text-sm text-gray-600 space-y-1">
-                <div><strong>Name:</strong> {fileDetails?.name}</div>
-                <div><strong>Size:</strong> {fileDetails?.size}</div>
-                <div><strong>Type:</strong> {fileDetails?.type}</div>
-                {fileDetails?.duration && <div><strong>Duration:</strong> {fileDetails.duration.toFixed(2)}s</div>}
-                {fileDetails?.dimensions && <div><strong>Dimensions:</strong> {fileDetails.dimensions}</div>}
+      <div className={`mb-6 p-4 rounded-lg border bg-yellow-50 border-yellow-200 ${!authState.isAuthenticated ? 'opacity-50' : ''}`}>
+        <h3 className={`text-lg font-semibold mb-2 ${!authState.isAuthenticated ? 'text-gray-500' : 'text-yellow-700'}`}>
+          Select Video {!authState.isAuthenticated && '(Sign in required)'}
+        </h3>
+        <label className={`inline-flex items-center px-4 py-2 rounded cursor-pointer ${!authState.isAuthenticated ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-yellow-500 text-white hover:bg-yellow-600'}`}>
+          <span className="font-medium">Choose file</span>
+          <input
+            type="file"
+            accept="video/*"
+            onChange={handleFileSelect}
+            disabled={!authState.isAuthenticated}
+            className="hidden"
+          />
+        </label>
+        {fileDetails && (
+          <div className="mt-3 text-sm text-gray-800">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <div className="font-medium">{fileDetails.name}</div>
+                <div className="text-gray-600">{fileDetails.type} • {fileDetails.sizeMB} MB{fileDetails.duration ? ` • ${fileDetails.duration}s` : ''}</div>
+                {(fileDetails.width && fileDetails.height) && (
+                  <div className="text-gray-600">Resolution: {fileDetails.width} × {fileDetails.height}</div>
+                )}
               </div>
+              {fileDetails.previewUrl && (
+                <video
+                  src={fileDetails.previewUrl}
+                  className="w-28 h-48 object-cover rounded border"
+                  controls
+                  muted
+                />
+              )}
             </div>
-          )}
+          </div>
+        )}
+        <div className="mt-3 flex items-center gap-3">
           <button
             onClick={processVideoForTikTok}
             disabled={!selectedFile || isProcessing || !authState.isAuthenticated}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className={`px-4 py-2 rounded ${!authState.isAuthenticated ? 'bg-gray-400 text-gray-600 cursor-not-allowed' : 'bg-yellow-700 text-white hover:bg-yellow-800 disabled:opacity-50'}`}
           >
-            {isProcessing ? 'Processing...' : 'Process for TikTok Shorts'}
+            {!authState.isAuthenticated 
+              ? 'Sign in to process video' 
+              : isProcessing 
+                ? `Processing... ${processingProgress}%` 
+                : 'Process for TikTok Shorts'
+            }
           </button>
           {isProcessing && (
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${processingProgress}%` }}
-              ></div>
+            <div className="w-48 bg-gray-200 rounded h-2">
+              <div className="bg-yellow-500 h-2 rounded" style={{ width: `${processingProgress}%` }} />
             </div>
           )}
           {videosReady && (
@@ -796,8 +872,8 @@ export default function TikTokShortsDebugger() {
 
       {/* Video Details */}
       {authState.isAuthenticated && (
-        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <h3 className="text-lg font-semibold mb-3 text-blue-800">Video Details</h3>
+        <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+          <h3 className="text-lg font-semibold mb-3 text-yellow-800">Video Details</h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-1">Title *</label>
@@ -806,7 +882,7 @@ export default function TikTokShortsDebugger() {
                 value={videoTitle}
                 onChange={(e) => setVideoTitle(e.target.value)}
                 placeholder="Enter video title (keep it engaging for TikTok)"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
                 style={{ color: '#374151' }}
               />
             </div>
@@ -817,7 +893,7 @@ export default function TikTokShortsDebugger() {
                 onChange={(e) => setVideoDescription(e.target.value)}
                 placeholder="Enter video description"
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
                 style={{ color: '#374151' }}
               />
             </div>
@@ -828,7 +904,7 @@ export default function TikTokShortsDebugger() {
                 value={videoTags}
                 onChange={(e) => setVideoTags(e.target.value)}
                 placeholder="shorts, tiktok, video, example"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
                 style={{ color: '#374151' }}
               />
             </div>
@@ -838,8 +914,8 @@ export default function TikTokShortsDebugger() {
 
       {/* Account Information */}
       {authState.isAuthenticated && authState.userInfo && (
-        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <h3 className="text-lg font-semibold mb-3 text-blue-800">Account Information</h3>
+        <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+          <h3 className="text-lg font-semibold mb-3 text-yellow-800">Account Information</h3>
           
           {/* Channel Header with Avatar */}
           <div className="flex items-start gap-4 mb-4">
@@ -925,7 +1001,7 @@ export default function TikTokShortsDebugger() {
         <button
           onClick={handleAuth}
           disabled={authState.isLoading}
-          className="px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           {authState.isLoading ? 'Authenticating...' : 'Connect TikTok'}
         </button>
@@ -934,7 +1010,7 @@ export default function TikTokShortsDebugger() {
           <button
             onClick={uploadToTikTok}
             disabled={!videosReady || !videoTitle}
-            className="px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             Upload TikTok Video
           </button>
@@ -963,13 +1039,21 @@ export default function TikTokShortsDebugger() {
       {/* Debug Logs */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold mb-3 text-gray-800">Debug Logs</h3>
-        <div className="bg-black text-green-400 p-4 rounded-lg font-mono text-sm max-h-64 overflow-y-auto">
+        <div className="bg-black p-4 rounded-lg font-mono text-sm max-h-64 overflow-y-auto space-y-1">
           {debugLogs.length === 0 ? (
             <div className="text-gray-500">No logs yet...</div>
           ) : (
-            debugLogs.map((log, index) => (
-              <div key={index} className="mb-1">{log}</div>
-            ))
+            debugLogs.map((log, index) => {
+              const { category, levelColor, categoryColor } = getLogMeta(log);
+              const categoryLabel = category.toUpperCase();
+              return (
+                <div key={index} className={`mb-0.5 ${levelColor}`}>
+                  <span className="inline-block px-1.5 py-0.5 mr-2 rounded text-white text-[10px] bg-yellow-600">TIKTOK</span>
+                  <span className={`inline-block px-1 py-0.5 mr-2 rounded text-white text-[10px] ${categoryColor}`}>{categoryLabel}</span>
+                  <span className="text-gray-200">{log}</span>
+                </div>
+              );
+            })
           )}
         </div>
       </div>

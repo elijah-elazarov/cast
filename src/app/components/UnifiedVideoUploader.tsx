@@ -139,6 +139,44 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     console.log(`[UNIFIED UPLOAD] ${message}`);
   }, []);
 
+  // Derive platform/category/level styling for logs without changing stored format
+  const getLogMeta = (line: string) => {
+    const lower = line.toLowerCase();
+    let platform: 'instagram' | 'youtube' | 'tiktok' | 'system' = 'system';
+    if (lower.includes('tiktok')) platform = 'tiktok';
+    else if (lower.includes('youtube')) platform = 'youtube';
+    else if (lower.includes('instagram') || lower.includes('facebook sdk') || lower.includes('fb.')) platform = 'instagram';
+
+    let category: 'auth' | 'process' | 'upload' | 'validate' | 'logout' | 'config' | 'other' = 'other';
+    if (lower.includes('auth') || lower.includes('login') || lower.includes('token')) category = 'auth';
+    else if (lower.includes('process') || lower.includes('generating')) category = 'process';
+    else if (lower.includes('upload') || lower.includes('publish')) category = 'upload';
+    else if (lower.includes('validate') || lower.includes('status')) category = 'validate';
+    else if (lower.includes('logout')) category = 'logout';
+    else if (lower.includes('initialized') || lower.includes('configuration')) category = 'config';
+
+    let level: 'ok' | 'warn' | 'error' | 'info' = 'info';
+    if (lower.includes('❌') || lower.includes('error') || lower.includes('failed')) level = 'error';
+    else if (lower.includes('⚠️') || lower.includes('warning')) level = 'warn';
+    else if (lower.includes('✅') || lower.includes('success')) level = 'ok';
+
+    const platformColor =
+      platform === 'youtube' ? 'bg-red-600' : platform === 'tiktok' ? 'bg-yellow-600' : platform === 'instagram' ? 'bg-purple-600' : 'bg-gray-600';
+    const levelColor =
+      level === 'ok' ? 'text-green-400' : level === 'warn' ? 'text-yellow-300' : level === 'error' ? 'text-red-400' : 'text-gray-200';
+    
+    const categoryColor =
+      category === 'auth' ? 'bg-blue-600' :
+      category === 'process' ? 'bg-cyan-600' :
+      category === 'upload' ? 'bg-green-600' :
+      category === 'validate' ? 'bg-orange-600' :
+      category === 'logout' ? 'bg-slate-600' :
+      category === 'config' ? 'bg-indigo-600' :
+      'bg-gray-600';
+
+    return { platform, category, level, platformColor, levelColor, categoryColor };
+  };
+
   // Add initial YouTube configuration logs (guarded for React Strict Mode)
   const hasLoggedInit = useRef<boolean>(false);
   useEffect(() => {
@@ -2343,13 +2381,22 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       {/* Debug Logs */}
       <div>
         <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Debug Logs</h3>
-        <div className="bg-black text-green-400 p-4 rounded-lg font-mono text-sm max-h-64 overflow-y-auto">
+        <div className="bg-black p-4 rounded-lg font-mono text-sm max-h-64 overflow-y-auto space-y-1">
           {debugLogs.length === 0 ? (
             <div className="text-gray-500">No logs yet...</div>
           ) : (
-            debugLogs.map((log, index) => (
-              <div key={index} className="mb-1">{log}</div>
-            ))
+            debugLogs.map((log, index) => {
+              const { platform, category, platformColor, levelColor, categoryColor } = getLogMeta(log);
+              const platformLabel = platform === 'youtube' ? 'YOUTUBE' : platform === 'tiktok' ? 'TIKTOK' : platform === 'instagram' ? 'INSTAGRAM' : 'SYSTEM';
+              const categoryLabel = category.toUpperCase();
+              return (
+                <div key={index} className={`mb-0.5 ${levelColor}`}>
+                  <span className={`inline-block px-1.5 py-0.5 mr-2 rounded text-white text-[10px] ${platformColor}`}>{platformLabel}</span>
+                  <span className={`inline-block px-1 py-0.5 mr-2 rounded text-white text-[10px] ${categoryColor}`}>{categoryLabel}</span>
+                  <span className="text-gray-200">{log}</span>
+                </div>
+              );
+            })
           )}
         </div>
       </div>

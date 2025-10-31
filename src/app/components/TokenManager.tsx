@@ -31,6 +31,47 @@ export default function TokenManager() {
     setLogs(prev => [...prev, `[${timestamp}] ${message}`]);
   };
 
+  // Derive platform/category/level styling for logs
+  const getLogMeta = (line: string) => {
+    const lower = line.toLowerCase();
+    
+    let platform: 'instagram' | 'youtube' | 'tiktok' | 'system' = 'system';
+    if (lower.includes('tiktok')) platform = 'tiktok';
+    else if (lower.includes('youtube')) platform = 'youtube';
+    else if (lower.includes('instagram') || lower.includes('facebook')) platform = 'instagram';
+
+    let category: 'auth' | 'process' | 'upload' | 'validate' | 'logout' | 'config' | 'storage' | 'other' = 'other';
+    if (lower.includes('auth') || lower.includes('login') || lower.includes('oauth')) category = 'auth';
+    else if (lower.includes('process') || lower.includes('generating')) category = 'process';
+    else if (lower.includes('upload') || lower.includes('publish')) category = 'upload';
+    else if (lower.includes('validate') || lower.includes('validating') || lower.includes('checking') || lower.includes('status') || lower.includes('token')) category = 'validate';
+    else if (lower.includes('logout') || lower.includes('logging out')) category = 'logout';
+    else if (lower.includes('localstorage') || lower.includes('setitem') || lower.includes('removeitem')) category = 'storage';
+    else if (lower.includes('initialized') || lower.includes('configuration') || lower.includes('complete')) category = 'config';
+
+    let level: 'ok' | 'warn' | 'error' | 'info' = 'info';
+    if (lower.includes('❌') || lower.includes('error') || lower.includes('failed')) level = 'error';
+    else if (lower.includes('⚠️') || lower.includes('warning')) level = 'warn';
+    else if (lower.includes('✅') || lower.includes('success') || lower.includes('valid')) level = 'ok';
+
+    const platformColor =
+      platform === 'youtube' ? 'bg-red-600' : platform === 'tiktok' ? 'bg-yellow-600' : platform === 'instagram' ? 'bg-purple-600' : 'bg-gray-600';
+    const levelColor =
+      level === 'ok' ? 'text-green-400' : level === 'warn' ? 'text-yellow-300' : level === 'error' ? 'text-red-400' : 'text-gray-200';
+    
+    const categoryColor =
+      category === 'auth' ? 'bg-blue-600' :
+      category === 'process' ? 'bg-cyan-600' :
+      category === 'upload' ? 'bg-green-600' :
+      category === 'validate' ? 'bg-orange-600' :
+      category === 'logout' ? 'bg-slate-600' :
+      category === 'config' ? 'bg-indigo-600' :
+      category === 'storage' ? 'bg-teal-600' :
+      'bg-gray-600';
+
+    return { platform, category, level, platformColor, levelColor, categoryColor };
+  };
+
   const checkAllStatuses = (silent = false) => {
     if (!silent) {
       addLog('🔍 Checking token status for all platforms...');
@@ -867,13 +908,22 @@ export default function TokenManager() {
               Clear
             </button>
           </div>
-          <div className="bg-black rounded p-3 h-64 overflow-y-auto font-mono text-sm text-green-400">
+          <div className="bg-black rounded p-3 h-64 overflow-y-auto font-mono text-sm space-y-1">
             {logs.length === 0 ? (
               <div className="text-gray-500">No logs yet. Click "Refresh Status" to start...</div>
             ) : (
-              logs.map((log, index) => (
-                <div key={index} className="mb-1">{log}</div>
-              ))
+              logs.map((log, index) => {
+                const { platform, category, platformColor, levelColor, categoryColor } = getLogMeta(log);
+                const platformLabel = platform === 'youtube' ? 'YOUTUBE' : platform === 'tiktok' ? 'TIKTOK' : platform === 'instagram' ? 'INSTAGRAM' : 'SYSTEM';
+                const categoryLabel = category.toUpperCase();
+                return (
+                  <div key={index} className={`mb-0.5 ${levelColor}`}>
+                    <span className={`inline-block px-1.5 py-0.5 mr-2 rounded text-white text-[10px] ${platformColor}`}>{platformLabel}</span>
+                    <span className={`inline-block px-1 py-0.5 mr-2 rounded text-white text-[10px] ${categoryColor}`}>{categoryLabel}</span>
+                    <span className="text-gray-200">{log}</span>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

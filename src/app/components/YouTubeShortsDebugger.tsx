@@ -96,6 +96,38 @@ export default function YouTubeShortsDebugger() {
     console.log(`[YOUTUBE SHORTS DEBUG] ${message}`);
   }, []);
 
+  // Derive category/level styling for logs
+  const getLogMeta = useCallback((line: string) => {
+    const lower = line.toLowerCase();
+    
+    let category: 'auth' | 'process' | 'upload' | 'validate' | 'logout' | 'config' | 'other' = 'other';
+    if (lower.includes('auth') || lower.includes('login') || lower.includes('token') || lower.includes('oauth')) category = 'auth';
+    else if (lower.includes('process') || lower.includes('generating') || lower.includes('cloudinary')) category = 'process';
+    else if (lower.includes('upload') || lower.includes('publish') || lower.includes('posting') || lower.includes('short')) category = 'upload';
+    else if (lower.includes('validate') || lower.includes('status') || lower.includes('checking')) category = 'validate';
+    else if (lower.includes('logout')) category = 'logout';
+    else if (lower.includes('initialized') || lower.includes('configuration') || lower.includes('ready')) category = 'config';
+
+    let level: 'ok' | 'warn' | 'error' | 'info' = 'info';
+    if (lower.includes('❌') || lower.includes('error') || lower.includes('failed')) level = 'error';
+    else if (lower.includes('⚠️') || lower.includes('warning')) level = 'warn';
+    else if (lower.includes('✅') || lower.includes('success')) level = 'ok';
+
+    const levelColor =
+      level === 'ok' ? 'text-green-400' : level === 'warn' ? 'text-yellow-300' : level === 'error' ? 'text-red-400' : 'text-gray-200';
+    
+    const categoryColor =
+      category === 'auth' ? 'bg-blue-600' :
+      category === 'process' ? 'bg-cyan-600' :
+      category === 'upload' ? 'bg-green-600' :
+      category === 'validate' ? 'bg-orange-600' :
+      category === 'logout' ? 'bg-slate-600' :
+      category === 'config' ? 'bg-indigo-600' :
+      'bg-gray-600';
+
+    return { category, level, levelColor, categoryColor };
+  }, []);
+
   // Initialize: Log configuration and status (guarded for React Strict Mode)
   useEffect(() => {
     if (hasInitialized.current) return;
@@ -843,11 +875,11 @@ export default function YouTubeShortsDebugger() {
       </div>
 
       {/* File Selection and Processing */}
-      <div className={`mb-6 p-4 rounded-lg border ${!authState.isAuthenticated ? 'opacity-50' : ''}`}>
-        <h3 className={`text-lg font-semibold mb-2 ${!authState.isAuthenticated ? 'text-gray-500' : 'text-gray-900'}`}>
+      <div className={`mb-6 p-4 rounded-lg border bg-red-50 border-red-200 ${!authState.isAuthenticated ? 'opacity-50' : ''}`}>
+        <h3 className={`text-lg font-semibold mb-2 ${!authState.isAuthenticated ? 'text-gray-500' : 'text-red-800'}`}>
           Select Video {!authState.isAuthenticated && '(Sign in required)'}
         </h3>
-        <label className={`inline-flex items-center px-4 py-2 rounded cursor-pointer ${!authState.isAuthenticated ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-gray-900 text-white hover:bg-black'}`}>
+        <label className={`inline-flex items-center px-4 py-2 rounded cursor-pointer ${!authState.isAuthenticated ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}>
           <span className="font-medium">Choose file</span>
           <input
             type="file"
@@ -882,7 +914,7 @@ export default function YouTubeShortsDebugger() {
           <button
             onClick={processClientSide}
             disabled={!authState.isAuthenticated || !selectedFile || processing}
-            className={`px-4 py-2 rounded ${!authState.isAuthenticated ? 'bg-gray-400 text-gray-600 cursor-not-allowed' : 'bg-blue-700 text-white hover:bg-blue-800 disabled:opacity-50'}`}
+            className={`px-4 py-2 rounded ${!authState.isAuthenticated ? 'bg-gray-400 text-gray-600 cursor-not-allowed' : 'bg-red-700 text-white hover:bg-red-800 disabled:opacity-50'}`}
           >
             {!authState.isAuthenticated 
               ? 'Sign in to process video' 
@@ -893,7 +925,7 @@ export default function YouTubeShortsDebugger() {
           </button>
           {processing && (
             <div className="w-48 bg-gray-200 rounded h-2">
-              <div className="bg-blue-600 h-2 rounded" style={{ width: `${processingProgress}%` }} />
+              <div className="bg-red-600 h-2 rounded" style={{ width: `${processingProgress}%` }} />
             </div>
           )}
         </div>
@@ -917,8 +949,8 @@ export default function YouTubeShortsDebugger() {
 
       {/* Video Details Form */}
       {authState.isAuthenticated && (
-        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <h3 className="text-lg font-semibold mb-3 text-blue-800">Video Details</h3>
+        <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200">
+          <h3 className="text-lg font-semibold mb-3 text-red-800">Video Details</h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-1">Title *</label>
@@ -927,7 +959,7 @@ export default function YouTubeShortsDebugger() {
                 value={videoTitle}
                 onChange={(e) => setVideoTitle(e.target.value)}
                 placeholder="Enter video title (include #Shorts for better categorization)"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                 style={{ color: '#374151' }}
               />
             </div>
@@ -938,7 +970,7 @@ export default function YouTubeShortsDebugger() {
                 onChange={(e) => setVideoDescription(e.target.value)}
                 placeholder="Enter video description"
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                 style={{ color: '#374151' }}
               />
             </div>
@@ -949,7 +981,7 @@ export default function YouTubeShortsDebugger() {
                 value={videoTags}
                 onChange={(e) => setVideoTags(e.target.value)}
                 placeholder="shorts, youtube, video, example"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                 style={{ color: '#374151' }}
               />
             </div>
@@ -959,8 +991,8 @@ export default function YouTubeShortsDebugger() {
 
       {/* Account Information */}
       {authState.isAuthenticated && authState.userInfo && (
-        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <h3 className="text-lg font-semibold mb-3 text-blue-800">Account Information</h3>
+        <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200">
+          <h3 className="text-lg font-semibold mb-3 text-red-800">Account Information</h3>
           
           {/* Channel Header with Thumbnail */}
           <div className="flex items-start gap-4 mb-4">
@@ -1101,13 +1133,21 @@ export default function YouTubeShortsDebugger() {
       {/* Debug Logs */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold mb-3 text-gray-800">Debug Logs</h3>
-        <div className="bg-black text-green-400 p-4 rounded-lg font-mono text-sm max-h-96 overflow-y-auto">
+        <div className="bg-black p-4 rounded-lg font-mono text-sm max-h-96 overflow-y-auto space-y-1">
           {debugLogs.length === 0 ? (
             <div className="text-gray-500">No logs yet. Click &quot;Connect YouTube&quot; to start debugging.</div>
           ) : (
-            debugLogs.map((log, index) => (
-              <div key={index} className="mb-1">{log}</div>
-            ))
+            debugLogs.map((log, index) => {
+              const { category, levelColor, categoryColor } = getLogMeta(log);
+              const categoryLabel = category.toUpperCase();
+              return (
+                <div key={index} className={`mb-0.5 ${levelColor}`}>
+                  <span className="inline-block px-1.5 py-0.5 mr-2 rounded text-white text-[10px] bg-red-600">YOUTUBE</span>
+                  <span className={`inline-block px-1 py-0.5 mr-2 rounded text-white text-[10px] ${categoryColor}`}>{categoryLabel}</span>
+                  <span className="text-gray-200">{log}</span>
+                </div>
+              );
+            })
           )}
         </div>
       </div>
