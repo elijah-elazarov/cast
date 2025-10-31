@@ -66,6 +66,7 @@ interface TikTokAuthState {
   error: string | null;
   userInfo: {
     userId?: string;
+    username?: string;
     displayName?: string;
     avatarUrl?: string;
     followerCount?: string;
@@ -285,8 +286,9 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       if (e.key && e.key.startsWith('tiktok_')) {
         const userId = localStorage.getItem('tiktok_user_id');
         const displayName = localStorage.getItem('tiktok_display_name');
+        const usernameLs = localStorage.getItem('tiktok_username');
 
-        if (userId && displayName) {
+        if (userId && (displayName || usernameLs)) {
           // Auth state exists in localStorage - sync it
           if (!tiktokAuth.isAuthenticated) {
             addLog('🔄 Syncing TikTok auth state from localStorage (change detected)...');
@@ -295,7 +297,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
               isAuthenticated: true,
               userInfo: {
                 userId: userId,
-                displayName: displayName,
+                username: usernameLs || undefined,
+                displayName: displayName || usernameLs || 'TikTok User',
                 avatarUrl: localStorage.getItem('tiktok_avatar_url') || ''
               }
             }));
@@ -1148,6 +1151,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         error: null,
         userInfo: {
           userId: userData.user_id,
+          username: (userData as any).username || undefined,
           displayName: userData.display_name,
           avatarUrl: userData.avatar_url,
           followerCount: userData.follower_count
@@ -1159,6 +1163,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       
       // Store in localStorage for reconnection (like Instagram/YouTube do)
       if (userData.user_id) localStorage.setItem('tiktok_user_id', userData.user_id);
+      if ((userData as any).username) localStorage.setItem('tiktok_username', (userData as any).username);
       if (userData.display_name) localStorage.setItem('tiktok_display_name', userData.display_name);
       if (userData.avatar_url) localStorage.setItem('tiktok_avatar_url', userData.avatar_url);
       if (userData.follower_count) localStorage.setItem('tiktok_follower_count', userData.follower_count);
@@ -2179,7 +2184,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
                 <img src={tiktokAuth.userInfo.avatarUrl} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
               )}
               <div className="text-sm text-gray-600 dark:text-gray-300">
-                <div>{tiktokAuth.userInfo.displayName}</div>
+                <div>@{tiktokAuth.userInfo.username || tiktokAuth.userInfo.displayName}</div>
                 {tiktokAuth.userInfo.followerCount && (
                   <div className="text-xs text-gray-500">{parseInt(tiktokAuth.userInfo.followerCount).toLocaleString()} followers</div>
                 )}
