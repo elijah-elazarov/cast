@@ -390,6 +390,12 @@ class YouTubeAuthRequest(BaseModel):
 class YouTubeLogoutRequest(BaseModel):
     user_id: str
 
+class InstagramValidateRequest(BaseModel):
+    user_id: str
+
+class YouTubeValidateRequest(BaseModel):
+    user_id: str
+
 
 class TikTokLogoutRequest(BaseModel):
     user_id: str
@@ -1516,6 +1522,178 @@ async def youtube_logout(request: YouTubeLogoutRequest):
     except Exception as e:
         logger.error(f"YouTube logout error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Logout failed: {str(e)}")
+
+
+@app.post("/api/youtube/validate")
+async def youtube_validate(request: YouTubeValidateRequest):
+    """
+    Validate YouTube access token using YouTube API channels().list()
+    """
+    try:
+        from google.auth.transport.requests import Request as GoogleRequest
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+        
+        if request.user_id not in youtube_sessions:
+            return JSONResponse({
+                "success": False,
+                "is_valid": False,
+                "error": "No session found for user"
+            })
+        
+        session = youtube_sessions[request.user_id]
+        creds_dict = session.get('credentials', {})
+        access_token = creds_dict.get('token')
+        
+        if not access_token:
+            return JSONResponse({
+                "success": False,
+                "is_valid": False,
+                "error": "No access token found"
+            })
+        
+        # Validate token by attempting to fetch channel info
+        try:
+            # Recreate credentials object for validation
+            credentials = Credentials(
+                token=creds_dict.get('token'),
+                refresh_token=creds_dict.get('refresh_token'),
+                token_uri=creds_dict.get('token_uri'),
+                client_id=creds_dict.get('client_id'),
+                client_secret=creds_dict.get('client_secret'),
+                scopes=creds_dict.get('scopes')
+            )
+            
+            # Refresh token if expired
+            if credentials.expired:
+                try:
+                    credentials.refresh(GoogleRequest())
+                    logger.info(f"YouTube token refreshed for user: {request.user_id}")
+                except Exception as refresh_err:
+                    logger.info(f"YouTube token expired and refresh failed: {str(refresh_err)}")
+                    return JSONResponse({
+                        "success": False,
+                        "is_valid": False,
+                        "error": f"Token expired and refresh failed: {str(refresh_err)}"
+                    })
+            
+            # Try to validate by fetching channel info (lightweight check)
+            youtube = build('youtube', 'v3', credentials=credentials)
+            try:
+                channel_response = youtube.channels().list(part='id,snippet', mine=True).execute()
+                if channel_response.get('items'):
+                    channel_info = channel_response['items'][0]
+                    channel_id = channel_info.get('id')
+                    channel_title = channel_info.get('snippet', {}).get('title')
+                    channel_description = channel_info.get('snippet', {}).get('description')
+                    thumbnails = channel_info.get('snippet', {}).get('thumbnails', {})
+                    thumbnail_url = thumbnails.get('default', {}).get('url') if thumbnails else None
+                    
+                    logger.info(f"YouTube token validated successfully for user: {request.user_id}")
+                    return JSONResponse({
+                        "success": True,
+                        "is_valid": True,
+                        "channel": {
+                            "id": channel_id,
+                            "title": channel_title,
+                            "description": channel_description,
+                            "thumbnail_url": thumbnail_url
+                        }
+                    })
+                else:
+                    logger.info(f"YouTube token validation failed: No channel found for user: {request.user_id}")
+                    return JSONResponse({
+                        "success": False,
+                        "is_valid": False,
+                        "error": "No channel found"
+                    })
+            except Exception as validate_err:
+                logger.info(f"YouTube token validation failed: {str(validate_err)}")
+                return JSONResponse({
+                    "success": False,
+                    "is_valid": False,
+                    "error": f"Token validation failed: {str(validate_err)}"
+                })
+                
+        except Exception as validation_error:
+            logger.error(f"YouTube token validation error: {str(validation_error)}")
+            return JSONResponse({
+                "success": False,
+                "is_valid": False,
+                "error": f"Validation error: {str(validation_error)}"
+            })
+    except Exception as e:
+        logger.error(f"YouTube validate error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+
+
+# ============================================================================
+# Instagram Graph API - Validation Endpoint
+# ============================================================================
+@app.post("/api/instagram/validate")
+async def instagram_validate(request: InstagramValidateRequest):
+    """
+    Validate Instagram (Graph) session using stored access token.
+    Attempts a lightweight Graph call to fetch IG user id and username.
+    """
+    try:
+        if request.user_id not in instagram_graph_sessions:
+            return JSONResponse({
+                "success": False,
+                "is_valid": False,
+                "error": "No session found for user"
+            })
+
+        session = instagram_graph_sessions[request.user_id]
+        access_token = session.get('access_token')
+        ig_user_id = session.get('ig_user_id') or request.user_id
+
+        if not access_token or not ig_user_id:
+            return JSONResponse({
+                "success": False,
+                "is_valid": False,
+                "error": "Missing access token or IG user id"
+            })
+
+        # Validate via Graph API: GET /{ig_user_id}?fields=id,username
+        try:
+            url = f"https://graph.facebook.com/v17.0/{ig_user_id}"
+            params = {
+                "fields": "id,username",
+                "access_token": access_token,
+            }
+            resp = requests.get(url, params=params, timeout=30)
+            if resp.status_code == 200:
+                data = resp.json()
+                return JSONResponse({
+                    "success": True,
+                    "is_valid": True,
+                    "user": {
+                        "id": data.get("id"),
+                        "username": data.get("username"),
+                    }
+                })
+            else:
+                try:
+                    err = resp.json()
+                except Exception:
+                    err = {"message": resp.text}
+                logger.info(f"Instagram token validation failed: {resp.status_code} - {resp.text}")
+                return JSONResponse({
+                    "success": False,
+                    "is_valid": False,
+                    "error": err.get('error', {}).get('message') if isinstance(err, dict) else 'Validation failed'
+                })
+        except Exception as e:
+            logger.error(f"Instagram token validation error: {str(e)}")
+            return JSONResponse({
+                "success": False,
+                "is_valid": False,
+                "error": f"Validation error: {str(e)}"
+            })
+    except Exception as e:
+        logger.error(f"Instagram validate error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
 
 
 # ============================================================================

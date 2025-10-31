@@ -259,7 +259,6 @@ export default function TokenManager() {
       await new Promise<void>((resolve) => {
         FB.getLoginStatus((response: { status: string; authResponse: FacebookAuthResponse }) => {
           if (response.status === 'connected') {
-            // accessToken not required here; only logging status and scopes
             const expiresIn = response.authResponse.expiresIn;
             const scopes = response.authResponse.grantedScopes?.split(',') || [];
             const expiresAt = expiresIn ? Date.now() + (expiresIn * 1000) : undefined;
@@ -273,7 +272,6 @@ export default function TokenManager() {
                 ? { ...status, isValid: true, isValidating: false, expiresAt, scopes, error: undefined }
                 : status
             ));
-            resolve();
           } else {
             addLog(`⚠️ Instagram token is invalid: ${response.status}`);
             setTokenStatus(prev => prev.map(status => 
@@ -281,8 +279,8 @@ export default function TokenManager() {
                 ? { ...status, isValid: false, isValidating: false, error: response.status }
                 : status
             ));
-            resolve();
           }
+          resolve();
         });
       });
     } catch (error) {
@@ -290,6 +288,26 @@ export default function TokenManager() {
       setTokenStatus(prev => prev.map(status => 
         status.platform === 'instagram' ? { ...status, isValid: false, isValidating: false, error: error instanceof Error ? error.message : 'Unknown error' } : status
       ));
+    }
+
+    // Backend session validation (Graph) for extra certainty and to surface server-side status
+    try {
+      const igUserId = localStorage.getItem('instagram_user_id');
+      if (igUserId) {
+        const res = await fetch('/api/instagram/graph/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+          body: JSON.stringify({ user_id: igUserId })
+        });
+        const data = await res.json();
+        if (data.success && data.is_valid) {
+          if (data.user?.username) addLog(`👤 Server session OK: ${data.user.username}`);
+        } else {
+          addLog(`⚠️ Server session validation: ${data.error || 'invalid'}`);
+        }
+      }
+    } catch (e) {
+      addLog(`⚠️ Server-side validation error: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
   };
 
@@ -310,7 +328,7 @@ export default function TokenManager() {
     }
 
     try {
-      const response = await fetch('/api/youtube/logout', {
+      const response = await fetch('/api/youtube/validate', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -320,27 +338,23 @@ export default function TokenManager() {
       });
       const data = await response.json();
       
-      if (data.success) {
-        if (data.token_valid === true) {
-          addLog('✅ YouTube token is valid');
-          setTokenStatus(prev => prev.map(status => 
-            status.platform === 'youtube' ? { ...status, isValid: true, isValidating: false, error: undefined } : status
-          ));
-        } else if (data.token_valid === false) {
-          addLog('⚠️ YouTube token is invalid/expired');
-          setTokenStatus(prev => prev.map(status => 
-            status.platform === 'youtube' ? { ...status, isValid: false, isValidating: false, error: 'Token invalid/expired' } : status
-          ));
-        } else {
-          addLog('⚠️ Could not determine YouTube token validity');
-          setTokenStatus(prev => prev.map(status => 
-            status.platform === 'youtube' ? { ...status, isValid: null, isValidating: false } : status
-          ));
+      if (data.success && data.is_valid === true) {
+        addLog('✅ YouTube token is valid');
+        if (data.channel) {
+          addLog(`📺 Channel: ${data.channel.title || data.channel.id}`);
         }
-      } else {
-        addLog(`❌ YouTube validation failed: ${data.detail || data.message || 'Unknown error'}`);
         setTokenStatus(prev => prev.map(status => 
-          status.platform === 'youtube' ? { ...status, isValid: false, isValidating: false, error: data.detail || data.message || 'Unknown error' } : status
+          status.platform === 'youtube' ? { ...status, isValid: true, isValidating: false, error: undefined } : status
+        ));
+      } else if (data.is_valid === false) {
+        addLog(`⚠️ YouTube token is invalid/expired: ${data.error || 'Token validation failed'}`);
+        setTokenStatus(prev => prev.map(status => 
+          status.platform === 'youtube' ? { ...status, isValid: false, isValidating: false, error: data.error || 'Token invalid/expired' } : status
+        ));
+      } else {
+        addLog(`⚠️ Could not determine YouTube token validity: ${data.error || 'Unknown error'}`);
+        setTokenStatus(prev => prev.map(status => 
+          status.platform === 'youtube' ? { ...status, isValid: null, isValidating: false, error: data.error || 'Unknown error' } : status
         ));
       }
     } catch (error) {
