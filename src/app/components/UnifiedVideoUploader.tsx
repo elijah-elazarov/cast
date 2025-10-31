@@ -621,9 +621,31 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     }
   };
 
-  // YouTube logout
-  const handleYouTubeLogout = () => {
+  // YouTube logout (call backend to revoke session like Instagram does with FB.logout)
+  const handleYouTubeLogout = async () => {
     addLog('Logging out from YouTube...');
+    const userId = youtubeAuth.userInfo?.id || localStorage.getItem('youtube_user_id');
+    
+    if (userId) {
+      try {
+        // Call backend to revoke session (like Instagram does with FB.logout)
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backrooms-e8nm.onrender.com';
+        await fetch(`${backendUrl}/api/youtube/logout`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
+          body: JSON.stringify({ user_id: userId }),
+        });
+        addLog('Backend session revoked successfully');
+      } catch (err) {
+        addLog(`⚠️ Backend logout error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        // Continue with local logout even if backend call fails
+      }
+    }
+    
+    // Clear localStorage (like Instagram does)
     localStorage.removeItem('youtube_user_id');
     localStorage.removeItem('youtube_channel_title');
     localStorage.removeItem('youtube_channel_description');
@@ -637,12 +659,15 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     localStorage.removeItem('youtube_hidden_subscriber_count');
     localStorage.removeItem('youtube_access_token');
     localStorage.removeItem('youtube_refresh_token');
+    
+    // Reset state
     setYouTubeAuth({
       isAuthenticated: false,
       isLoading: false,
       error: null,
       userInfo: null
     });
+    
     addLog('Logged out from YouTube successfully');
   };
 
