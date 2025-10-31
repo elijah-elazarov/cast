@@ -49,7 +49,11 @@ export default function Home() {
   
   // Facebook SDK typings (minimal)
   type FacebookLoginStatus = { status: 'connected' | 'not_authorized' | 'unknown'; authResponse?: { accessToken: string } };
-  type FacebookSDK = { getLoginStatus: (cb: (res: FacebookLoginStatus) => void) => void };
+  type FacebookSDK = {
+    init: (config: { appId: string; cookie: boolean; xfbml: boolean; version: string }) => void;
+    getLoginStatus: (cb: (res: FacebookLoginStatus) => void) => void;
+    logout: (callback: () => void) => void;
+  };
   type FBWindow = Window & { FB?: FacebookSDK; fbAsyncInit?: () => void };
 
   // Check localStorage on mount to initialize connected state (no auto-login)
