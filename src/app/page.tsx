@@ -23,6 +23,11 @@ export default function Home() {
     youtube: false,
     tiktok: false,
   });
+  const [accountInfo, setAccountInfo] = useState<{
+    instagram?: { username: string; followers_count?: number; profile_picture_url?: string };
+    youtube?: { channel_title: string; subscriber_count?: string; thumbnail_url?: string };
+    tiktok?: { username?: string; display_name?: string; follower_count?: string; avatar_url?: string };
+  }>({});
   const [isHydrated, setIsHydrated] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [isStarting, setIsStarting] = useState(false);
@@ -134,12 +139,133 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  const handleAccountConnect = (platform: string, connected: boolean) => {
+  const handleAccountConnect = (platform: string, connected: boolean, info?: any) => {
     setConnectedAccounts(prev => ({
       ...prev,
       [platform]: connected
     }));
+    
+    // Update account info when connected
+    if (connected && info) {
+      if (platform === 'instagram' && info.username) {
+        setAccountInfo(prev => ({
+          ...prev,
+          instagram: {
+            username: info.username,
+            followers_count: info.followers_count,
+            profile_picture_url: info.profile_picture_url
+          }
+        }));
+      } else if (platform === 'youtube') {
+        // YouTube info comes from localStorage
+        const channelTitle = localStorage.getItem('youtube_channel_title');
+        const subscriberCount = localStorage.getItem('youtube_subscriber_count');
+        const thumbnailUrl = localStorage.getItem('youtube_thumbnail_url');
+        if (channelTitle) {
+          setAccountInfo(prev => ({
+            ...prev,
+            youtube: {
+              channel_title: channelTitle,
+              subscriber_count: subscriberCount || undefined,
+              thumbnail_url: thumbnailUrl || undefined
+            }
+          }));
+        }
+      } else if (platform === 'tiktok') {
+        // TikTok info comes from localStorage
+        const username = localStorage.getItem('tiktok_username');
+        const displayName = localStorage.getItem('tiktok_display_name');
+        const followerCount = localStorage.getItem('tiktok_follower_count');
+        const avatarUrl = localStorage.getItem('tiktok_avatar_url');
+        if (displayName || username) {
+          setAccountInfo(prev => ({
+            ...prev,
+            tiktok: {
+              username: username || undefined,
+              display_name: displayName || undefined,
+              follower_count: followerCount || undefined,
+              avatar_url: avatarUrl || undefined
+            }
+          }));
+        }
+      }
+    } else if (!connected) {
+      // Clear account info when disconnected
+      setAccountInfo(prev => {
+        const updated = { ...prev };
+        delete updated[platform as keyof typeof updated];
+        return updated;
+      });
+    }
   };
+
+  // Sync account info from localStorage on mount and when storage changes
+  useEffect(() => {
+    const syncAccountInfo = () => {
+      // Instagram
+      const igUsername = localStorage.getItem('instagram_username');
+      const igAccountInfo = localStorage.getItem('instagram_account_info');
+      if (igUsername && igAccountInfo) {
+        try {
+          const info = JSON.parse(igAccountInfo);
+          setAccountInfo(prev => ({
+            ...prev,
+            instagram: {
+              username: info.username || igUsername,
+              followers_count: info.followers_count,
+              profile_picture_url: info.profile_picture_url
+            }
+          }));
+          // Also mark as connected if we have account info
+          setConnectedAccounts(prev => ({ ...prev, instagram: true }));
+        } catch {}
+      }
+      
+      // YouTube
+      const ytChannelTitle = localStorage.getItem('youtube_channel_title');
+      if (ytChannelTitle) {
+        setAccountInfo(prev => ({
+          ...prev,
+          youtube: {
+            channel_title: ytChannelTitle,
+            subscriber_count: localStorage.getItem('youtube_subscriber_count') || undefined,
+            thumbnail_url: localStorage.getItem('youtube_thumbnail_url') || undefined
+          }
+        }));
+        // Also mark as connected if we have channel info
+        setConnectedAccounts(prev => ({ ...prev, youtube: true }));
+      }
+      
+      // TikTok
+      const ttUsername = localStorage.getItem('tiktok_username');
+      const ttDisplayName = localStorage.getItem('tiktok_display_name');
+      if (ttDisplayName || ttUsername) {
+        setAccountInfo(prev => ({
+          ...prev,
+          tiktok: {
+            username: ttUsername || undefined,
+            display_name: ttDisplayName || undefined,
+            follower_count: localStorage.getItem('tiktok_follower_count') || undefined,
+            avatar_url: localStorage.getItem('tiktok_avatar_url') || undefined
+          }
+        }));
+        // Also mark as connected if we have account info
+        setConnectedAccounts(prev => ({ ...prev, tiktok: true }));
+      }
+    };
+    
+    syncAccountInfo();
+    
+    // Listen for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      // Only sync if the key is relevant
+      if (e.key && (e.key.startsWith('instagram_') || e.key.startsWith('youtube_') || e.key.startsWith('tiktok_'))) {
+        syncAccountInfo();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Show initial loading state for 2 seconds
   if (!isHydrated) {
@@ -323,10 +449,35 @@ export default function Home() {
             <p className="text-gray-600 dark:text-gray-300 mb-4">
               Connect your Instagram (Meta) account to publish Reels and Stories
             </p>
-            <InstagramOAuthConnection 
-              onConnect={(connected) => handleAccountConnect('instagram', connected)}
-              embedded
-            />
+            {connectedAccounts.instagram && accountInfo.instagram ? (
+              <div className="space-y-3">
+                <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
+                  {accountInfo.instagram.profile_picture_url && (
+                    <img 
+                      src={accountInfo.instagram.profile_picture_url} 
+                      alt="" 
+                      className="w-8 h-8 rounded-full" 
+                      referrerPolicy="no-referrer"
+                    />
+                  )}
+                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                    <div>@{accountInfo.instagram.username}</div>
+                    {accountInfo.instagram.followers_count !== undefined && (
+                      <div className="text-xs text-gray-500">{accountInfo.instagram.followers_count.toLocaleString()} followers</div>
+                    )}
+                  </div>
+                </div>
+                <InstagramOAuthConnection 
+                  onConnect={(connected, info) => handleAccountConnect('instagram', connected, info)}
+                  embedded
+                />
+              </div>
+            ) : (
+              <InstagramOAuthConnection 
+                onConnect={(connected, info) => handleAccountConnect('instagram', connected, info)}
+                embedded
+              />
+            )}
           </div>
 
           {/* YouTube Card */}
@@ -340,9 +491,33 @@ export default function Home() {
             <p className="text-gray-600 dark:text-gray-300 mb-4">
               Connect your YouTube channel to publish Shorts
             </p>
-            <YouTubeConnection 
-              onConnect={(connected) => handleAccountConnect('youtube', connected)}
-            />
+            {connectedAccounts.youtube && accountInfo.youtube ? (
+              <div className="space-y-3">
+                <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
+                  {accountInfo.youtube.thumbnail_url && (
+                    <img 
+                      src={accountInfo.youtube.thumbnail_url} 
+                      alt="" 
+                      className="w-8 h-8 rounded-full" 
+                      referrerPolicy="no-referrer"
+                    />
+                  )}
+                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                    <div>{accountInfo.youtube.channel_title}</div>
+                    {accountInfo.youtube.subscriber_count && (
+                      <div className="text-xs text-gray-500">{parseInt(accountInfo.youtube.subscriber_count).toLocaleString()} subscribers</div>
+                    )}
+                  </div>
+                </div>
+                <YouTubeConnection 
+                  onConnect={(connected) => handleAccountConnect('youtube', connected)}
+                />
+              </div>
+            ) : (
+              <YouTubeConnection 
+                onConnect={(connected) => handleAccountConnect('youtube', connected)}
+              />
+            )}
           </div>
 
           {/* TikTok Card */}
@@ -356,9 +531,33 @@ export default function Home() {
             <p className="text-gray-600 dark:text-gray-300 mb-4">
               Connect your TikTok account to publish videos
             </p>
-            <TikTokConnection 
-              onConnect={(connected) => handleAccountConnect('tiktok', connected)}
-            />
+            {connectedAccounts.tiktok && accountInfo.tiktok ? (
+              <div className="space-y-3">
+                <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
+                  {accountInfo.tiktok.avatar_url && (
+                    <img 
+                      src={accountInfo.tiktok.avatar_url} 
+                      alt="" 
+                      className="w-8 h-8 rounded-full" 
+                      referrerPolicy="no-referrer"
+                    />
+                  )}
+                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                    <div>{accountInfo.tiktok.username || accountInfo.tiktok.display_name}</div>
+                    {accountInfo.tiktok.follower_count && (
+                      <div className="text-xs text-gray-500">{parseInt(accountInfo.tiktok.follower_count).toLocaleString()} followers</div>
+                    )}
+                  </div>
+                </div>
+                <TikTokConnection 
+                  onConnect={(connected) => handleAccountConnect('tiktok', connected)}
+                />
+              </div>
+            ) : (
+              <TikTokConnection 
+                onConnect={(connected) => handleAccountConnect('tiktok', connected)}
+              />
+            )}
           </div>
         </div>
 
