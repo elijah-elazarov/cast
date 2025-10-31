@@ -221,8 +221,12 @@ export default function Home() {
     if (connectedAccounts.instagram) return;
     const w = window as unknown as FBWindow;
     const ensureSdkAndCheck = () => {
-      if (w.FB) {
-        w.FB.getLoginStatus((response) => {
+      const initAndCheck = () => {
+        try {
+          // Ensure SDK is initialized before calling any FB.* methods
+          w.FB?.init?.({ appId: '717044718072411', cookie: true, xfbml: false, version: 'v21.0' });
+        } catch {}
+        w.FB?.getLoginStatus((response) => {
           if (response.status === 'connected') {
             const igInfoRaw = localStorage.getItem('instagram_account_info');
             const igUsername = localStorage.getItem('instagram_username');
@@ -245,6 +249,9 @@ export default function Home() {
             }
           }
         });
+      };
+      if (w.FB) {
+        initAndCheck();
         return;
       }
       // Load SDK once
@@ -254,28 +261,10 @@ export default function Home() {
       script.defer = true;
       script.onload = () => {
         w.fbAsyncInit = () => {
-          w.FB?.getLoginStatus((response) => {
-            if (response.status === 'connected') {
-              const igInfoRaw = localStorage.getItem('instagram_account_info');
-              const igUsername = localStorage.getItem('instagram_username');
-              if (igInfoRaw || igUsername) {
-                try {
-                  const info = igInfoRaw ? JSON.parse(igInfoRaw) : {};
-                  setAccountInfo(prev => ({
-                    ...prev,
-                    instagram: {
-                      username: info.username || igUsername || '',
-                      followers_count: info.followers_count,
-                      profile_picture_url: info.profile_picture_url
-                    }
-                  }));
-                  setConnectedAccounts(prev => ({ ...prev, instagram: true }));
-                } catch {
-                  setConnectedAccounts(prev => ({ ...prev, instagram: true }));
-                }
-              }
-            }
-          });
+          try {
+            w.FB?.init?.({ appId: '717044718072411', cookie: true, xfbml: false, version: 'v21.0' });
+          } catch {}
+          initAndCheck();
         };
       };
       document.head.appendChild(script);
