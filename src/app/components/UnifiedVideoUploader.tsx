@@ -2160,7 +2160,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           </div>
           
           {tiktokAuth.isAuthenticated && tiktokAuth.userInfo && (
-            <div className="mb-3 flex items-center gap-2">
+            <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
               {tiktokAuth.userInfo.avatarUrl && (
                 <img src={tiktokAuth.userInfo.avatarUrl} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
               )}
