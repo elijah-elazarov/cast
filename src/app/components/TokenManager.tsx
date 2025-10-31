@@ -368,7 +368,7 @@ export default function TokenManager() {
     }
 
     try {
-      const response = await fetch('/api/tiktok/logout', {
+      const response = await fetch('/api/tiktok/validate', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -378,27 +378,23 @@ export default function TokenManager() {
       });
       const data = await response.json();
       
-      if (data.success) {
-        if (data.token_valid === true) {
-          addLog('✅ TikTok token is valid');
-          setTokenStatus(prev => prev.map(status => 
-            status.platform === 'tiktok' ? { ...status, isValid: true, isValidating: false, error: undefined } : status
-          ));
-        } else if (data.token_valid === false) {
-          addLog('⚠️ TikTok token is invalid/expired');
-          setTokenStatus(prev => prev.map(status => 
-            status.platform === 'tiktok' ? { ...status, isValid: false, isValidating: false, error: 'Token invalid/expired' } : status
-          ));
-        } else {
-          addLog('⚠️ Could not determine TikTok token validity');
-          setTokenStatus(prev => prev.map(status => 
-            status.platform === 'tiktok' ? { ...status, isValid: null, isValidating: false } : status
-          ));
+      if (data.success && data.is_valid === true) {
+        addLog('✅ TikTok token is valid');
+        if (data.user) {
+          addLog(`👤 User: ${data.user.display_name || data.user.open_id}`);
         }
-      } else {
-        addLog(`❌ TikTok validation failed: ${data.detail || data.message || 'Unknown error'}`);
         setTokenStatus(prev => prev.map(status => 
-          status.platform === 'tiktok' ? { ...status, isValid: false, isValidating: false, error: data.detail || data.message || 'Unknown error' } : status
+          status.platform === 'tiktok' ? { ...status, isValid: true, isValidating: false, error: undefined } : status
+        ));
+      } else if (data.is_valid === false) {
+        addLog(`⚠️ TikTok token is invalid/expired: ${data.error || 'Token validation failed'}`);
+        setTokenStatus(prev => prev.map(status => 
+          status.platform === 'tiktok' ? { ...status, isValid: false, isValidating: false, error: data.error || 'Token invalid/expired' } : status
+        ));
+      } else {
+        addLog(`⚠️ Could not determine TikTok token validity: ${data.error || 'Unknown error'}`);
+        setTokenStatus(prev => prev.map(status => 
+          status.platform === 'tiktok' ? { ...status, isValid: null, isValidating: false, error: data.error || 'Unknown error' } : status
         ));
       }
     } catch (error) {

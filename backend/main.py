@@ -394,6 +394,9 @@ class YouTubeLogoutRequest(BaseModel):
 class TikTokLogoutRequest(BaseModel):
     user_id: str
 
+class TikTokValidateRequest(BaseModel):
+    user_id: str
+
 
 @app.post("/api/instagram/login")
 async def login(request: LoginRequest):
@@ -1957,6 +1960,82 @@ async def tiktok_logout(request: TikTokLogoutRequest):
     except Exception as e:
         logger.error(f"TikTok logout error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Logout failed: {str(e)}")
+
+
+@app.post("/api/tiktok/validate")
+async def tiktok_validate(request: TikTokValidateRequest):
+    """
+    Validate TikTok access token using /v2/user/info/ endpoint
+    """
+    try:
+        import requests
+        
+        if request.user_id not in tiktok_sessions:
+            return JSONResponse({
+                "success": False,
+                "is_valid": False,
+                "error": "No session found for user"
+            })
+        
+        session = tiktok_sessions[request.user_id]
+        access_token = session.get("access_token")
+        
+        if not access_token:
+            return JSONResponse({
+                "success": False,
+                "is_valid": False,
+                "error": "No access token found"
+            })
+        
+        # Validate token by calling /v2/user/info/
+        try:
+            token_info_url = "https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url"
+            token_headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            }
+            logger.info(f"Validating TikTok access token for user: {request.user_id}")
+            token_response = requests.get(token_info_url, headers=token_headers)
+            
+            if token_response.status_code == 200:
+                token_data = token_response.json()
+                if token_data.get("data", {}).get("user"):
+                    user_info = token_data.get("data", {}).get("user", {})
+                    logger.info(f"TikTok token validated successfully for user: {request.user_id}")
+                    return JSONResponse({
+                        "success": True,
+                        "is_valid": True,
+                        "user": {
+                            "open_id": user_info.get("open_id"),
+                            "display_name": user_info.get("display_name"),
+                            "avatar_url": user_info.get("avatar_url")
+                        }
+                    })
+                else:
+                    logger.info(f"TikTok token validation failed: Invalid response structure for user: {request.user_id}")
+                    return JSONResponse({
+                        "success": False,
+                        "is_valid": False,
+                        "error": "Invalid response structure"
+                    })
+            else:
+                logger.info(f"TikTok token validation failed: {token_response.status_code} - {token_response.text}")
+                return JSONResponse({
+                    "success": False,
+                    "is_valid": False,
+                    "error": f"Token validation failed: {token_response.status_code}",
+                    "status_code": token_response.status_code
+                })
+        except Exception as validation_error:
+            logger.error(f"TikTok token validation error: {str(validation_error)}")
+            return JSONResponse({
+                "success": False,
+                "is_valid": False,
+                "error": f"Validation error: {str(validation_error)}"
+            })
+    except Exception as e:
+        logger.error(f"TikTok validate error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
 
 
 @app.get("/health")
