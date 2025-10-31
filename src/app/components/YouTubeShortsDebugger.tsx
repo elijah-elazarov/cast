@@ -57,6 +57,7 @@ const YOUTUBE_CONFIG = {
 };
 
 export default function YouTubeShortsDebugger() {
+  const hasInitialized = useRef<boolean>(false);
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
     isLoading: false,
@@ -95,8 +96,10 @@ export default function YouTubeShortsDebugger() {
     console.log(`[YOUTUBE SHORTS DEBUG] ${message}`);
   }, []);
 
-  // Initialize: Log configuration and status (like Instagram and TikTok)
+  // Initialize: Log configuration and status (guarded for React Strict Mode)
   useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
     addLog('🎬 YouTube Shorts Debugger initialized');
     addLog('📋 Configuration loaded');
     addLog(`🔑 Client ID: ${YOUTUBE_CONFIG.clientId.substring(0, 8)}...`);
@@ -150,6 +153,60 @@ export default function YouTubeShortsDebugger() {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
+
+  // Sync auth state with localStorage changes from other components
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      // Only react to YouTube-related localStorage changes
+      if (e.key && e.key.startsWith('youtube_')) {
+        const userId = localStorage.getItem('youtube_user_id');
+        const channelTitle = localStorage.getItem('youtube_channel_title');
+
+        if (userId && channelTitle) {
+          // Auth state exists in localStorage - sync it
+          if (!authState.isAuthenticated) {
+            addLog('🔄 Syncing auth state from localStorage (change detected)...');
+            setAuthState({
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+              userInfo: {
+                id: userId,
+                username: channelTitle,
+                channelTitle: channelTitle,
+                channelId: userId
+              },
+              accessToken: localStorage.getItem('youtube_access_token') || null,
+              refreshToken: localStorage.getItem('youtube_refresh_token') || null
+            });
+            addLog('✅ Auth state synced from localStorage');
+            // Dispatch custom event for TokenManager
+            window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'youtube' } }));
+          }
+        } else {
+          // Auth state removed from localStorage - clear state
+          if (authState.isAuthenticated) {
+            addLog('🔄 Clearing auth state (logout detected in another component)...');
+            setAuthState({
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+              userInfo: null,
+              accessToken: null,
+              refreshToken: null
+            });
+            setDebugLogs([]);
+            addLog('✅ Auth state cleared');
+            // Dispatch custom event for TokenManager
+            window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'youtube' } }));
+          }
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [authState.isAuthenticated]); // Only re-run when auth state changes
 
   // Validate a Cloudinary video URL becoming available
   const validateVideoUrl = async (url: string, label: string, maxAttempts = 6): Promise<boolean> => {
@@ -555,6 +612,8 @@ export default function YouTubeShortsDebugger() {
       addLog(`📺 Channel ID: ${userData.user_id}`);
       addLog(`👥 Subscribers: ${userData.subscriber_count}`);
       addLog('Authentication completed successfully!');
+      // Dispatch custom event for TokenManager and other components
+      window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'youtube' } }));
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -568,8 +627,89 @@ export default function YouTubeShortsDebugger() {
   };
 
   // Logout
-  const handleLogout = () => {
-    addLog('Logging out...');
+  const handleLogout = async () => {
+    addLog('Logging out from YouTube...');
+    
+    // Check if user is authenticated (similar to FB.getLoginStatus() check)
+    if (!authState.isAuthenticated && !localStorage.getItem('youtube_user_id')) {
+      addLog('⚠️ No active YouTube session found, clearing local state only');
+      // Clear any remaining state
+      localStorage.removeItem('youtube_user_id');
+      localStorage.removeItem('youtube_channel_title');
+      localStorage.removeItem('youtube_channel_description');
+      localStorage.removeItem('youtube_custom_url');
+      localStorage.removeItem('youtube_published_at');
+      localStorage.removeItem('youtube_country');
+      localStorage.removeItem('youtube_thumbnail_url');
+      localStorage.removeItem('youtube_subscriber_count');
+      localStorage.removeItem('youtube_video_count');
+      localStorage.removeItem('youtube_view_count');
+      localStorage.removeItem('youtube_hidden_subscriber_count');
+      localStorage.removeItem('youtube_access_token');
+      localStorage.removeItem('youtube_refresh_token');
+      setAuthState({
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+        userInfo: null,
+        accessToken: null,
+        refreshToken: null
+      });
+      setDebugLogs([]);
+      addLog('Logged out from YouTube successfully');
+      return;
+    }
+    
+    // User is authenticated, validate token then revoke
+    const userId = authState.userInfo?.id || localStorage.getItem('youtube_user_id');
+    
+    if (userId) {
+      try {
+        addLog('🔍 Validating YouTube access token...');
+        // Use Next.js API proxy to call backend (matching UnifiedVideoUploader)
+        const response = await fetch('/api/youtube/logout', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
+          body: JSON.stringify({ user_id: userId }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          if (data.token_valid === true) {
+            addLog('✅ YouTube access token validated (token was active)');
+            addLog('✅ YouTube access token revoked on Google servers via /revoke endpoint');
+          } else if (data.token_valid === false) {
+            addLog('⚠️ YouTube access token was already invalid/expired (skipping revoke)');
+          } else {
+            addLog('✅ YouTube logout processed');
+          }
+          addLog('✅ Local session cleared - logout complete');
+        } else {
+          addLog(`⚠️ Backend logout warning: ${data.detail || data.message || 'Unknown error'}`);
+        }
+      } catch (err) {
+        addLog(`⚠️ Backend logout error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        // Continue with local logout even if backend call fails
+      }
+    }
+    
+    // Clear localStorage (matching UnifiedVideoUploader)
+    localStorage.removeItem('youtube_user_id');
+    localStorage.removeItem('youtube_channel_title');
+    localStorage.removeItem('youtube_channel_description');
+    localStorage.removeItem('youtube_custom_url');
+    localStorage.removeItem('youtube_published_at');
+    localStorage.removeItem('youtube_country');
+    localStorage.removeItem('youtube_thumbnail_url');
+    localStorage.removeItem('youtube_subscriber_count');
+    localStorage.removeItem('youtube_video_count');
+    localStorage.removeItem('youtube_view_count');
+    localStorage.removeItem('youtube_hidden_subscriber_count');
+    localStorage.removeItem('youtube_access_token');
+    localStorage.removeItem('youtube_refresh_token');
+    
     setAuthState({
       isAuthenticated: false,
       isLoading: false,
@@ -579,6 +719,10 @@ export default function YouTubeShortsDebugger() {
       refreshToken: null
     });
     setDebugLogs([]);
+    
+    addLog('Logged out from YouTube successfully');
+    // Dispatch custom event for TokenManager and other components
+    window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'youtube' } }));
   };
 
   // Test YouTube Shorts upload

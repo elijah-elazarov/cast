@@ -139,8 +139,11 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     console.log(`[UNIFIED UPLOAD] ${message}`);
   }, []);
 
-  // Add initial YouTube configuration logs (matching YouTubeShortsDebugger)
+  // Add initial YouTube configuration logs (guarded for React Strict Mode)
+  const hasLoggedInit = useRef<boolean>(false);
   useEffect(() => {
+    if (hasLoggedInit.current) return;
+    hasLoggedInit.current = true;
     const youtubeUploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_YOUTUBE || 'youtube_uploads';
     addLog('🎬 YouTube Shorts Debugger initialized');
     addLog('📋 Configuration loaded');
@@ -153,8 +156,9 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     addLog('👆 Click "Connect YouTube" to begin authentication');
   }, [addLog]);
 
-  // Add initial TikTok configuration logs (matching TikTokShortsDebugger)
+  // Add initial TikTok configuration logs (guarded for React Strict Mode)
   useEffect(() => {
+    if (!hasLoggedInit.current) return; // ensure only one batch of init logs per mount
     const tiktokClientKey = process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY || 'your-client-key';
     const tiktokUploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_TIKTOK || 'tiktok_uploads';
     addLog('🎵 TikTok Shorts Debugger initialized');
@@ -164,6 +168,126 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     addLog('✅ Ready to connect and upload videos to TikTok');
     addLog('👆 Click "Connect TikTok" to begin authentication');
   }, [addLog]);
+
+  // Sync auth state with localStorage changes from other components
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      // React to Instagram-related localStorage changes
+      if (e.key && (e.key.startsWith('instagram_') || e.key.startsWith('facebook_'))) {
+        const userId = localStorage.getItem('instagram_user_id');
+        const username = localStorage.getItem('instagram_username');
+        const longLivedToken = localStorage.getItem('instagram_long_lived_token');
+        const pageId = localStorage.getItem('instagram_page_id');
+
+        if (userId && username && longLivedToken && pageId) {
+          // Auth state exists in localStorage - sync it
+          if (!instagramAuth.isAuthenticated) {
+            addLog('🔄 Syncing Instagram auth state from localStorage (change detected)...');
+            setInstagramAuth(prev => ({
+              ...prev,
+              isAuthenticated: true,
+              userInfo: {
+                id: userId,
+                username: username
+              },
+              longLivedToken: longLivedToken,
+              instagramPageId: pageId,
+              facebookUserId: localStorage.getItem('facebook_user_id') || null
+            }));
+            addLog('✅ Instagram auth state synced from localStorage');
+          }
+        } else {
+          // Auth state removed from localStorage - clear state
+          if (instagramAuth.isAuthenticated) {
+            addLog('🔄 Clearing Instagram auth state (logout detected in another component)...');
+            setInstagramAuth({
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+              userInfo: null,
+              longLivedToken: null,
+              instagramPageId: null,
+              facebookUserId: null
+            });
+            addLog('✅ Instagram auth state cleared');
+          }
+        }
+      }
+
+      // React to YouTube-related localStorage changes
+      if (e.key && e.key.startsWith('youtube_')) {
+        const userId = localStorage.getItem('youtube_user_id');
+        const channelTitle = localStorage.getItem('youtube_channel_title');
+
+        if (userId && channelTitle) {
+          // Auth state exists in localStorage - sync it
+          if (!youtubeAuth.isAuthenticated) {
+            addLog('🔄 Syncing YouTube auth state from localStorage (change detected)...');
+            setYouTubeAuth(prev => ({
+              ...prev,
+              isAuthenticated: true,
+              userInfo: {
+                id: userId,
+                username: channelTitle,
+                channelTitle: channelTitle
+              }
+            }));
+            addLog('✅ YouTube auth state synced from localStorage');
+          }
+        } else {
+          // Auth state removed from localStorage - clear state
+          if (youtubeAuth.isAuthenticated) {
+            addLog('🔄 Clearing YouTube auth state (logout detected in another component)...');
+            setYouTubeAuth({
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+              userInfo: null
+            });
+            addLog('✅ YouTube auth state cleared');
+          }
+        }
+      }
+
+      // React to TikTok-related localStorage changes
+      if (e.key && e.key.startsWith('tiktok_')) {
+        const userId = localStorage.getItem('tiktok_user_id');
+        const displayName = localStorage.getItem('tiktok_display_name');
+
+        if (userId && displayName) {
+          // Auth state exists in localStorage - sync it
+          if (!tiktokAuth.isAuthenticated) {
+            addLog('🔄 Syncing TikTok auth state from localStorage (change detected)...');
+            setTiktokAuth((prev: typeof tiktokAuth) => ({
+              ...prev,
+              isAuthenticated: true,
+              userInfo: {
+                userId: userId,
+                displayName: displayName,
+                avatarUrl: localStorage.getItem('tiktok_avatar_url') || ''
+              }
+            }));
+            addLog('✅ TikTok auth state synced from localStorage');
+          }
+        } else {
+          // Auth state removed from localStorage - clear state (unless explicitly logged out in this tab)
+          if (tiktokAuth.isAuthenticated && !sessionStorage.getItem('tiktok_explicit_logout')) {
+            addLog('🔄 Clearing TikTok auth state (logout detected in another component)...');
+            setTiktokAuth({
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+              userInfo: null
+            });
+            addLog('✅ TikTok auth state cleared');
+          }
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [instagramAuth.isAuthenticated, youtubeAuth.isAuthenticated, tiktokAuth.isAuthenticated]);
 
   // Check existing connections on mount and handle OAuth callbacks
   useEffect(() => {
@@ -417,6 +541,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         facebookUserId: fbUserId
       });
       addLog('Authentication completed successfully!');
+      // Dispatch custom event for TokenManager and other components
+      window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'instagram' } }));
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
       addLog(`Authentication error: ${msg}`);
@@ -458,6 +584,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
             addLog('✅ Instagram access token revoked on Facebook servers via FB.logout()');
             addLog('✅ Local session cleared - logout complete');
             addLog('Logged out from Instagram successfully');
+            // Dispatch custom event for TokenManager and other components
+            window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'instagram' } }));
           });
         } else {
           // User not connected or no access token, token was invalid
@@ -500,6 +628,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         facebookUserId: null
       });
       addLog('Logged out from Instagram successfully');
+      // Dispatch custom event for TokenManager and other components
+      window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'instagram' } }));
     }
   };
 
@@ -683,6 +813,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         addLog(`👥 Subscribers: ${userData.subscriber_count}`);
       }
       addLog('Authentication completed successfully!');
+      // Dispatch custom event for TokenManager and other components
+      window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'youtube' } }));
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
       addLog(`❌ Auth success processing error: ${msg}`);
@@ -782,6 +914,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     });
     
     addLog('Logged out from YouTube successfully');
+    // Dispatch custom event for TokenManager and other components
+    window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'youtube' } }));
   };
 
   // Check if already authenticated (for TikTok) - from state or localStorage
@@ -1005,6 +1139,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
         addLog(`👥 Followers: ${userData.follower_count}`);
       }
       addLog('Authentication completed successfully!');
+      // Dispatch custom event for TokenManager and other components
+      window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'tiktok' } }));
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -1097,6 +1233,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     });
     
     addLog('Logged out from TikTok successfully');
+    // Dispatch custom event for TokenManager and other components
+    window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'tiktok' } }));
   };
 
   // Cloudinary helpers (mirrors debuggers)

@@ -54,6 +54,7 @@ const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'your-cloud-
 const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_TIKTOK || 'tiktok_uploads';
 
 export default function TikTokShortsDebugger() {
+  const hasInitialized = useRef<boolean>(false);
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
     isLoading: false,
@@ -282,6 +283,8 @@ export default function TikTokShortsDebugger() {
         addLog(`👥 Followers: ${userData.follower_count}`);
       }
       addLog('Authentication completed successfully!');
+      // Dispatch custom event for TokenManager and other components
+      window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'tiktok' } }));
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -304,8 +307,78 @@ export default function TikTokShortsDebugger() {
   };
 
   // Logout
-  const handleLogout = () => {
-    addLog('Logging out...');
+  const handleLogout = async () => {
+    addLog('Logging out from TikTok...');
+    
+    // Check if user is authenticated (similar to FB.getLoginStatus() check)
+    if (!authState.isAuthenticated && !localStorage.getItem('tiktok_user_id')) {
+      addLog('⚠️ No active TikTok session found, clearing local state only');
+      // Clear any remaining state
+      localStorage.removeItem('tiktok_user_id');
+      localStorage.removeItem('tiktok_display_name');
+      localStorage.removeItem('tiktok_avatar_url');
+      localStorage.removeItem('tiktok_follower_count');
+      setAuthState({
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+        userInfo: null,
+        accessToken: null,
+        refreshToken: null
+      });
+      setSelectedFile(null);
+      setProcessedVideoUrl(null);
+      setVideosReady(false);
+      setFileDetails(null);
+      addLog('Logged out from TikTok successfully');
+      return;
+    }
+    
+    // User is authenticated, validate token then revoke
+    const userId = authState.userInfo?.userId || localStorage.getItem('tiktok_user_id');
+    
+    if (userId) {
+      try {
+        addLog('🔍 Validating TikTok access token...');
+        // Use Next.js API proxy to call backend (matching UnifiedVideoUploader)
+        const response = await fetch('/api/tiktok/logout', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
+          body: JSON.stringify({ user_id: userId }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          if (data.token_valid === true) {
+            addLog('✅ TikTok access token validated (token was active)');
+            addLog('✅ TikTok access token revoked on TikTok servers via /oauth/revoke/ endpoint');
+          } else if (data.token_valid === false) {
+            addLog('⚠️ TikTok access token was already invalid/expired (skipping revoke)');
+          } else {
+            addLog('✅ TikTok logout processed');
+          }
+          addLog('✅ Local session cleared - logout complete');
+        } else {
+          addLog(`⚠️ Backend logout warning: ${data.detail || data.message || data.error || 'Unknown error'}`);
+        }
+      } catch (err) {
+        addLog(`⚠️ Backend logout error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        // Continue with local logout even if backend call fails
+      }
+    }
+    
+    // Set explicit logout flag in sessionStorage (prevents auto-reconnection)
+    // This persists only for this tab session, ensuring logout applies until tab is closed
+    sessionStorage.setItem('tiktok_explicit_logout', 'true');
+    
+    // Clear localStorage (matching UnifiedVideoUploader)
+    localStorage.removeItem('tiktok_user_id');
+    localStorage.removeItem('tiktok_display_name');
+    localStorage.removeItem('tiktok_avatar_url');
+    localStorage.removeItem('tiktok_follower_count');
+    
     setAuthState({
       isAuthenticated: false,
       isLoading: false,
@@ -318,7 +391,10 @@ export default function TikTokShortsDebugger() {
     setProcessedVideoUrl(null);
     setVideosReady(false);
     setFileDetails(null);
-    addLog('Logged out successfully');
+    
+    addLog('Logged out from TikTok successfully');
+    // Dispatch custom event for TokenManager and other components
+    window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'tiktok' } }));
   };
 
   // File selection
@@ -530,8 +606,10 @@ export default function TikTokShortsDebugger() {
     }
   };
 
-  // Add initial welcome logs when component mounts
+  // Add initial welcome logs when component mounts (guarded for React Strict Mode)
   useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
     addLog('🎵 TikTok Shorts Debugger initialized');
     addLog('📋 Configuration loaded');
     addLog(`🔑 Client Key: ${TIKTOK_CONFIG.clientKey.substring(0, 8)}...`);
@@ -539,6 +617,62 @@ export default function TikTokShortsDebugger() {
     addLog('✅ Ready to connect and upload videos to TikTok');
     addLog('👆 Click "Connect TikTok" to begin authentication');
   }, [addLog]);
+
+  // Sync auth state with localStorage changes from other components
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      // Only react to TikTok-related localStorage changes
+      if (e.key && e.key.startsWith('tiktok_')) {
+        const userId = localStorage.getItem('tiktok_user_id');
+        const displayName = localStorage.getItem('tiktok_display_name');
+
+        if (userId && displayName) {
+          // Auth state exists in localStorage - sync it
+          if (!authState.isAuthenticated) {
+            addLog('🔄 Syncing auth state from localStorage (change detected)...');
+            setAuthState({
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+              userInfo: {
+                userId: userId,
+                displayName: displayName,
+                avatarUrl: localStorage.getItem('tiktok_avatar_url') || ''
+              },
+              accessToken: null,
+              refreshToken: null
+            });
+            addLog('✅ Auth state synced from localStorage');
+            // Dispatch custom event for TokenManager
+            window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'tiktok' } }));
+          }
+        } else {
+          // Auth state removed from localStorage - clear state (unless explicitly logged out in this tab)
+          if (authState.isAuthenticated && !sessionStorage.getItem('tiktok_explicit_logout')) {
+            addLog('🔄 Clearing auth state (logout detected in another component)...');
+            setAuthState({
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+              userInfo: null,
+              accessToken: null,
+              refreshToken: null
+            });
+            setSelectedFile(null);
+            setProcessedVideoUrl(null);
+            setVideosReady(false);
+            setFileDetails(null);
+            addLog('✅ Auth state cleared');
+            // Dispatch custom event for TokenManager
+            window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'tiktok' } }));
+          }
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [authState.isAuthenticated]); // Only re-run when auth state changes
 
   // Check for OAuth callback success/error from URL query parameters
   useEffect(() => {

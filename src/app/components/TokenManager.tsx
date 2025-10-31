@@ -138,7 +138,26 @@ export default function TokenManager() {
 
     window.addEventListener('storage', handleStorageChange);
     
-    // Also intercept localStorage.setItem/removeItem calls (works for same-origin)
+    // Listen for custom auth-state-changed events from other components
+    const handleAuthStateChanged = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const platform = customEvent.detail?.platform;
+      if (platform && (platform === 'instagram' || platform === 'youtube' || platform === 'tiktok')) {
+        addLog(`🔄 Auth state changed for ${platform} - refreshing status...`);
+        setTimeout(() => checkAllStatuses(true), 100);
+      }
+    };
+
+    window.addEventListener('auth-state-changed', handleAuthStateChanged);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth-state-changed', handleAuthStateChanged);
+    };
+  }, [checkAllStatuses, addLog]);
+
+  // Also intercept localStorage.setItem/removeItem calls (works for same-origin)
+  useEffect(() => {
     const originalSetItem = Storage.prototype.setItem;
     const originalRemoveItem = Storage.prototype.removeItem;
     
@@ -159,7 +178,6 @@ export default function TokenManager() {
     };
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
       Storage.prototype.setItem = originalSetItem;
       Storage.prototype.removeItem = originalRemoveItem;
     };

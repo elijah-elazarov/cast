@@ -63,6 +63,7 @@ export default function InstagramReelsDebugger() {
   });
   const [oauthCountdownSeconds, setOauthCountdownSeconds] = useState<number | null>(null);
   const oauthCountdownIntervalRef = useRef<number | null>(null);
+  const hasInitializedSdk = useRef<boolean>(false);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [processing, setProcessing] = useState(false)
@@ -293,8 +294,10 @@ export default function InstagramReelsDebugger() {
     }
   };
 
-  // Load Facebook SDK
+  // Load Facebook SDK (guarded for React Strict Mode)
   useEffect(() => {
+    if (hasInitializedSdk.current) return;
+    hasInitializedSdk.current = true;
     const loadFacebookSDK = () => {
       if ((window as any).FB) {
         setSdkLoaded(true);
@@ -328,6 +331,62 @@ export default function InstagramReelsDebugger() {
 
     loadFacebookSDK();
   }, []);
+
+  // Sync auth state with localStorage changes from other components
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      // Only react to Instagram-related localStorage changes
+      if (e.key && (e.key.startsWith('instagram_') || e.key.startsWith('facebook_'))) {
+        const userId = localStorage.getItem('instagram_user_id');
+        const username = localStorage.getItem('instagram_username');
+        const longLivedToken = localStorage.getItem('instagram_long_lived_token');
+        const pageId = localStorage.getItem('instagram_page_id');
+        const fbUserId = localStorage.getItem('facebook_user_id');
+
+        if (userId && username && longLivedToken && pageId) {
+          // Auth state exists in localStorage - sync it
+          if (!authState.isAuthenticated) {
+            addLog('🔄 Syncing auth state from localStorage (change detected)...');
+            setAuthState(prev => ({
+              ...prev,
+              isAuthenticated: true,
+              userInfo: {
+                id: userId,
+                username: username,
+                account_type: localStorage.getItem('instagram_account_type') || undefined
+              },
+              longLivedToken: longLivedToken,
+              instagramPageId: pageId,
+              facebookUserId: fbUserId || null
+            }));
+            addLog('✅ Auth state synced from localStorage');
+            // Dispatch custom event for TokenManager
+            window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'instagram' } }));
+          }
+        } else {
+          // Auth state removed from localStorage - clear state
+          if (authState.isAuthenticated) {
+            addLog('🔄 Clearing auth state (logout detected in another component)...');
+            setAuthState({
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+              userInfo: null,
+              longLivedToken: null,
+              instagramPageId: null,
+              facebookUserId: null
+            });
+            addLog('✅ Auth state cleared');
+            // Dispatch custom event for TokenManager
+            window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'instagram' } }));
+          }
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [authState.isAuthenticated]); // Only re-run when auth state changes
 
   // Check login status using Facebook SDK
   const checkLoginStatus = (): Promise<FacebookAuthResponse | null> => {
@@ -607,13 +666,24 @@ export default function InstagramReelsDebugger() {
   // Best practice: Check FB.getLoginStatus() first before calling FB.logout() to avoid "no access token" errors
   // See: https://stackoverflow.com/questions/8430474/fb-logout-called-without-an-access-token
   const handleLogout = () => {
-    if ((window as any).FB) {
-      (window as any).FB.getLoginStatus((response: DebugFacebookLoginResponse) => {
+    addLog('Logging out from Instagram...');
+    const w = window as any;
+    if (w.FB) {
+      // Step 1: Validate token by checking login status (similar to YouTube/TikTok validation)
+      addLog('🔍 Validating Instagram access token...');
+      w.FB.getLoginStatus((response: DebugFacebookLoginResponse) => {
         if (response.status === 'connected') {
-          // User is connected, safe to call FB.logout()
-          (window as any).FB.logout(() => {
-            addLog('✅ Instagram session revoked via FB.logout()');
-            addLog('Logged out successfully');
+          // User is connected, token is valid
+          addLog('✅ Instagram access token validated (token was active)');
+          // Step 2: Revoke token via FB.logout()
+          w.FB.logout(() => {
+            // Clear localStorage (matching UnifiedVideoUploader)
+            localStorage.removeItem('instagram_user_id');
+            localStorage.removeItem('instagram_username');
+            localStorage.removeItem('instagram_long_lived_token');
+            localStorage.removeItem('instagram_page_id');
+            localStorage.removeItem('facebook_user_id');
+            localStorage.removeItem('instagram_account_type');
             setAuthState({
               isAuthenticated: false,
               isLoading: false,
@@ -624,11 +694,22 @@ export default function InstagramReelsDebugger() {
               facebookUserId: null
             });
             setDebugLogs([]);
+            addLog('✅ Instagram access token revoked on Facebook servers via FB.logout()');
+            addLog('✅ Local session cleared - logout complete');
+            addLog('Logged out from Instagram successfully');
+            // Dispatch custom event for TokenManager and other components
+            window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'instagram' } }));
           });
         } else {
-          // User not connected or no access token, just clear local state
-          addLog('⚠️ No active Facebook session found, clearing local state only');
-          addLog('Logged out successfully');
+          // User not connected or no access token, token was invalid
+          addLog('⚠️ Instagram access token was already invalid/expired (skipping revoke)');
+          // Clear localStorage even if token was invalid
+          localStorage.removeItem('instagram_user_id');
+          localStorage.removeItem('instagram_username');
+          localStorage.removeItem('instagram_long_lived_token');
+          localStorage.removeItem('instagram_page_id');
+          localStorage.removeItem('facebook_user_id');
+          localStorage.removeItem('instagram_account_type');
           setAuthState({
             isAuthenticated: false,
             isLoading: false,
@@ -639,8 +720,33 @@ export default function InstagramReelsDebugger() {
             facebookUserId: null
           });
           setDebugLogs([]);
+          addLog('✅ Local session cleared - logout complete');
+          addLog('Logged out from Instagram successfully');
+          // Dispatch custom event for TokenManager and other components
+          window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'instagram' } }));
         }
       });
+    } else {
+      // If SDK not loaded, just clear state and localStorage
+      localStorage.removeItem('instagram_user_id');
+      localStorage.removeItem('instagram_username');
+      localStorage.removeItem('instagram_long_lived_token');
+      localStorage.removeItem('instagram_page_id');
+      localStorage.removeItem('facebook_user_id');
+      localStorage.removeItem('instagram_account_type');
+      setAuthState({
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+        userInfo: null,
+        longLivedToken: null,
+        instagramPageId: null,
+        facebookUserId: null
+      });
+      setDebugLogs([]);
+      addLog('Logged out from Instagram successfully');
+      // Dispatch custom event for TokenManager and other components
+      window.dispatchEvent(new CustomEvent('auth-state-changed', { detail: { platform: 'instagram' } }));
     }
   };
 
