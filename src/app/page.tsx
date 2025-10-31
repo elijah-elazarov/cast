@@ -17,6 +17,10 @@ import UnifiedUploaderAdvanced from './components/UnifiedUploaderAdvanced';
 import TokenManager from './components/TokenManager';
 // import SimpleInstagramAuth from './components/SimpleInstagramAuth';
 
+type InstagramAccountSummary = { username: string; followers_count?: number; profile_picture_url?: string };
+type YouTubeChannelSummary = { channel_title: string; subscriber_count?: string | number; thumbnail_url?: string };
+type TikTokAccountSummary = { username?: string; display_name?: string; follower_count?: string; avatar_url?: string };
+
 export default function Home() {
   const [connectedAccounts, setConnectedAccounts] = useState({
     instagram: false,
@@ -24,9 +28,9 @@ export default function Home() {
     tiktok: false,
   });
   const [accountInfo, setAccountInfo] = useState<{
-    instagram?: { username: string; followers_count?: number; profile_picture_url?: string };
-    youtube?: { channel_title: string; subscriber_count?: string; thumbnail_url?: string };
-    tiktok?: { username?: string; display_name?: string; follower_count?: string; avatar_url?: string };
+    instagram?: InstagramAccountSummary;
+    youtube?: YouTubeChannelSummary;
+    tiktok?: TikTokAccountSummary;
   }>({});
   const [isHydrated, setIsHydrated] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -139,7 +143,11 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  const handleAccountConnect = (platform: string, connected: boolean, info?: any) => {
+  const handleAccountConnect = (
+    platform: 'instagram' | 'youtube' | 'tiktok',
+    connected: boolean,
+    info?: InstagramAccountSummary | YouTubeChannelSummary | TikTokAccountSummary
+  ) => {
     setConnectedAccounts(prev => ({
       ...prev,
       [platform]: connected
@@ -147,13 +155,13 @@ export default function Home() {
     
     // Update account info when connected
     if (connected && info) {
-      if (platform === 'instagram' && info.username) {
+      if (platform === 'instagram' && (info as InstagramAccountSummary).username) {
         setAccountInfo(prev => ({
           ...prev,
           instagram: {
-            username: info.username,
-            followers_count: info.followers_count,
-            profile_picture_url: info.profile_picture_url
+            username: (info as InstagramAccountSummary).username,
+            followers_count: (info as InstagramAccountSummary).followers_count,
+            profile_picture_url: (info as InstagramAccountSummary).profile_picture_url
           }
         }));
       } else if (platform === 'youtube') {
@@ -454,6 +462,7 @@ export default function Home() {
             {connectedAccounts.instagram && accountInfo.instagram ? (
               <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
                 {accountInfo.instagram.profile_picture_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={accountInfo.instagram.profile_picture_url} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
                 )}
                 <div className="text-sm text-gray-600 dark:text-gray-300">
@@ -484,12 +493,13 @@ export default function Home() {
             {connectedAccounts.youtube && accountInfo.youtube ? (
               <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
                 {accountInfo.youtube.thumbnail_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={accountInfo.youtube.thumbnail_url} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
                 )}
                 <div className="text-sm text-gray-600 dark:text-gray-300">
                   <div>{accountInfo.youtube.channel_title}</div>
-                  {accountInfo.youtube.subscriber_count && (
-                    <div className="text-xs text-gray-500">{parseInt(accountInfo.youtube.subscriber_count).toLocaleString()} subscribers</div>
+                  {accountInfo.youtube.subscriber_count !== undefined && (
+                    <div className="text-xs text-gray-500">{Number(accountInfo.youtube.subscriber_count).toLocaleString()} subscribers</div>
                   )}
                 </div>
               </div>
@@ -514,6 +524,7 @@ export default function Home() {
             {connectedAccounts.tiktok && accountInfo.tiktok ? (
               <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
                 {accountInfo.tiktok.avatar_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={accountInfo.tiktok.avatar_url} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
                 )}
                 <div className="text-sm text-gray-600 dark:text-gray-300">
@@ -549,6 +560,7 @@ export default function Home() {
               <div className="space-y-3">
                 <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
                   {accountInfo.instagram.profile_picture_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img 
                       src={accountInfo.instagram.profile_picture_url} 
                       alt="" 
@@ -591,6 +603,7 @@ export default function Home() {
               <div className="space-y-3">
                 <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
                   {accountInfo.youtube.thumbnail_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img 
                       src={accountInfo.youtube.thumbnail_url} 
                       alt="" 
@@ -600,8 +613,8 @@ export default function Home() {
                   )}
                   <div className="text-sm text-gray-600 dark:text-gray-300">
                     <div>{accountInfo.youtube.channel_title}</div>
-                    {accountInfo.youtube.subscriber_count && (
-                      <div className="text-xs text-gray-500">{parseInt(accountInfo.youtube.subscriber_count).toLocaleString()} subscribers</div>
+                    {accountInfo.youtube.subscriber_count !== undefined && (
+                      <div className="text-xs text-gray-500">{Number(accountInfo.youtube.subscriber_count).toLocaleString()} subscribers</div>
                     )}
                   </div>
                 </div>
@@ -631,6 +644,7 @@ export default function Home() {
               <div className="space-y-3">
                 <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
                   {accountInfo.tiktok.avatar_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img 
                       src={accountInfo.tiktok.avatar_url} 
                       alt="" 
