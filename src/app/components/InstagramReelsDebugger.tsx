@@ -604,20 +604,42 @@ export default function InstagramReelsDebugger() {
   };
 
   // Logout
+  // Best practice: Check FB.getLoginStatus() first before calling FB.logout() to avoid "no access token" errors
+  // See: https://stackoverflow.com/questions/8430474/fb-logout-called-without-an-access-token
   const handleLogout = () => {
     if ((window as any).FB) {
-      (window as any).FB.logout(() => {
-        addLog('Logged out successfully');
-        setAuthState({
-          isAuthenticated: false,
-          isLoading: false,
-          error: null,
-          userInfo: null,
-          longLivedToken: null,
-          instagramPageId: null,
-          facebookUserId: null
-        });
-        setDebugLogs([]);
+      (window as any).FB.getLoginStatus((response: DebugFacebookLoginResponse) => {
+        if (response.status === 'connected') {
+          // User is connected, safe to call FB.logout()
+          (window as any).FB.logout(() => {
+            addLog('✅ Instagram session revoked via FB.logout()');
+            addLog('Logged out successfully');
+            setAuthState({
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+              userInfo: null,
+              longLivedToken: null,
+              instagramPageId: null,
+              facebookUserId: null
+            });
+            setDebugLogs([]);
+          });
+        } else {
+          // User not connected or no access token, just clear local state
+          addLog('⚠️ No active Facebook session found, clearing local state only');
+          addLog('Logged out successfully');
+          setAuthState({
+            isAuthenticated: false,
+            isLoading: false,
+            error: null,
+            userInfo: null,
+            longLivedToken: null,
+            instagramPageId: null,
+            facebookUserId: null
+          });
+          setDebugLogs([]);
+        }
       });
     }
   };

@@ -1424,10 +1424,34 @@ async def upload_youtube_short(
 @app.post("/api/youtube/logout")
 async def youtube_logout(request: YouTubeLogoutRequest):
     """
-    Logout from YouTube
+    Logout from YouTube - calls official Google OAuth revoke endpoint to revoke access token
     """
     try:
+        import requests
+        
         if request.user_id in youtube_sessions:
+            session = youtube_sessions[request.user_id]
+            creds_dict = session.get('credentials', {})
+            access_token = creds_dict.get('token')
+            
+            # Call Google's official revoke endpoint to invalidate the access token
+            if access_token:
+                try:
+                    revoke_url = "https://oauth2.googleapis.com/revoke"
+                    revoke_params = {"token": access_token}
+                    
+                    logger.info(f"Revoking YouTube access token for user: {request.user_id}")
+                    revoke_response = requests.post(revoke_url, params=revoke_params)
+                    
+                    if revoke_response.status_code == 200:
+                        logger.info(f"YouTube access token revoked successfully for user: {request.user_id}")
+                    else:
+                        logger.warning(f"Google revoke endpoint returned status {revoke_response.status_code}: {revoke_response.text}")
+                except Exception as revoke_error:
+                    logger.error(f"Error calling Google revoke endpoint: {str(revoke_error)}")
+                    # Continue with local logout even if revoke fails
+            
+            # Delete local session
             del youtube_sessions[request.user_id]
             logger.info(f"YouTube logout successful for user: {request.user_id}")
         
@@ -1803,10 +1827,41 @@ async def upload_tiktok_video(
 @app.post("/api/tiktok/logout")
 async def tiktok_logout(request: TikTokLogoutRequest):
     """
-    Logout from TikTok
+    Logout from TikTok - calls official /oauth/revoke/ endpoint to revoke access token
     """
     try:
+        import requests
+        
         if request.user_id in tiktok_sessions:
+            session = tiktok_sessions[request.user_id]
+            access_token = session.get("access_token")
+            
+            # Call TikTok's official revoke endpoint to invalidate the access token
+            if access_token:
+                try:
+                    revoke_url = "https://open.tiktokapis.com/v2/oauth/revoke/"
+                    revoke_data = {
+                        "client_key": TIKTOK_CLIENT_KEY,
+                        "client_secret": TIKTOK_CLIENT_SECRET,
+                        "token": access_token
+                    }
+                    
+                    logger.info(f"Revoking TikTok access token for user: {request.user_id}")
+                    revoke_response = requests.post(
+                        revoke_url, 
+                        data=revoke_data,
+                        headers={"Content-Type": "application/x-www-form-urlencoded"}
+                    )
+                    
+                    if revoke_response.status_code == 200:
+                        logger.info(f"TikTok access token revoked successfully for user: {request.user_id}")
+                    else:
+                        logger.warning(f"TikTok revoke endpoint returned status {revoke_response.status_code}: {revoke_response.text}")
+                except Exception as revoke_error:
+                    logger.error(f"Error calling TikTok revoke endpoint: {str(revoke_error)}")
+                    # Continue with local logout even if revoke fails
+            
+            # Delete local session
             del tiktok_sessions[request.user_id]
             logger.info(f"TikTok logout successful for user: {request.user_id}")
         
