@@ -433,6 +433,102 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Connected Accounts - Unified Info Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 justify-items-center">
+          {/* Instagram Connected Card */}
+          <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-purple-500">
+                  <path d="M7.5 2.25h9a5.25 5.25 0 0 1 5.25 5.25v9a5.25 5.25 0 0 1-5.25 5.25h-9A5.25 5.25 0 0 1 2.25 16.5v-9A5.25 5.25 0 0 1 7.5 2.25zm0 1.5A3.75 3.75 0 0 0 3.75 7.5v9A3.75 3.75 0 0 0 7.5 20.25h9A3.75 3.75 0 0 0 20.25 16.5v-9A3.75 3.75 0 0 0 16.5 3.75h-9z" />
+                  <path d="M12 7.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 1.5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM17.25 6.75a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5z" />
+                </svg>
+                <span className="font-medium text-gray-900 dark:text-white">Instagram</span>
+              </div>
+              {connectedAccounts.instagram ? (
+                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Connected</span>
+              ) : (
+                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">Not Connected</span>
+              )}
+            </div>
+            {connectedAccounts.instagram && accountInfo.instagram ? (
+              <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
+                {accountInfo.instagram.profile_picture_url && (
+                  <img src={accountInfo.instagram.profile_picture_url} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
+                )}
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  <div>@{accountInfo.instagram.username}</div>
+                  {accountInfo.instagram.followers_count !== undefined && (
+                    <div className="text-xs text-gray-500">{accountInfo.instagram.followers_count.toLocaleString()} followers</div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No account connected.</p>
+            )}
+          </div>
+
+          {/* YouTube Connected Card */}
+          <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Youtube className="w-6 h-6 text-red-500" />
+                <span className="font-medium text-gray-900 dark:text-white">YouTube</span>
+              </div>
+              {connectedAccounts.youtube ? (
+                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Connected</span>
+              ) : (
+                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">Not Connected</span>
+              )}
+            </div>
+            {connectedAccounts.youtube && accountInfo.youtube ? (
+              <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
+                {accountInfo.youtube.thumbnail_url && (
+                  <img src={accountInfo.youtube.thumbnail_url} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
+                )}
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  <div>{accountInfo.youtube.channel_title}</div>
+                  {accountInfo.youtube.subscriber_count && (
+                    <div className="text-xs text-gray-500">{parseInt(accountInfo.youtube.subscriber_count).toLocaleString()} subscribers</div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No channel connected.</p>
+            )}
+          </div>
+
+          {/* TikTok Connected Card */}
+          <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Music className="w-6 h-6" />
+                <span className="font-medium text-gray-900 dark:text-white">TikTok</span>
+              </div>
+              {connectedAccounts.tiktok ? (
+                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Connected</span>
+              ) : (
+                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">Not Connected</span>
+              )}
+            </div>
+            {connectedAccounts.tiktok && accountInfo.tiktok ? (
+              <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center gap-2">
+                {accountInfo.tiktok.avatar_url && (
+                  <img src={accountInfo.tiktok.avatar_url} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
+                )}
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  <div>{accountInfo.tiktok.username || accountInfo.tiktok.display_name}</div>
+                  {accountInfo.tiktok.follower_count && (
+                    <div className="text-xs text-gray-500">{parseInt(accountInfo.tiktok.follower_count).toLocaleString()} followers</div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No account connected.</p>
+            )}
+          </div>
+        </div>
+
         {/* Platform Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 justify-items-center">
           {/* Instagram OAuth Card (match width of YouTube/TikTok) */}
