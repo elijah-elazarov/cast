@@ -2128,7 +2128,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
                 <img src={youtubeAuth.userInfo.thumbnailUrl} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
               )}
               <div className="text-sm text-gray-600 dark:text-gray-300">
-                <div>{youtubeAuth.userInfo.channelTitle}</div>
+                <div>{youtubeAuth.userInfo.channelTitle || youtubeAuth.userInfo.customUrl || youtubeAuth.userInfo.id || 'YouTube Channel'}</div>
                 {youtubeAuth.userInfo.subscriberCount && (
                   <div className="text-xs text-gray-500">{parseInt(youtubeAuth.userInfo.subscriberCount).toLocaleString()} subscribers</div>
                 )}
