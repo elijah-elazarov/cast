@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Youtube, Music, TestTube } from 'lucide-react';
+import { Youtube, Music, TestTube, Key } from 'lucide-react';
 // import InstagramConnection from './components/InstagramConnection';
 import InstagramOAuthConnection from './components/InstagramOAuthConnection';
 import InstagramVideoUploader from './components/InstagramVideoUploader';
@@ -14,6 +14,7 @@ import YouTubeShortsDebugger from './components/YouTubeShortsDebugger';
 import TikTokShortsDebugger from './components/TikTokShortsDebugger';
 import UnifiedVideoUploader from './components/UnifiedVideoUploader';
 import UnifiedUploaderAdvanced from './components/UnifiedUploaderAdvanced';
+import TokenManager from './components/TokenManager';
 // import SimpleInstagramAuth from './components/SimpleInstagramAuth';
 
 export default function Home() {
@@ -37,6 +38,7 @@ export default function Home() {
   const [showTikTokShortsDebugger, setShowTikTokShortsDebugger] = useState(false);
   const [showUnifiedUploader, setShowUnifiedUploader] = useState(false);
   const [showUnifiedAdvanced, setShowUnifiedAdvanced] = useState(false);
+  const [showTokenManager, setShowTokenManager] = useState(false);
   const TOTAL_COUNTDOWN = 3;
 
   // Check localStorage on mount to initialize connected state (no auto-login)
@@ -295,6 +297,13 @@ export default function Home() {
               <Music className="w-4 h-4" />
               🎵 TikTok Shorts Debugger
             </button>
+            <button
+              onClick={() => setShowTokenManager(true)}
+              className="inline-flex items-center gap-2 bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors text-sm"
+            >
+              <Key className="w-4 h-4" />
+              🔑 Token Manager
+            </button>
           </div>
         </div>
 
@@ -440,6 +449,27 @@ export default function Home() {
 
       {showUnifiedAdvanced && (
         <UnifiedUploaderAdvanced onClose={() => setShowUnifiedAdvanced(false)} />
+      )}
+
+      {/* Token Manager */}
+      {showTokenManager && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              🔑 Token Manager
+            </h2>
+            <button
+              onClick={() => setShowTokenManager(false)}
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              ✕
+            </button>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            Manage and validate authentication tokens for all platforms.
+          </p>
+          <TokenManager />
+        </div>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 
 interface UserInfo {
@@ -88,6 +88,25 @@ export default function YouTubeShortsDebugger() {
 
   const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dkzbmeto1';
   const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_YOUTUBE || 'youtube_uploads';
+
+  const addLog = useCallback((message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setDebugLogs(prev => [...prev, `[${timestamp}] ${message}`]);
+    console.log(`[YOUTUBE SHORTS DEBUG] ${message}`);
+  }, []);
+
+  // Initialize: Log configuration and status (like Instagram and TikTok)
+  useEffect(() => {
+    addLog('🎬 YouTube Shorts Debugger initialized');
+    addLog('📋 Configuration loaded');
+    addLog(`🔑 Client ID: ${YOUTUBE_CONFIG.clientId.substring(0, 8)}...`);
+    addLog(`📦 Upload Preset: ${UPLOAD_PRESET}`);
+    addLog(`🌐 API Version: ${YOUTUBE_CONFIG.apiVersion}`);
+    addLog(`📡 Scopes: ${YOUTUBE_CONFIG.scope}`);
+    addLog(`🔗 Redirect URI: ${YOUTUBE_CONFIG.redirectUri}`);
+    addLog('✅ Ready to connect and upload videos to YouTube');
+    addLog('👆 Click "Connect YouTube" to begin authentication');
+  }, [addLog]);
 
   // Check for OAuth callback success/error from query params (same as original YouTubeConnection)
   useEffect(() => {
@@ -336,11 +355,6 @@ export default function YouTubeShortsDebugger() {
     }
   };
 
-  const addLog = (message: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    setDebugLogs(prev => [...prev, `[${timestamp}] ${message}`]);
-    console.log(`[YOUTUBE SHORTS DEBUG] ${message}`);
-  };
 
   // Check if already authenticated (for silent refresh)
   const checkExistingAuth = (): boolean => {

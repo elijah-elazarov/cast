@@ -86,6 +86,14 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     apiVersion: 'v21.0'
   } as const;
 
+  // YouTube API config (same as debugger)
+  const YOUTUBE_CONFIG = {
+    clientId: process.env.NEXT_PUBLIC_YOUTUBE_CLIENT_ID || 'your-client-id',
+    scope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly',
+    redirectUri: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/youtube/callback`,
+    apiVersion: 'v3'
+  } as const;
+
   const [instagramAuth, setInstagramAuth] = useState<InstagramAuthState>({
     isAuthenticated: false,
     isLoading: false,
@@ -130,6 +138,20 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     setDebugLogs(prev => [...prev, `[${timestamp}] ${message}`]);
     console.log(`[UNIFIED UPLOAD] ${message}`);
   }, []);
+
+  // Add initial YouTube configuration logs (matching YouTubeShortsDebugger)
+  useEffect(() => {
+    const youtubeUploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_YOUTUBE || 'youtube_uploads';
+    addLog('🎬 YouTube Shorts Debugger initialized');
+    addLog('📋 Configuration loaded');
+    addLog(`🔑 Client ID: ${YOUTUBE_CONFIG.clientId.substring(0, 8)}...`);
+    addLog(`📦 Upload Preset: ${youtubeUploadPreset}`);
+    addLog(`🌐 API Version: ${YOUTUBE_CONFIG.apiVersion}`);
+    addLog(`📡 Scopes: ${YOUTUBE_CONFIG.scope}`);
+    addLog(`🔗 Redirect URI: ${YOUTUBE_CONFIG.redirectUri}`);
+    addLog('✅ Ready to connect and upload videos to YouTube');
+    addLog('👆 Click "Connect YouTube" to begin authentication');
+  }, [addLog]);
 
   // Add initial TikTok configuration logs (matching TikTokShortsDebugger)
   useEffect(() => {
