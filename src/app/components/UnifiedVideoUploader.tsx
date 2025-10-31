@@ -223,39 +223,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       window.history.replaceState({}, '', window.location.pathname);
     }
 
-    // Check existing YouTube connection (YouTube can still auto-login)
-    const youtubeUserId = localStorage.getItem('youtube_user_id');
-    const youtubeChannelTitle = localStorage.getItem('youtube_channel_title');
-    if (youtubeUserId && youtubeChannelTitle && !youtubeConnected) {
-      setYouTubeAuth({
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-        userInfo: {
-          id: youtubeUserId,
-          channelTitle: youtubeChannelTitle,
-          thumbnailUrl: localStorage.getItem('youtube_thumbnail_url') || undefined,
-          subscriberCount: localStorage.getItem('youtube_subscriber_count') || undefined
-        }
-      });
-    }
   }, [addLog, INSTAGRAM_CONFIG.appId, INSTAGRAM_CONFIG.apiVersion]);
 
-  // React to localStorage updates from OAuth callbacks (cross-tab/popup)
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'youtube_user_id' || e.key === 'youtube_channel_title') {
-        const id = localStorage.getItem('youtube_user_id');
-        const title = localStorage.getItem('youtube_channel_title');
-        if (id && title) {
-          setYouTubeAuth({ isAuthenticated: true, isLoading: false, error: null, userInfo: { id, channelTitle: title } });
-          addLog(`YouTube connected (storage event): ${title}`);
-        }
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, [addLog]);
 
   // Helper: exchange short-lived token to long-lived via backend
   const exchangeLongLivedToken = async (shortLived: string): Promise<string> => {
