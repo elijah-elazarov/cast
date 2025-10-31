@@ -112,6 +112,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
   const [ytProcessedUrl, setYtProcessedUrl] = useState<string | null>(null);
   const [ttProcessedUrl, setTtProcessedUrl] = useState<string | null>(null);
   const [igReelsUrl, setIgReelsUrl] = useState<string | null>(null);
+  const [igStoriesUrl, setIgStoriesUrl] = useState<string | null>(null);
   const [igThumbUrl, setIgThumbUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
@@ -625,6 +626,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     setYtProcessedUrl(null);
     setTtProcessedUrl(null);
     setIgReelsUrl(null);
+    setIgStoriesUrl(null);
     setIgThumbUrl(null);
 
     const connectedCount = [youtubeAuth.isAuthenticated, tiktokAuth.isAuthenticated, instagramAuth.isAuthenticated].filter(Boolean).length;
@@ -717,6 +719,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
             ]);
             
             setIgReelsUrl(reelsUrl);
+            setIgStoriesUrl(storiesUrl);
             setIgThumbUrl(thumbUrl);
             updateProgress();
             setProcessingProgress(100);
@@ -754,6 +757,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
     setYtProcessedUrl(null);
     setTtProcessedUrl(null);
     setIgReelsUrl(null);
+    setIgStoriesUrl(null);
     setIgThumbUrl(null);
     addLog(`Selected file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
   };
@@ -798,8 +802,8 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
           addLog(`  📹 Reels video: ${igReelsUrl}`);
           addLog('    → Optimized for Instagram Reels (progressive encoding)');
         }
-        if (igReelsUrl) { // Using same URL for Stories
-          addLog(`  📱 Stories video: ${igReelsUrl}`);
+        if (igStoriesUrl) {
+          addLog(`  📱 Stories video: ${igStoriesUrl}`);
           addLog('    → Optimized for Instagram Stories (fast upload encoding)');
         }
         if (igThumbUrl) {
@@ -921,15 +925,15 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       if (instagramStory) {
         uploads.push((async () => {
           try {
-            if (!igReelsUrl) throw new Error('No processed Stories video available. Please process a video first.');
+            if (!igStoriesUrl) throw new Error('No processed Stories video available. Please process a video first.');
             addLog('Posting Instagram Stories with processed video...');
             showAvailableTransformedVideos();
             
             // Step 1: Use already processed video from Cloudinary
             addLog('Step 1: Using pre-processed video from Cloudinary...');
-            addLog(`📱 Using Stories-optimized video URL: ${igReelsUrl}`);
+            addLog(`📱 Using Stories-optimized video URL: ${igStoriesUrl}`);
             addLog('🎯 This video is specifically transformed for Instagram Stories posting');
-            const finalProcessedVideoUrl = igReelsUrl;
+            const finalProcessedVideoUrl = igStoriesUrl;
             const processedThumbnailUrl: string | null = igThumbUrl;
             
             // Stories have more flexible requirements
@@ -1292,7 +1296,7 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
       )}
 
       {/* Video Status Boxes */}
-      {videosReady && (ytProcessedUrl || ttProcessedUrl || igReelsUrl) && (
+      {videosReady && (ytProcessedUrl || ttProcessedUrl || igReelsUrl || igStoriesUrl) && (
         <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-lg">
           <div className="flex items-center mb-2">
             <div className="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
@@ -1319,6 +1323,14 @@ export default function UnifiedVideoUploader({ onClose }: { onClose?: () => void
               <span className="mr-2">📹</span>
               <span>Instagram Reels video: </span>
               <a className="text-blue-600 underline ml-1" href={igReelsUrl} target="_blank" rel="noreferrer">open</a>
+              <span className="ml-2 text-green-600">✓</span>
+            </div>
+          )}
+          {igStoriesUrl && instagramAuth.isAuthenticated && (
+            <div className="text-sm text-green-700 mt-1 flex items-center">
+              <span className="mr-2">📱</span>
+              <span>Instagram Stories video: </span>
+              <a className="text-blue-600 underline ml-1" href={igStoriesUrl} target="_blank" rel="noreferrer">open</a>
               <span className="ml-2 text-green-600">✓</span>
             </div>
           )}
